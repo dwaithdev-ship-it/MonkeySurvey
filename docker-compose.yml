@@ -1,0 +1,171 @@
+version: '3.8'
+
+services:
+  # Databases
+  mongodb:
+    image: mongo:6
+    container_name: monkeysurvey-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: monkeysurvey
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - monkeysurvey-network
+
+  postgres:
+    image: postgres:14
+    container_name: monkeysurvey-postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: monkeysurvey_analytics
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - monkeysurvey-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: monkeysurvey-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - monkeysurvey-network
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: monkeysurvey-api-gateway
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - USER_SERVICE_URL=http://user-service:3001
+      - SURVEY_SERVICE_URL=http://survey-service:3002
+      - RESPONSE_SERVICE_URL=http://response-service:3003
+      - ANALYTICS_SERVICE_URL=http://analytics-service:3004
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3005
+    depends_on:
+      - user-service
+      - survey-service
+      - response-service
+      - analytics-service
+      - notification-service
+    networks:
+      - monkeysurvey-network
+
+  # User Service
+  user-service:
+    build:
+      context: ./backend/user-service
+      dockerfile: Dockerfile
+    container_name: monkeysurvey-user-service
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - monkeysurvey-network
+
+  # Survey Service
+  survey-service:
+    build:
+      context: ./backend/survey-service
+      dockerfile: Dockerfile
+    container_name: monkeysurvey-survey-service
+    restart: always
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - monkeysurvey-network
+
+  # Response Service
+  response-service:
+    build:
+      context: ./backend/response-service
+      dockerfile: Dockerfile
+    container_name: monkeysurvey-response-service
+    restart: always
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - monkeysurvey-network
+
+  # Analytics Service
+  analytics-service:
+    build:
+      context: ./backend/analytics-service
+      dockerfile: Dockerfile
+    container_name: monkeysurvey-analytics-service
+    restart: always
+    ports:
+      - "3004:3004"
+    environment:
+      - PORT=3004
+      - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
+      - POSTGRES_URI=postgresql://postgres:postgres@postgres:5432/monkeysurvey_analytics
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+      - postgres
+      - redis
+    networks:
+      - monkeysurvey-network
+
+  # Notification Service
+  notification-service:
+    build:
+      context: ./backend/notification-service
+      dockerfile: Dockerfile
+    container_name: monkeysurvey-notification-service
+    restart: always
+    ports:
+      - "3005:3005"
+    environment:
+      - PORT=3005
+      - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
+      - NODE_ENV=production
+    depends_on:
+      - mongodb
+    networks:
+      - monkeysurvey-network
+
+volumes:
+  mongodb-data:
+  postgres-data:
+  redis-data:
+
+networks:
+  monkeysurvey-network:
+    driver: bridge
