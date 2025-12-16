@@ -1,0 +1,18 @@
+{
+  "name": "@monkeysurvey/shared",
+  "version": "1.0.0",
+  "description": "Shared utilities and types for MonkeySurvey microservices",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": ["survey", "shared", "utilities"],
+  "author": "MonkeySurvey Team",
+  "license": "MIT",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "joi": "^17.11.0",
+    "mongoose": "^8.0.3"
+  }
+}
