@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # Databases
   mongodb:
@@ -42,20 +44,19 @@ services:
   # API Gateway
   api-gateway:
     build:
-      context: ./backend
-      dockerfile: api-gateway/Dockerfile
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
     container_name: monkeysurvey-api-gateway
     restart: always
     ports:
       - "3000:3000"
     environment:
-      - PORT=3000
+      - NODE_ENV=production
       - USER_SERVICE_URL=http://user-service:3001
       - SURVEY_SERVICE_URL=http://survey-service:3002
       - RESPONSE_SERVICE_URL=http://response-service:3003
       - ANALYTICS_SERVICE_URL=http://analytics-service:3004
       - NOTIFICATION_SERVICE_URL=http://notification-service:3005
-      - NODE_ENV=production
     depends_on:
       - user-service
       - survey-service
@@ -68,8 +69,8 @@ services:
   # User Service
   user-service:
     build:
-      context: ./backend
-      dockerfile: user-service/Dockerfile
+      context: ./backend/user-service
+      dockerfile: Dockerfile
     container_name: monkeysurvey-user-service
     restart: always
     ports:
@@ -77,7 +78,7 @@ services:
     environment:
       - PORT=3001
       - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
-      - JWT_SECRET=change-this-in-production-secret-key-12345
+      - JWT_SECRET=${JWT_SECRET:-change-this-in-production}
       - NODE_ENV=production
     depends_on:
       - mongodb
@@ -87,8 +88,8 @@ services:
   # Survey Service
   survey-service:
     build:
-      context: ./backend
-      dockerfile: survey-service/Dockerfile
+      context: ./backend/survey-service
+      dockerfile: Dockerfile
     container_name: monkeysurvey-survey-service
     restart: always
     ports:
@@ -96,7 +97,6 @@ services:
     environment:
       - PORT=3002
       - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
-      - JWT_SECRET=change-this-in-production-secret-key-12345
       - NODE_ENV=production
     depends_on:
       - mongodb
@@ -106,8 +106,8 @@ services:
   # Response Service
   response-service:
     build:
-      context: ./backend
-      dockerfile: response-service/Dockerfile
+      context: ./backend/response-service
+      dockerfile: Dockerfile
     container_name: monkeysurvey-response-service
     restart: always
     ports:
@@ -115,7 +115,6 @@ services:
     environment:
       - PORT=3003
       - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
-      - JWT_SECRET=change-this-in-production-secret-key-12345
       - NODE_ENV=production
     depends_on:
       - mongodb
@@ -125,27 +124,30 @@ services:
   # Analytics Service
   analytics-service:
     build:
-      context: ./backend
-      dockerfile: analytics-service/Dockerfile
+      context: ./backend/analytics-service
+      dockerfile: Dockerfile
     container_name: monkeysurvey-analytics-service
     restart: always
     ports:
       - "3004:3004"
     environment:
       - PORT=3004
+      - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
       - POSTGRES_URI=postgresql://postgres:postgres@postgres:5432/monkeysurvey_analytics
-      - JWT_SECRET=change-this-in-production-secret-key-12345
+      - REDIS_URL=redis://redis:6379
       - NODE_ENV=production
     depends_on:
+      - mongodb
       - postgres
+      - redis
     networks:
       - monkeysurvey-network
 
   # Notification Service
   notification-service:
     build:
-      context: ./backend
-      dockerfile: notification-service/Dockerfile
+      context: ./backend/notification-service
+      dockerfile: Dockerfile
     container_name: monkeysurvey-notification-service
     restart: always
     ports:
@@ -153,7 +155,6 @@ services:
     environment:
       - PORT=3005
       - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
-      - JWT_SECRET=change-this-in-production-secret-key-12345
       - NODE_ENV=production
     depends_on:
       - mongodb
