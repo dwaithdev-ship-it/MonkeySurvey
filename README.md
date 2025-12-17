@@ -4,43 +4,40 @@ A comprehensive mobile survey application with beautiful UI design, robust micro
 
 ## 🚀 Features
 
-### Mobile App
-- **Beautiful UI**: Modern, intuitive design with React Native
+### Core Features
+- **Web Application**: Full-featured React web app with user and admin interfaces
 - **Create Surveys**: Easy-to-use survey builder with multiple question types
 - **Take Surveys**: Smooth, responsive survey-taking experience
-- **Real-time Analytics**: Interactive charts and statistics
-- **Custom Reports**: Build custom queries to analyze survey data
-- **Export Data**: Export results to CSV, PDF, and Excel
+- **Admin Panel**: Manage surveys, questions, and view responses
+- **User Authentication**: Secure JWT-based authentication
+- **Mobile Apps**: Native Android (Kotlin) and iOS (Swift) support
+- **RESTful APIs**: Complete backend microservices architecture
 
 ### Question Types
-- Multiple Choice
-- Checkboxes
-- Text Input
-- Text Area
+- Multiple Choice (single selection)
+- Checkboxes (multiple selections)
+- Short Text Input
+- Long Text Area
 - Rating Scale (1-5 stars)
-- Linear Scale
-- Date Picker
-- Dropdown
-- Matrix Questions
+- Dropdown Selection
 
-### Analytics & Reporting
-- Response rate tracking
-- Completion rate analysis
-- Question-level statistics (average, median, mode, distribution)
-- Demographics breakdown (country, device type)
-- Custom report builder with filters
-- Data export in multiple formats
-- Dashboard with key metrics
+### Admin Capabilities
+- Survey creation and management
+- Dynamic question builder (add/edit/delete/reorder)
+- Publish/unpublish surveys
+- View response counts
+- Manage survey settings
+- Role-based access control
 
 ## 🏗️ Architecture
 
 ### Microservices
-1. **API Gateway** (Port 3000) - Single entry point for all requests
-2. **User Service** (Port 3001) - Authentication and user management
-3. **Survey Service** (Port 3002) - Survey creation and management
-4. **Response Service** (Port 3003) - Survey response handling
-5. **Analytics Service** (Port 3004) - Analytics and reporting
-6. **Notification Service** (Port 3005) - Email and push notifications
+1. **User Service** (Port 3001) - Authentication and user management ✅
+2. **Survey Service** (Port 3002) - Survey creation and management ✅
+3. **Response Service** (Port 3003) - Survey response handling ✅
+4. **Analytics Service** (Port 3004) - Analytics and reporting (planned)
+5. **Notification Service** (Port 3005) - Email and push notifications (planned)
+6. **API Gateway** (Port 3000) - Single entry point (planned)
 
 ### Technology Stack
 
@@ -51,77 +48,87 @@ A comprehensive mobile survey application with beautiful UI design, robust micro
 - Redis for caching
 - JWT authentication
 
-#### Mobile
-- React Native
-- Redux Toolkit for state management
-- React Native Paper for UI components
+#### Web Frontend
+- React 18 with React Router
+- Context API for state management
+- Responsive design
 - Axios for API calls
+
+#### Mobile (Native)
+- **Android**: Kotlin + Jetpack Compose (structure provided)
+- **iOS**: Swift + SwiftUI (structure provided)
+- Complete setup guides included
 
 ## 📚 Documentation
 
-- [Architecture Overview](ARCHITECTURE.md)
-- [Database Schema](DATABASE_SCHEMA.md)
-- [API Documentation](API_DOCUMENTATION.md)
-- [UI Design Guide](UI_DESIGN.md)
-- [Deployment Guide](DEPLOYMENT.md)
+### Getting Started
+- **[Quick Start Guide](QUICK_START.md)** - Get running in 5 minutes! ⚡
+- **[Setup Guide](SETUP_GUIDE.md)** - Comprehensive setup instructions
+- **[Implementation Summary](IMPLEMENTATION_SUMMARY.md)** - What's implemented and how to use it
+
+### Technical Documentation
+- [Architecture Overview](ARCHITECTURE.md) - System design and microservices
+- [Database Schema](DATABASE_SCHEMA.md) - Data models and relationships
+- [API Documentation](API_DOCUMENTATION.md) - Complete API reference
+- [UI Design Guide](UI_DESIGN.md) - Design system and components
+- [Deployment Guide](DEPLOYMENT.md) - Production deployment
+
+### Platform-Specific
+- [Android Setup](android/README.md) - Native Android app guide
+- [iOS Setup](ios/README.md) - Native iOS app guide
 
 ## 🚀 Quick Start
 
+**Want to get started immediately?** See the **[Quick Start Guide](QUICK_START.md)** for a 5-minute setup!
+
 ### Prerequisites
 - Node.js 16+
-- Docker & Docker Compose
-- MongoDB 6+
-- PostgreSQL 14+
+- MongoDB (via Docker or local installation)
 
-### Backend Setup
+### Minimal Setup
 
-1. **Clone the repository**
+1. **Start MongoDB**
    ```bash
-   git clone https://github.com/dwaithdev-ship-it/MonkeySurvey.git
-   cd MonkeySurvey
+   docker run -d -p 27017:27017 --name mongodb mongo:latest
    ```
 
-2. **Start services with Docker**
+2. **Setup Database**
    ```bash
-   docker-compose up -d
+   cd database
+   mongosh < migrations/001_initial_setup.js
    ```
 
-3. **Or run services individually**
+3. **Start Backend Services**
    ```bash
-   # Start databases
-   docker-compose up -d mongodb postgres redis
-   
-   # Install dependencies
+   # Terminal 1 - User Service
    cd backend/user-service
+   npm install && npm start
+
+   # Terminal 2 - Survey Service  
+   cd backend/survey-service
+   npm install && npm start
+
+   # Terminal 3 - Response Service
+   cd backend/response-service
+   npm install && npm start
+   ```
+
+4. **Start Web Frontend**
+   ```bash
+   cd web/frontend
    npm install
-   
-   # Create .env file
-   cp .env.example .env
-   
-   # Start service
    npm start
    ```
 
-### Mobile App Setup
+5. **Access the Application**
+   - Open http://localhost:3000
+   - Login with: admin@monkeysurvey.com / admin123
 
-1. **Install dependencies**
-   ```bash
-   cd mobile
-   npm install
-   ```
-
-2. **iOS Setup**
-   ```bash
-   cd ios
-   pod install
-   cd ..
-   npm run ios
-   ```
-
-3. **Android Setup**
-   ```bash
-   npm run android
-   ```
+For detailed instructions including mobile app setup, see:
+- [Quick Start Guide](QUICK_START.md) - 5-minute setup
+- [Setup Guide](SETUP_GUIDE.md) - Comprehensive guide
+- [Android Setup](android/README.md) - Native Android app
+- [iOS Setup](ios/README.md) - Native iOS app
 
 ## 🔌 API Endpoints
 
