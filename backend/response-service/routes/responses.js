@@ -4,7 +4,16 @@ const Response = require('../models/Response');
 const { authMiddleware } = require('../../shared/auth');
 const { responseSchema, validate } = require('../../shared/validation');
 
-router.post('/', validate(responseSchema), async (req, res) => {
+// Optional auth middleware - allows anonymous submissions
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authMiddleware(req, res, next);
+  }
+  next();
+};
+
+router.post('/', optionalAuth, validate(responseSchema), async (req, res) => {
   try {
     const responseData = {
       ...req.body,

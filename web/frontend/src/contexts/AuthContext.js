@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.getProfile();
       setUser(response.data.data);
     } catch (error) {
-      console.error('Failed to load user:', error);
+      // Silent fail for authentication errors
       localStorage.removeItem('token');
     } finally {
       setLoading(false);

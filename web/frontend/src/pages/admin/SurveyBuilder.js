@@ -43,7 +43,7 @@ function SurveyBuilder() {
     setQuestions([
       ...questions,
       {
-        _id: Date.now().toString(),
+        _id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: 'text',
         question: '',
         required: false,
@@ -68,7 +68,7 @@ function SurveyBuilder() {
       updated[questionIndex].options = [];
     }
     updated[questionIndex].options.push({
-      value: `option_${Date.now()}`,
+      value: `option_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       label: '',
       order: updated[questionIndex].options.length
     });

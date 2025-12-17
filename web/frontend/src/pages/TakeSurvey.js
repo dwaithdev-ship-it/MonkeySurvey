@@ -165,6 +165,21 @@ function TakeSurvey() {
                   ))}
                 </div>
               )}
+
+              {question.type === 'dropdown' && question.options && (
+                <select
+                  className="form-input"
+                  required={question.required}
+                  onChange={(e) => handleAnswerChange(question._id, e.target.value)}
+                >
+                  <option value="">Select an option...</option>
+                  {question.options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           ))}
 
