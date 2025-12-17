@@ -2,120 +2,66 @@ const express = require('express');
 const router = express.Router();
 const Response = require('../models/Response');
 const { authMiddleware } = require('../../shared/auth');
+const { responseSchema, validate } = require('../../shared/validation');
 
-// Submit response
-router.post('/', async (req, res) => {
+// Optional auth middleware - allows anonymous submissions
+const optionalAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authMiddleware(req, res, next);
+  }
+  next();
+};
+
+router.post('/', optionalAuth, validate(responseSchema), async (req, res) => {
   try {
-    const { surveyId, answers } = req.body;
-    
-    const response = new Response({
-      surveyId,
-      answers,
-      respondentId: req.user?.userId,
-      status: 'complete',
+    const responseData = {
+      ...req.body,
       completedAt: new Date(),
       metadata: {
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent')
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.ip
       }
-    });
-    
-    if (response.startedAt) {
-      response.timeToComplete = Math.floor(
-        (response.completedAt - response.startedAt) / 1000
-      );
+    };
+
+    if (req.user) {
+      responseData.userId = req.user.id;
     }
-    
+
+    const response = new Response(responseData);
     await response.save();
-    
+
     res.status(201).json({
       success: true,
-      data: {
-        responseId: response._id,
-        surveyId: response.surveyId,
-        status: response.status,
-        submittedAt: response.completedAt
-      }
+      data: response
     });
   } catch (error) {
-    res.status(400).json({
+    console.error('Submit response error:', error);
+    res.status(500).json({
       success: false,
       error: {
-        code: 'VALIDATION_ERROR',
-        message: error.message
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to submit response'
       }
     });
   }
 });
 
-// Save partial response
-router.post('/partial', authMiddleware, async (req, res) => {
-  try {
-    const { surveyId, answers, responseId } = req.body;
-    
-    let response;
-    
-    if (responseId) {
-      response = await Response.findByIdAndUpdate(
-        responseId,
-        { answers, status: 'incomplete' },
-        { new: true }
-      );
-    } else {
-      response = new Response({
-        surveyId,
-        answers,
-        respondentId: req.user.userId,
-        status: 'incomplete',
-        metadata: {
-          ipAddress: req.ip,
-          userAgent: req.get('user-agent')
-        }
-      });
-      await response.save();
-    }
-    
-    res.json({
-      success: true,
-      data: {
-        responseId: response._id,
-        status: response.status
-      }
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: error.message
-      }
-    });
-  }
-});
-
-// Get survey responses
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { surveyId, page = 1, limit = 50 } = req.query;
+
+    const query = {};
+    if (surveyId) query.surveyId = surveyId;
+
     const skip = (page - 1) * limit;
-    
-    if (!surveyId) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'surveyId is required'
-        }
-      });
-    }
-    
-    const responses = await Response.find({ surveyId })
+    const responses = await Response.find(query)
+      .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit))
-      .sort({ completedAt: -1 });
-    
-    const total = await Response.countDocuments({ surveyId });
-    
+      .limit(parseInt(limit));
+
+    const total = await Response.countDocuments(query);
+
     res.json({
       success: true,
       data: {
@@ -123,16 +69,18 @@ router.get('/', authMiddleware, async (req, res) => {
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total
+          total,
+          pages: Math.ceil(total / limit)
         }
       }
     });
   } catch (error) {
+    console.error('List responses error:', error);
     res.status(500).json({
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: error.message
+        message: 'Failed to list responses'
       }
     });
   }

@@ -2,71 +2,59 @@ const express = require('express');
 const router = express.Router();
 const Survey = require('../models/Survey');
 const { authMiddleware } = require('../../shared/auth');
+const { surveySchema, validate } = require('../../shared/validation');
 
-// Create survey
-router.post('/', authMiddleware, async (req, res) => {
+router.post('/', authMiddleware, validate(surveySchema), async (req, res) => {
   try {
-    const { title, description, category, settings, questions } = req.body;
-    
-    const survey = new Survey({
-      title,
-      description,
-      category,
-      settings,
-      questions,
-      creatorId: req.user.userId,
-      status: 'draft'
-    });
-    
+    const surveyData = {
+      ...req.body,
+      createdBy: req.user.id
+    };
+
+    const survey = new Survey(surveyData);
     await survey.save();
-    
+
     res.status(201).json({
       success: true,
-      data: {
-        surveyId: survey._id,
-        title: survey.title,
-        status: survey.status,
-        shareUrl: `https://survey.monkeysurvey.com/s/${survey._id}`
-      }
+      data: survey
     });
   } catch (error) {
-    res.status(400).json({
+    console.error('Create survey error:', error);
+    res.status(500).json({
       success: false,
       error: {
-        code: 'VALIDATION_ERROR',
-        message: error.message
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to create survey'
       }
     });
   }
 });
 
-// Get all surveys
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
-    const skip = (page - 1) * limit;
+    const { status, category, page = 1, limit = 20 } = req.query;
     
-    const query = { creatorId: req.user.userId };
+    const query = {};
     if (status) query.status = status;
-    
+    if (category) query.category = category;
+
+    if (req.user.role !== 'admin') {
+      query.createdBy = req.user.id;
+    }
+
+    const skip = (page - 1) * limit;
     const surveys = await Survey.find(query)
+      .select('-questions')
+      .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit))
-      .sort({ createdAt: -1 });
-    
+      .limit(parseInt(limit));
+
     const total = await Survey.countDocuments(query);
-    
+
     res.json({
       success: true,
       data: {
-        surveys: surveys.map(s => ({
-          id: s._id,
-          title: s.title,
-          status: s.status,
-          responseCount: s.responseCount || 0,
-          completionRate: s.completionRate || 0,
-          createdAt: s.createdAt
-        })),
+        surveys,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
@@ -76,21 +64,21 @@ router.get('/', authMiddleware, async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('List surveys error:', error);
     res.status(500).json({
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: error.message
+        message: 'Failed to list surveys'
       }
     });
   }
 });
 
-// Get survey by ID
-router.get('/:surveyId', authMiddleware, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const survey = await Survey.findById(req.params.surveyId);
-    
+    const survey = await Survey.findById(req.params.id).populate('createdBy', 'firstName lastName email');
+
     if (!survey) {
       return res.status(404).json({
         success: false,
@@ -100,31 +88,27 @@ router.get('/:surveyId', authMiddleware, async (req, res) => {
         }
       });
     }
-    
+
     res.json({
       success: true,
       data: survey
     });
   } catch (error) {
+    console.error('Get survey error:', error);
     res.status(500).json({
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: error.message
+        message: 'Failed to get survey'
       }
     });
   }
 });
 
-// Update survey
-router.put('/:surveyId', authMiddleware, async (req, res) => {
+router.put('/:id', authMiddleware, validate(surveySchema), async (req, res) => {
   try {
-    const survey = await Survey.findOneAndUpdate(
-      { _id: req.params.surveyId, creatorId: req.user.userId },
-      req.body,
-      { new: true, runValidators: true }
-    );
-    
+    const survey = await Survey.findById(req.params.id);
+
     if (!survey) {
       return res.status(404).json({
         success: false,
@@ -134,30 +118,40 @@ router.put('/:surveyId', authMiddleware, async (req, res) => {
         }
       });
     }
-    
+
+    if (survey.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to update this survey'
+        }
+      });
+    }
+
+    Object.assign(survey, req.body);
+    await survey.save();
+
     res.json({
       success: true,
       data: survey
     });
   } catch (error) {
-    res.status(400).json({
+    console.error('Update survey error:', error);
+    res.status(500).json({
       success: false,
       error: {
-        code: 'VALIDATION_ERROR',
-        message: error.message
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to update survey'
       }
     });
   }
 });
 
-// Delete survey
-router.delete('/:surveyId', authMiddleware, async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    const survey = await Survey.findOneAndDelete({
-      _id: req.params.surveyId,
-      creatorId: req.user.userId
-    });
-    
+    const survey = await Survey.findById(req.params.id);
+
     if (!survey) {
       return res.status(404).json({
         success: false,
@@ -167,31 +161,39 @@ router.delete('/:surveyId', authMiddleware, async (req, res) => {
         }
       });
     }
-    
+
+    if (survey.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to delete this survey'
+        }
+      });
+    }
+
+    await Survey.findByIdAndDelete(req.params.id);
+
     res.json({
       success: true,
       message: 'Survey deleted successfully'
     });
   } catch (error) {
+    console.error('Delete survey error:', error);
     res.status(500).json({
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: error.message
+        message: 'Failed to delete survey'
       }
     });
   }
 });
 
-// Publish survey
-router.post('/:surveyId/publish', authMiddleware, async (req, res) => {
+router.post('/:id/publish', authMiddleware, async (req, res) => {
   try {
-    const survey = await Survey.findOneAndUpdate(
-      { _id: req.params.surveyId, creatorId: req.user.userId },
-      { status: 'active' },
-      { new: true }
-    );
-    
+    const survey = await Survey.findById(req.params.id);
+
     if (!survey) {
       return res.status(404).json({
         success: false,
@@ -201,59 +203,31 @@ router.post('/:surveyId/publish', authMiddleware, async (req, res) => {
         }
       });
     }
-    
-    res.json({
-      success: true,
-      data: {
-        id: survey._id,
-        status: survey.status,
-        shareUrl: `https://survey.monkeysurvey.com/s/${survey._id}`
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: error.message
-      }
-    });
-  }
-});
 
-// Get survey templates
-router.get('/templates', authMiddleware, async (req, res) => {
-  try {
-    const { category } = req.query;
-    
-    // Mock templates for now
-    const templates = [
-      {
-        id: '507f1f77bcf86cd799439014',
-        name: 'Customer Feedback Template',
-        description: 'Collect customer feedback',
-        category: 'customer_feedback',
-        thumbnail: 'https://cdn.monkeysurvey.com/templates/customer.png',
-        questionCount: 8
-      }
-    ];
-    
-    const filtered = category 
-      ? templates.filter(t => t.category === category)
-      : templates;
-    
+    if (survey.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to publish this survey'
+        }
+      });
+    }
+
+    survey.status = 'active';
+    await survey.save();
+
     res.json({
       success: true,
-      data: {
-        templates: filtered
-      }
+      data: survey
     });
   } catch (error) {
+    console.error('Publish survey error:', error);
     res.status(500).json({
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: error.message
+        message: 'Failed to publish survey'
       }
     });
   }

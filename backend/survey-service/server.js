@@ -5,6 +5,8 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+const surveyRoutes = require('./routes/surveys');
+
 const app = express();
 const PORT = process.env.PORT || 3002;
 
@@ -29,7 +31,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Routes
-app.use('/surveys', require('./routes/surveys'));
+app.use('/surveys', surveyRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -59,24 +61,25 @@ app.use((req, res) => {
     success: false,
     error: {
       code: 'NOT_FOUND',
-      message: 'Route not found'
+      message: 'Resource not found'
     }
   });
 });
 
-// MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/monkeysurvey';
-
-mongoose.connect(MONGODB_URI)
-  .then(() => {
-    console.log('✓ Connected to MongoDB');
-    app.listen(PORT, () => {
-      console.log(`✓ Survey Service running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error('✗ MongoDB connection error:', err);
-    process.exit(1);
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => {
+  console.log('Connected to MongoDB');
+  app.listen(PORT, () => {
+    console.log(`Survey service running on port ${PORT}`);
   });
+})
+.catch(err => {
+  console.error('MongoDB connection error:', err);
+  process.exit(1);
+});
 
 module.exports = app;

@@ -1,51 +1,45 @@
 const mongoose = require('mongoose');
 
+const answerSchema = new mongoose.Schema({
+  questionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true
+  },
+  value: {
+    type: mongoose.Schema.Types.Mixed,
+    required: true
+  }
+}, { _id: false });
+
 const responseSchema = new mongoose.Schema({
   surveyId: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    ref: 'Survey'
+    ref: 'Survey',
+    required: true
   },
-  respondentId: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  answers: [{
-    questionId: {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true
-    },
-    value: mongoose.Schema.Types.Mixed,
-    answeredAt: {
-      type: Date,
-      default: Date.now
-    }
-  }],
-  status: {
-    type: String,
-    enum: ['incomplete', 'complete'],
-    default: 'incomplete'
-  },
+  answers: [answerSchema],
   metadata: {
-    ipAddress: String,
     userAgent: String,
-    device: String,
-    location: {
-      country: String,
-      city: String
-    }
+    ipAddress: String,
+    deviceType: String,
+    country: String
   },
-  startedAt: {
-    type: Date,
-    default: Date.now
+  isComplete: {
+    type: Boolean,
+    default: true
   },
-  completedAt: Date,
-  timeToComplete: Number
+  startedAt: Date,
+  completedAt: Date
 }, {
   timestamps: true
 });
 
-responseSchema.index({ surveyId: 1, createdAt: -1 });
-responseSchema.index({ respondentId: 1 });
+responseSchema.index({ surveyId: 1 });
+responseSchema.index({ userId: 1 });
+responseSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Response', responseSchema);

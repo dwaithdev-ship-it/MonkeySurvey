@@ -5,33 +5,24 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+const responseRoutes = require('./routes/responses');
+
 const app = express();
 const PORT = process.env.PORT || 3003;
 
-// Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting
 const limiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 100,
-  message: {
-    success: false,
-    error: {
-      code: 'RATE_LIMIT_EXCEEDED',
-      message: 'Too many requests, please try again later'
-    }
-  }
+  max: 100
 });
 app.use(limiter);
 
-// Routes
-app.use('/responses', require('./routes/responses'));
+app.use('/responses', responseRoutes);
 
-// Health check
 app.get('/health', (req, res) => {
   res.json({
     success: true,
@@ -41,7 +32,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({
@@ -53,30 +43,19 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: {
-      code: 'NOT_FOUND',
-      message: 'Route not found'
-    }
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => {
+  console.log('Connected to MongoDB');
+  app.listen(PORT, () => {
+    console.log(`Response service running on port ${PORT}`);
   });
+})
+.catch(err => {
+  console.error('MongoDB connection error:', err);
+  process.exit(1);
 });
-
-// MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/monkeysurvey';
-
-mongoose.connect(MONGODB_URI)
-  .then(() => {
-    console.log('✓ Connected to MongoDB');
-    app.listen(PORT, () => {
-      console.log(`✓ Response Service running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error('✗ MongoDB connection error:', err);
-    process.exit(1);
-  });
 
 module.exports = app;
