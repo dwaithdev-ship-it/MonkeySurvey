@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
+// Don't parse body here - let the proxied services handle it
 
 // Rate limiting
 const limiter = rateLimit({

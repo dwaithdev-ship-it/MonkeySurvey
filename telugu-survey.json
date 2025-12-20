@@ -1,0 +1,418 @@
+{
+  "title": "ప్రజాపిప్రాయ సేకరణ - 2025",
+  "description": "2025 ఆంధ్ర ప్రదేశ్ రాజకీయ సర్వే - ప్రజల జనాభా సమాచారం మరియు రాజకీయ అభిప్రాయాలు",
+  "category": "market_research",
+  "questions": [
+    {
+      "type": "text",
+      "question": "Parliament:",
+      "required": true,
+      "isHeader": false,
+      "maxLength": 100
+    },
+    {
+      "type": "text",
+      "question": "Assembly:",
+      "required": true,
+      "isHeader": false,
+      "maxLength": 100
+    },
+    {
+      "type": "text",
+      "question": "జిల్లా:",
+      "required": true,
+      "isHeader": false,
+      "maxLength": 100
+    },
+    {
+      "type": "text",
+      "question": "మండలం:",
+      "required": true,
+      "isHeader": false
+    },
+    {
+      "type": "text",
+      "question": "గ్రామం/వార్డు:",
+      "required": true,
+      "isHeader": false
+    },
+    {
+      "type": "date",
+      "question": "తేదీ:",
+      "required": true,
+      "isHeader": false
+    },
+    {
+      "type": "text",
+      "question": "PS.No.",
+      "required": false,
+      "isHeader": false
+    },
+    {
+      "type": "text",
+      "question": "ఇంటర్వ్యూయర్ పేరు:",
+      "required": true,
+      "isHeader": false
+    },
+    {
+      "type": "multiple_choice",
+      "question": "1. నివాసం:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "rural", "label": "గ్రామీణ", "order": 1},
+        {"value": "town", "label": "పట్టణ సంఘటన", "order": 2},
+        {"value": "municipality", "label": "మున్సిపాలిటీ", "order": 3},
+        {"value": "corporation", "label": "కార్పొరేషన్", "order": 4}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "2. వయసు వర్గం:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "18-25", "label": "18-25", "order": 1},
+        {"value": "26-40", "label": "26-40", "order": 2},
+        {"value": "41-59", "label": "41-59", "order": 3},
+        {"value": "60+", "label": "60+", "order": 4}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "3. మతం:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "christian", "label": "క్రైస్తవ", "order": 1},
+        {"value": "hindu", "label": "హిందూ", "order": 2},
+        {"value": "muslim", "label": "ముస్లిం", "order": 3},
+        {"value": "buddhism", "label": "బౌద్ధం", "order": 4},
+        {"value": "sikh", "label": "సిక్కు", "order": 5},
+        {"value": "jain", "label": "జైన", "order": 6},
+        {"value": "parsi", "label": "పార్సీ", "order": 7},
+        {"value": "shinto", "label": "షింటో", "order": 8},
+        {"value": "judaism", "label": "జుడాయిజం", "order": 9},
+        {"value": "others", "label": "ఇతరాలు", "order": 10},
+        {"value": "none", "label": "ఏదీ కాదు", "order": 11}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "4. విద్యాభ్యాసం:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "illiterate", "label": "నిరక్షరాస్యులు", "order": 1},
+        {"value": "below_10", "label": "10 లోపల", "order": 2},
+        {"value": "below_inter", "label": "ఇంటర్ లోపల", "order": 3},
+        {"value": "above_inter", "label": "ఇంటర్ పైన", "order": 4}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "5. కులం వర్గం:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "sc", "label": "SC", "order": 1},
+        {"value": "st", "label": "ST", "order": 2},
+        {"value": "bc", "label": "BC", "order": 3},
+        {"value": "oc", "label": "OC", "order": 4}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "6. లింగం:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "m", "label": "M", "order": 1},
+        {"value": "f", "label": "F", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "7. వివాహ స్థితి:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "unmarried", "label": "పెళ్ళికాని", "order": 1},
+        {"value": "married", "label": "పెళ్ళయిన", "order": 2},
+        {"value": "divorced", "label": "విడాకులు", "order": 3},
+        {"value": "other", "label": "ఇతర", "order": 4}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "8. ఆర్థిక స్థితి:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "poor", "label": "పేద", "order": 1},
+        {"value": "middle_class", "label": "మధ్య తరగతి", "order": 2},
+        {"value": "rich", "label": "ధనిక", "order": 3}
+      ]
+    },
+    {
+      "type": "text",
+      "question": "పేరు పూర్తి:",
+      "required": true,
+      "isHeader": false
+    },
+    {
+      "type": "text",
+      "question": "ఫోన్ నం:",
+      "required": true,
+      "isHeader": false
+    },
+    {
+      "type": "multiple_choice",
+      "question": "9. మీరు సోషల్ మీడియాలో ఏది ఎక్కువగా వాడతారు?",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "youtube", "label": "Youtube", "order": 1},
+        {"value": "facebook", "label": "Facebook", "order": 2},
+        {"value": "instagram", "label": "Instagram", "order": 3},
+        {"value": "whatsapp", "label": "Whatsapp", "order": 4},
+        {"value": "others", "label": "ఇతరము", "order": 5}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "10. మీ దగ్గర స్మార్ట్ ఫోన్ ఉందా?",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "yes", "label": "ఉంది", "order": 1},
+        {"value": "no", "label": "ఉండదు", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "11. ప్రభుత్వ రేషన్ కార్డు ఉందా?",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "yes", "label": "ఉంది", "order": 1},
+        {"value": "no", "label": "ఉండదు", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "12. ఆరోగ్య భీమా ఉందా?",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "yes", "label": "ఉంది", "order": 1},
+        {"value": "no", "label": "ఉండదు", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "13. గత నెలలో విద్యుత్ 6/7 గంటలు కొనసాగింపుగా ఇచ్చారా? సంతృప్తి చెందారా?",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "satisfied", "label": "సంతృప్తి చెందాను", "order": 1},
+        {"value": "not_satisfied", "label": "సంతృప్తి లేదు", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "14. ప్రభుత్వ, ప్రతిపక్ష రాజకీయాల్లో మారు మీకు ఎలా అనిపిస్తుంది?",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "much_change", "label": "చాలా అనిపిస్తుంది", "order": 1},
+        {"value": "no_change", "label": "అనిపించడం లేదు", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "15a. పెన్షన్లు: కింది కల్యాణ పథకాలు మీకు చేరుతున్నాయా?",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "yes", "label": "చేరుతున్నాయి", "order": 1},
+        {"value": "no", "label": "చేరడం లేదు", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "15b. బియ్యం/రేషన్ సామాను:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "yes", "label": "వస్తున్నాయి", "order": 1},
+        {"value": "no", "label": "వస్తుండటం లేదు", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "15c. గ్యాస్ సబ్సిడీలు:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "yes", "label": "ఉంటాయి", "order": 1},
+        {"value": "no", "label": "ఉండవు", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "15d. పంటలకు మద్దతు ధరలు:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "yes", "label": "ఇస్తున్నారు", "order": 1},
+        {"value": "no", "label": "ఇవ్వడం లేదు", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "15e. మీ నివాస ప్రాంతంలో మరుగుదొడ్లు ఉన్నాయా:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "yes", "label": "ఉన్నాయి", "order": 1},
+        {"value": "no", "label": "ఉండవు", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "15f. మీ నివాస ప్రాంతంలో అంగన్ వాడీలు ఉన్నాయా:",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "yes", "label": "ఉన్నాయి", "order": 1},
+        {"value": "no", "label": "ఉండవు", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "15g. వైద్య సదుపాయం ఉందా?",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "yes", "label": "ఉంది", "order": 1},
+        {"value": "no", "label": "ఉండదు", "order": 2}
+      ]
+    },
+    {
+      "type": "checkbox",
+      "question": "16. మీ ప్రాంతంలో కింది ఏది ముఖ్యంగా కావాలి? (మీకు ముఖ్యమైనవి 3 ఎంచండి)",
+      "required": true,
+      "isHeader": true,
+      "options": [
+        {"value": "pensions", "label": "పెన్షన్ల చేయడం", "order": 1},
+        {"value": "ration", "label": "బియ్యం/రేషన్ సామాను కట్టడం", "order": 2},
+        {"value": "agriculture", "label": "వ్యవసాయం కింది చేయడం", "order": 3},
+        {"value": "industry", "label": "పరిశ్రమ కింది చేయడం", "order": 4},
+        {"value": "education_sports", "label": "జైన, క్రీడా ఉన్నత చేయడం", "order": 5},
+        {"value": "roads", "label": "నా గ్రామంలో బాగుపడిన రోడ్లు", "order": 6}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "1. మీ కోరికలు ఎక్కువగా నెరవేర్చునట్లు ఏ పార్టీ ఉంటుందని అనుకుంటారు?",
+      "required": true,
+      "isHeader": false,
+      "options": [
+        {"value": "tdp", "label": "టిడిపి", "order": 1},
+        {"value": "ycp", "label": "వైసార్సిపి", "order": 2},
+        {"value": "congress", "label": "కాంగ్రెస్", "order": 3},
+        {"value": "others", "label": "ఇతరములు", "order": 4}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "2. రాజకీయ వార్తలు ఫాలో చేస్తారా?",
+      "required": true,
+      "isHeader": false,
+      "options": [
+        {"value": "yes", "label": "ఉండి ఫాలో చేస్తాను", "order": 1},
+        {"value": "no", "label": "ఉండి ఫాలో చేయడం లేదు", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "3. రాబోయే రోజుల్లో ఏ పార్టీని ఎక్కువ నమ్ముతారు",
+      "required": true,
+      "isHeader": false,
+      "options": [
+        {"value": "congress", "label": "కాంగ్రెస్", "order": 1},
+        {"value": "ycp", "label": "వైసార్సిపి", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "4. కల్యాణ పథకాలు ఏ పార్టీని ఎక్కువ ఇష్టపడతారు",
+      "required": true,
+      "isHeader": false,
+      "options": [
+        {"value": "ycp", "label": "వైసార్సిపి", "order": 1},
+        {"value": "congress", "label": "కాంగ్రెస్", "order": 2}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "5. రాజకీయ పార్టీని ఎప్పుడు ఓటు వేస్తారు",
+      "required": true,
+      "isHeader": false,
+      "options": [
+        {"value": "family", "label": "కుటుంబ సభ్యుడు చెప్పితేనే ఓటు వేస్తాను", "order": 1},
+        {"value": "caste", "label": "కులాన్ని బట్టి చాలా ఓటు వేస్తాను", "order": 2},
+        {"value": "none", "label": "ఏదీ కాదు, రెండూ కూడా లేదు", "order": 3}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "6. ఈసారి ఎప్పుడు ఏ కూటమికి మీరు వేస్తారు",
+      "required": true,
+      "isHeader": false,
+      "options": [
+        {"value": "tdp_alliance", "label": "టిడిపి/జనసేన/బిజెపి కూటమి", "order": 1},
+        {"value": "ycp", "label": "వైసార్సిపి", "order": 2},
+        {"value": "congress", "label": "కాంగ్రెస్", "order": 3},
+        {"value": "others", "label": "ఇతరములు", "order": 4}
+      ]
+    },
+    {
+      "type": "multiple_choice",
+      "question": "7. మీరు గత సారి ఎప్పుడు ఏ కూటమికి వేసారు",
+      "required": true,
+      "isHeader": false,
+      "options": [
+        {"value": "tdp_alliance", "label": "టిడిపి/జనసేన/బిజెపి కూటమి", "order": 1},
+        {"value": "ycp", "label": "వైసార్సిపి", "order": 2},
+        {"value": "congress", "label": "కాంగ్రెస్", "order": 3},
+        {"value": "others", "label": "ఇతరములు", "order": 4}
+      ]
+    },
+    {
+      "type": "textarea",
+      "question": "7a. (6,7 వేరైతే మాత్రమే సమాధానం ఇవ్వండి) ఎందుకు మారారు?",
+      "required": false,
+      "isHeader": false
+    },
+    {
+      "type": "multiple_choice",
+      "question": "8. (6లో వైసార్సిపి ఎంచుకుంటే మాత్రమే సమాధానం ఇవ్వండి) వైసార్సిపి ప్రభుత్వ కల్యాణ పథక రాయితీల గురించి తెలుసా?",
+      "required": false,
+      "isHeader": false,
+      "options": [
+        {"value": "know_well", "label": "తెలుసు ఉండి చెప్తాను", "order": 1},
+        {"value": "know_want_more", "label": "తెలుసు కానీ ఇంకా ఎక్కువ తెలుసుకోవాలి", "order": 2},
+        {"value": "not_much", "label": "అంతగా తెలియదు", "order": 3},
+        {"value": "dont_know", "label": "నాకు తెలియదు", "order": 4}
+      ]
+    },
+    {
+      "type": "textarea",
+      "question": "8a. (6లో వైసార్సిపి ఎంచుకుంటే మాత్రమే సమాధానం ఇవ్వండి) భవిష్యత్ వైసార్సిపి ప్రభుత్వ కల్యాణ పథక రాయితీలను ఎదురుచూస్తున్నారా ఏమిటి ఆశిస్తారు?",
+      "required": false,
+      "isHeader": false
+    }
+  ]
+}

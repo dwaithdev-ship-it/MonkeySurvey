@@ -2,21 +2,34 @@ const express = require('express');
 const router = express.Router();
 const Survey = require('../models/Survey');
 const { authMiddleware } = require('../../shared/auth');
-const { surveySchema, validate } = require('../../shared/validation');
 
-router.post('/', authMiddleware, validate(surveySchema), async (req, res) => {
+// Create survey
+router.post('/', authMiddleware, async (req, res) => {
   try {
-    const surveyData = {
-      ...req.body,
-      createdBy: req.user.id
-    };
-
-    const survey = new Survey(surveyData);
+    console.log('Creating survey with data:', req.body);
+    console.log('User:', req.user);
+    
+    const survey = new Survey({
+      title: req.body.title,
+      description: req.body.description,
+      category: req.body.category,
+      questions: req.body.questions,
+      createdBy: req.user.id,
+      status: 'draft'
+    });
+    
     await survey.save();
+    
+    console.log('Survey created successfully:', survey._id);
 
     res.status(201).json({
       success: true,
-      data: survey
+      data: {
+        surveyId: survey._id,
+        title: survey.title,
+        status: survey.status,
+        shareUrl: `https://survey.monkeysurvey.com/s/${survey._id}`
+      }
     });
   } catch (error) {
     console.error('Create survey error:', error);
@@ -24,7 +37,7 @@ router.post('/', authMiddleware, validate(surveySchema), async (req, res) => {
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: 'Failed to create survey'
+        message: error.message || 'Failed to create survey'
       }
     });
   }
@@ -38,8 +51,14 @@ router.get('/', authMiddleware, async (req, res) => {
     if (status) query.status = status;
     if (category) query.category = category;
 
+    // Non-admin users can see:
+    // 1. All active/published surveys (public)
+    // 2. Only their own draft/closed/archived surveys
     if (req.user.role !== 'admin') {
-      query.createdBy = req.user.id;
+      query.$or = [
+        { status: 'active' },  // Public active surveys
+        { createdBy: req.user.id }  // Their own surveys
+      ];
     }
 
     const skip = (page - 1) * limit;
@@ -77,7 +96,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const survey = await Survey.findById(req.params.id).populate('createdBy', 'firstName lastName email');
+    const survey = await Survey.findById(req.params.id);
 
     if (!survey) {
       return res.status(404).json({
@@ -105,7 +124,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.put('/:id', authMiddleware, validate(surveySchema), async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const survey = await Survey.findById(req.params.id);
 
@@ -119,7 +138,7 @@ router.put('/:id', authMiddleware, validate(surveySchema), async (req, res) => {
       });
     }
 
-    if (survey.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (survey.createdBy.toString() !== req.user.userId && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         error: {
@@ -192,9 +211,13 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
 router.post('/:id/publish', authMiddleware, async (req, res) => {
   try {
+    console.log('Publishing survey:', req.params.id);
+    console.log('User:', req.user);
+    
     const survey = await Survey.findById(req.params.id);
 
     if (!survey) {
+      console.log('Survey not found');
       return res.status(404).json({
         success: false,
         error: {
@@ -204,7 +227,11 @@ router.post('/:id/publish', authMiddleware, async (req, res) => {
       });
     }
 
+    console.log('Survey createdBy:', survey.createdBy);
+    console.log('User ID:', req.user.id);
+
     if (survey.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      console.log('Permission denied');
       return res.status(403).json({
         success: false,
         error: {
@@ -217,6 +244,8 @@ router.post('/:id/publish', authMiddleware, async (req, res) => {
     survey.status = 'active';
     await survey.save();
 
+    console.log('Survey published successfully');
+
     res.json({
       success: true,
       data: survey
@@ -227,7 +256,7 @@ router.post('/:id/publish', authMiddleware, async (req, res) => {
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: 'Failed to publish survey'
+        message: error.message || 'Failed to publish survey'
       }
     });
   }

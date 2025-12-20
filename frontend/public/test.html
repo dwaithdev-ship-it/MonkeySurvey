@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Registration</title>
+</head>
+<body>
+    <h1>Test Registration API</h1>
+    <button onclick="testRegister()">Test Register</button>
+    <button onclick="testLogin()">Test Login</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testRegister() {
+            const result = document.getElementById('result');
+            result.textContent = 'Testing registration...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/users/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'testuser' + Date.now() + '@example.com',
+                        password: 'Test1234',
+                        firstName: 'Test',
+                        lastName: 'User'
+                    })
+                });
+                
+                const data = await response.json();
+                result.textContent = 'Response:\n' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function testLogin() {
+            const result = document.getElementById('result');
+            result.textContent = 'Testing login...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/users/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'muddulurus@gmail.com',
+                        password: 'KalSrinu1@'
+                    })
+                });
+                
+                const data = await response.json();
+                result.textContent = 'Response:\n' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const Response = require('../models/Response');
 const { authMiddleware } = require('../../shared/auth');
-const { responseSchema, validate } = require('../../shared/validation');
 
 // Optional auth middleware - allows anonymous submissions
 const optionalAuth = (req, res, next) => {
@@ -13,11 +12,14 @@ const optionalAuth = (req, res, next) => {
   next();
 };
 
-router.post('/', optionalAuth, validate(responseSchema), async (req, res) => {
+router.post('/', optionalAuth, async (req, res) => {
   try {
+    console.log('Submitting response:', req.body);
+    
     const responseData = {
-      ...req.body,
-      completedAt: new Date(),
+      surveyId: req.body.surveyId,
+      answers: req.body.answers,
+      submittedAt: new Date(),
       metadata: {
         userAgent: req.headers['user-agent'],
         ipAddress: req.ip
@@ -31,6 +33,8 @@ router.post('/', optionalAuth, validate(responseSchema), async (req, res) => {
     const response = new Response(responseData);
     await response.save();
 
+    console.log('Response saved successfully:', response._id);
+
     res.status(201).json({
       success: true,
       data: response
@@ -41,7 +45,7 @@ router.post('/', optionalAuth, validate(responseSchema), async (req, res) => {
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: 'Failed to submit response'
+        message: error.message || 'Failed to submit response'
       }
     });
   }
