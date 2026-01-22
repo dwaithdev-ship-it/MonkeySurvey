@@ -3,12 +3,14 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use(morgan('dev'));
 app.use(helmet());
 app.use(cors());
 // Don't parse body here - let the proxied services handle it
@@ -33,7 +35,8 @@ const SERVICES = {
   SURVEY: process.env.SURVEY_SERVICE_URL || 'http://survey-service:3002',
   RESPONSE: process.env.RESPONSE_SERVICE_URL || 'http://response-service:3003',
   ANALYTICS: process.env.ANALYTICS_SERVICE_URL || 'http://analytics-service:3004',
-  NOTIFICATION: process.env.NOTIFICATION_SERVICE_URL || 'http://notification-service:3005'
+  NOTIFICATION: process.env.NOTIFICATION_SERVICE_URL || 'http://notification-service:3005',
+  AI: process.env.AI_SERVICE_URL || 'http://localhost:3006'
 };
 
 // Health check
@@ -103,6 +106,11 @@ app.use('/notifications', createProxyMiddleware({
   ...proxyOptions
 }));
 
+app.use('/ai', createProxyMiddleware({
+  target: SERVICES.AI || 'http://localhost:3004',
+  ...proxyOptions
+}));
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
@@ -134,6 +142,7 @@ app.listen(PORT, () => {
   console.log(`  - Response Service: ${SERVICES.RESPONSE}`);
   console.log(`  - Analytics Service: ${SERVICES.ANALYTICS}`);
   console.log(`  - Notification Service: ${SERVICES.NOTIFICATION}`);
+  console.log(`  - AI Service: ${SERVICES.AI}`);
 });
 
 module.exports = app;

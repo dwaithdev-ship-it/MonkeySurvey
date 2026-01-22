@@ -22,6 +22,16 @@ const userSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  district: {
+    type: String,
+    required: false,
+    trim: true
+  },
+  municipality: {
+    type: String,
+    required: false,
+    trim: true
+  },
   role: {
     type: String,
     enum: ['admin', 'creator', 'respondent'],
@@ -58,7 +68,7 @@ userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
 
 // Remove password from JSON output
-userSchema.methods.toJSON = function() {
+userSchema.methods.toJSON = function () {
   const user = this.toObject();
   delete user.password;
   return user;

@@ -96,10 +96,15 @@ function SurveyBuilder() {
       const surveyData = {
         title,
         description,
-        questions: questions.map((q, index) => ({
-          ...q,
-          order: index
-        }))
+        questions: questions.map((q, index) => {
+          const { _id, ...questionData } = q;
+          return {
+            ...questionData,
+            order: index,
+            // Only keep _id if it's not a temporary one
+            ...(!(_id && _id.toString().startsWith('temp_')) && { _id })
+          };
+        })
       };
 
       if (id) {
@@ -130,7 +135,7 @@ function SurveyBuilder() {
       <form onSubmit={handleSubmit}>
         <div className="card">
           <h2 style={{ marginBottom: '16px' }}>Survey Details</h2>
-          
+
           <div className="form-group">
             <label className="form-label">Survey Title *</label>
             <input

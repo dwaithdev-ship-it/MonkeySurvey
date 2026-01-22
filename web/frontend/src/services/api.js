@@ -32,7 +32,8 @@ api.interceptors.response.use(
 export const auth = {
   login: (credentials) => api.post('/users/login', credentials),
   register: (userData) => api.post('/users/register', userData),
-  getProfile: () => api.get('/users/profile')
+  getProfile: () => api.get('/users/profile'),
+  list: () => api.get('/users')
 };
 
 export const surveys = {
@@ -47,6 +48,10 @@ export const surveys = {
 export const responses = {
   submit: (data) => api.post('/responses', data),
   list: (params) => api.get('/responses', { params })
+};
+
+export const ai = {
+  generate: (data) => api.post('/ai/generate', data)
 };
 
 export default api;

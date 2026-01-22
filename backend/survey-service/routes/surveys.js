@@ -8,7 +8,7 @@ router.post('/', authMiddleware, async (req, res) => {
   try {
     console.log('Creating survey with data:', req.body);
     console.log('User:', req.user);
-    
+
     const survey = new Survey({
       title: req.body.title,
       description: req.body.description,
@@ -17,9 +17,9 @@ router.post('/', authMiddleware, async (req, res) => {
       createdBy: req.user.id,
       status: 'draft'
     });
-    
+
     await survey.save();
-    
+
     console.log('Survey created successfully:', survey._id);
 
     res.status(201).json({
@@ -46,7 +46,7 @@ router.post('/', authMiddleware, async (req, res) => {
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const { status, category, page = 1, limit = 20 } = req.query;
-    
+
     const query = {};
     if (status) query.status = status;
     if (category) query.category = category;
@@ -138,7 +138,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
       });
     }
 
-    if (survey.createdBy.toString() !== req.user.userId && req.user.role !== 'admin') {
+    if (survey.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         error: {
@@ -164,6 +164,29 @@ router.put('/:id', authMiddleware, async (req, res) => {
         message: 'Failed to update survey'
       }
     });
+  }
+});
+
+// Add a new question to a survey
+router.post('/:id/questions', authMiddleware, async (req, res) => {
+  try {
+    const survey = await Survey.findById(req.params.id);
+    if (!survey) {
+      return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Survey not found' } });
+    }
+    if (survey.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: 'You do not have permission to modify this survey' } });
+    }
+    const newQuestion = req.body.question;
+    if (!newQuestion) {
+      return res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'Question data is required' } });
+    }
+    survey.questions.push(newQuestion);
+    await survey.save();
+    res.status(201).json({ success: true, data: survey });
+  } catch (error) {
+    console.error('Add question error:', error);
+    res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: 'Failed to add question' } });
   }
 });
 
@@ -213,7 +236,7 @@ router.post('/:id/publish', authMiddleware, async (req, res) => {
   try {
     console.log('Publishing survey:', req.params.id);
     console.log('User:', req.user);
-    
+
     const survey = await Survey.findById(req.params.id);
 
     if (!survey) {

@@ -49,3 +49,20 @@ docker-compose.override.yml
 # Backups
 *.backup
 *.bak
+
+# MongoDB binaries and data
+mongodb_server/
+mongodb_data/
+mongosh_bin/
+*.tgz
+mongodb.log.*
+
+# Debug and temporary files
+check_user.js
+inspect_response.js
+response_debug.json
+*_debug.json
+
+# Survey data files (should be imported, not committed)
+telugu-survey.json
+ts-municipal-survey.json

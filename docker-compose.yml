@@ -39,6 +39,24 @@ services:
     networks:
       - monkeysurvey-network
 
+  # Frontend
+  frontend:
+    build:
+      context: ./web/frontend
+      dockerfile: Dockerfile
+    container_name: monkeysurvey-frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api-gateway
+    networks:
+      - monkeysurvey-network
+    volumes:
+      - /etc/letsencrypt/live/bodhasurvey.duckdns.org/fullchain.pem:/etc/nginx/ssl/server.crt:ro
+      - /etc/letsencrypt/live/bodhasurvey.duckdns.org/privkey.pem:/etc/nginx/ssl/server.key:ro
+
   # API Gateway
   api-gateway:
     build:
@@ -55,6 +73,7 @@ services:
       - RESPONSE_SERVICE_URL=http://response-service:3003
       - ANALYTICS_SERVICE_URL=http://analytics-service:3004
       - NOTIFICATION_SERVICE_URL=http://notification-service:3005
+      - AI_SERVICE_URL=http://ai-service:3006
       - NODE_ENV=production
     depends_on:
       - user-service
@@ -62,6 +81,7 @@ services:
       - response-service
       - analytics-service
       - notification-service
+      - ai-service
     networks:
       - monkeysurvey-network
 
@@ -76,7 +96,7 @@ services:
       - "3001:3001"
     environment:
       - PORT=3001
-      - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
+      - MONGODB_URI=mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey
       - JWT_SECRET=change-this-in-production-secret-key-12345
       - NODE_ENV=production
     depends_on:
@@ -95,7 +115,7 @@ services:
       - "3002:3002"
     environment:
       - PORT=3002
-      - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
+      - MONGODB_URI=mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey
       - JWT_SECRET=change-this-in-production-secret-key-12345
       - NODE_ENV=production
     depends_on:
@@ -114,7 +134,7 @@ services:
       - "3003:3003"
     environment:
       - PORT=3003
-      - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
+      - MONGODB_URI=mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey
       - JWT_SECRET=change-this-in-production-secret-key-12345
       - NODE_ENV=production
     depends_on:
@@ -152,7 +172,7 @@ services:
       - "3005:3005"
     environment:
       - PORT=3005
-      - MONGODB_URI=mongodb://mongodb:27017/monkeysurvey
+      - MONGODB_URI=mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey
       - JWT_SECRET=change-this-in-production-secret-key-12345
       - NODE_ENV=production
     depends_on:
@@ -160,10 +180,27 @@ services:
     networks:
       - monkeysurvey-network
 
+  # AI Service
+  ai-service:
+    build:
+      context: ./backend
+      dockerfile: ai-service/Dockerfile
+    container_name: monkeysurvey-ai-service
+    restart: always
+    ports:
+      - "3006:3006"
+    environment:
+      - PORT=3006
+      - JWT_SECRET=change-this-in-production-secret-key-12345
+      - NODE_ENV=production
+    networks:
+      - monkeysurvey-network
+
 volumes:
   mongodb-data:
   postgres-data:
   redis-data:
+
 
 networks:
   monkeysurvey-network:

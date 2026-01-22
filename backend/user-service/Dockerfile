@@ -1,18 +1,20 @@
 FROM node:18-alpine
 
+WORKDIR /app
+
+# 1. Install shared dependencies
+COPY shared/package*.json ./shared/
+RUN cd shared && npm ci --only=production
+
+# 2. Install service dependencies
+COPY user-service/package*.json ./user-service/
+RUN cd user-service && npm ci --only=production
+
+# 3. Copy source code
+COPY shared ./shared
+COPY user-service ./user-service
+
 WORKDIR /app/user-service
-
-# Copy package files
-COPY user-service/package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy shared directory to parent level
-COPY shared ../shared
-
-# Copy source code
-COPY user-service/. .
 
 # Expose port
 EXPOSE 3001

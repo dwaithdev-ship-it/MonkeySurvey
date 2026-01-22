@@ -6,8 +6,10 @@ const Joi = require('joi');
 const registerSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
-  firstName: Joi.string().min(2).required(),
-  lastName: Joi.string().min(2).required()
+  firstName: Joi.string().min(1).required(),
+  lastName: Joi.string().min(1).required(),
+  district: Joi.string().optional().allow(''),
+  municipality: Joi.string().optional().allow('')
 });
 
 /**
@@ -79,13 +81,13 @@ const responseSchema = Joi.object({
 function validate(schema) {
   return (req, res, next) => {
     const { error } = schema.validate(req.body, { abortEarly: false });
-    
+
     if (error) {
       const details = error.details.map(detail => ({
         field: detail.path.join('.'),
         message: detail.message
       }));
-      
+
       return res.status(400).json({
         success: false,
         error: {
@@ -95,7 +97,7 @@ function validate(schema) {
         }
       });
     }
-    
+
     next();
   };
 }

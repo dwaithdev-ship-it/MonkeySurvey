@@ -1,18 +1,20 @@
 FROM node:18-alpine
 
+WORKDIR /app
+
+# 1. Install shared dependencies
+COPY shared/package*.json ./shared/
+RUN cd shared && npm ci --only=production
+
+# 2. Install service dependencies
+COPY notification-service/package*.json ./notification-service/
+RUN cd notification-service && npm ci --only=production
+
+# 3. Copy source code
+COPY shared ./shared
+COPY notification-service ./notification-service
+
 WORKDIR /app/notification-service
-
-# Copy package files
-COPY notification-service/package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy shared directory to parent level
-COPY shared ../shared
-
-# Copy source code
-COPY notification-service/. .
 
 # Expose port
 EXPOSE 3005

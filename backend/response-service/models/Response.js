@@ -21,6 +21,10 @@ const responseSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  location: {
+    latitude: Number,
+    longitude: Number
+  },
   answers: [answerSchema],
   metadata: {
     userAgent: String,

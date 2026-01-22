@@ -29,7 +29,8 @@ const questionSchema = new mongoose.Schema({
     maxLength: Number,
     pattern: String,
     min: Number,
-    max: Number
+    max: Number,
+    maxSelect: Number
   },
   logic: {
     skipTo: mongoose.Schema.Types.ObjectId,

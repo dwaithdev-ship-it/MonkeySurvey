@@ -51,7 +51,7 @@ async function comparePassword(password, hash) {
  */
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
       success: false,
@@ -63,7 +63,7 @@ function authMiddleware(req, res, next) {
   }
 
   const token = authHeader.substring(7);
-  
+
   try {
     const decoded = verifyToken(token);
     req.user = decoded;
@@ -79,10 +79,27 @@ function authMiddleware(req, res, next) {
   }
 }
 
+/**
+ * Middleware to restrict access to admins only
+ */
+function adminMiddleware(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Access restricted to administrators'
+      }
+    });
+  }
+  next();
+}
+
 module.exports = {
   generateToken,
   verifyToken,
   hashPassword,
   comparePassword,
-  authMiddleware
+  authMiddleware,
+  adminMiddleware
 };

@@ -15,10 +15,11 @@ const optionalAuth = (req, res, next) => {
 router.post('/', optionalAuth, async (req, res) => {
   try {
     console.log('Submitting response:', req.body);
-    
+
     const responseData = {
       surveyId: req.body.surveyId,
       answers: req.body.answers,
+      location: req.body.location,
       submittedAt: new Date(),
       metadata: {
         userAgent: req.headers['user-agent'],

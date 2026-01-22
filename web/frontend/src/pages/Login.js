@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 function Login() {
@@ -30,7 +30,7 @@ function Login() {
       <div className="card">
         <h2 style={{ marginBottom: '24px', textAlign: 'center' }}>MonkeySurvey</h2>
         <h3 style={{ marginBottom: '24px', textAlign: 'center', color: '#6b7280' }}>Login</h3>
-        
+
         {error && <div className="error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
@@ -65,6 +65,10 @@ function Login() {
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
+
+        <div style={{ marginTop: '16px', textAlign: 'center' }}>
+          Don't have an account? <Link to="/register">Sign Up</Link>
+        </div>
       </div>
     </div>
   );

@@ -62,6 +62,7 @@ function AdminPanel() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h1>Admin Panel</h1>
         <div style={{ display: 'flex', gap: '12px' }}>
+          <Link to="/admin/ai-generator" className="btn btn-secondary" style={{ backgroundColor: '#f3e8ff', color: '#6b21a8' }}>AI Generator</Link>
           <Link to="/admin/survey/new" className="btn btn-primary">Create Survey</Link>
           <Link to="/dashboard" className="btn btn-secondary">Dashboard</Link>
         </div>
@@ -71,7 +72,7 @@ function AdminPanel() {
 
       <div className="card">
         <h2 style={{ marginBottom: '16px' }}>Surveys</h2>
-        
+
         {surveys.length === 0 ? (
           <p style={{ color: '#6b7280' }}>No surveys yet. Create your first survey!</p>
         ) : (
@@ -112,6 +113,13 @@ function AdminPanel() {
                         style={{ padding: '6px 12px', fontSize: '12px' }}
                       >
                         Edit
+                      </Link>
+                      <Link
+                        to={`/admin/survey/${survey._id}/results`}
+                        className="btn btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '12px', backgroundColor: '#e0e7ff', color: '#4338ca' }}
+                      >
+                        Results
                       </Link>
                       {survey.status === 'draft' && (
                         <button

@@ -1,16 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const { 
-  generateToken, 
-  hashPassword, 
-  comparePassword, 
-  authMiddleware 
+const {
+  generateToken,
+  hashPassword,
+  comparePassword,
+  authMiddleware
 } = require('../../shared/auth');
-const { 
-  registerSchema, 
-  loginSchema, 
-  validate 
+const {
+  registerSchema,
+  loginSchema,
+  validate
 } = require('../../shared/validation');
 
 /**
@@ -19,7 +19,7 @@ const {
  */
 router.post('/register', validate(registerSchema), async (req, res) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, district, municipality } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -41,7 +41,9 @@ router.post('/register', validate(registerSchema), async (req, res) => {
       email,
       password: hashedPassword,
       firstName,
-      lastName
+      lastName,
+      district,
+      municipality
     });
 
     await user.save();
@@ -132,7 +134,9 @@ router.post('/login', validate(loginSchema), async (req, res) => {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
-          role: user.role
+          role: user.role,
+          district: user.district,
+          municipality: user.municipality
         }
       }
     });
@@ -222,6 +226,40 @@ router.put('/profile', authMiddleware, async (req, res) => {
       error: {
         code: 'INTERNAL_ERROR',
         message: 'Failed to update profile'
+      }
+    });
+  }
+});
+
+/**
+ * GET /users
+ * List all users (admin only)
+ */
+router.get('/', authMiddleware, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Only admins can list users'
+        }
+      });
+    }
+
+    const users = await User.find({}, 'firstName lastName email role district municipality');
+    res.json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    console.error('List users error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to list users'
       }
     });
   }
