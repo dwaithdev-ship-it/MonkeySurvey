@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import TakeSurvey from './pages/TakeSurvey';
 import SurveyView from './pages/SurveyView';
 import SurveyAnalytics from './pages/SurveyAnalytics';
+import Profile from './pages/Profile';
 import './App.css';
 
 function PrivateRoute({ children }) {
@@ -14,46 +15,64 @@ function PrivateRoute({ children }) {
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route
-          path="/dashboard"
-          element={
-            <PrivateRoute>
-              <Dashboard />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/survey/:surveyId"
-          element={
-            <PrivateRoute>
-              <SurveyView />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/take-survey/:surveyId"
-          element={
-            <PrivateRoute>
-              <TakeSurvey />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/analytics/:surveyId"
-          element={
-            <PrivateRoute>
-              <SurveyAnalytics />
-            </PrivateRoute>
-          }
-        />
-        <Route path="/" element={<Navigate to="/dashboard" />} />
-        <Route path="*" element={<Navigate to="/dashboard" />} />
-      </Routes>
-    </Router>
+    <div className="app">
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/dashboard"
+            element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/surveys"
+            element={
+              <PrivateRoute>
+                <SurveyView />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/survey/:surveyId"
+            element={
+              <PrivateRoute>
+                <SurveyView />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/take-survey/:surveyId"
+            element={
+              <PrivateRoute>
+                <TakeSurvey />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/analytics/:surveyId"
+            element={
+              <PrivateRoute>
+                <SurveyAnalytics />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="*" element={<Navigate to="/dashboard" />} />
+        </Routes>
+      </Router>
+    </div>
   );
 }
 

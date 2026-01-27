@@ -71,15 +71,16 @@ mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => {
-  console.log('Connected to MongoDB');
-  app.listen(PORT, () => {
-    console.log(`Survey service running on port ${PORT}`);
+  .then(() => {
+    console.log('✅ Connected to MongoDB');
+    console.log(`Starting server on port ${PORT}...`);
+    app.listen(PORT, () => {
+      console.log(`🚀 Survey service running on port ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
   });
-})
-.catch(err => {
-  console.error('MongoDB connection error:', err);
-  process.exit(1);
-});
 
 module.exports = app;

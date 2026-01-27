@@ -1,0 +1,193 @@
+* {
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+.register-wrapper {
+    min-height: 100vh;
+    width: 100vw;
+    /* 🔥 important */
+    background: #ffffff;
+    text-align: center;
+    padding: 40px 15px;
+    display: flex;
+    /* 🔥 important */
+    flex-direction: column;
+    align-items: center;
+}
+
+/* BACKGROUND DECORATIONS */
+.bg-dots {
+    position: absolute;
+    top: 40px;
+    left: 40px;
+    width: 100px;
+    height: 60px;
+    background-image: radial-gradient(#ff6a00 20%, transparent 20%);
+    background-size: 10px 10px;
+    opacity: 0.6;
+}
+
+.bg-circle-outline {
+    position: absolute;
+    top: 20px;
+    right: 200px;
+    width: 40px;
+    height: 40px;
+    border: 2px solid #ffe4d1;
+    border-radius: 50%;
+}
+
+.bg-circle-left {
+    position: absolute;
+    top: 50%;
+    left: -50px;
+    width: 150px;
+    height: 150px;
+    background: #ffe4d1;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    z-index: 0;
+}
+
+.bg-circle-right {
+    position: absolute;
+    top: 50%;
+    right: -50px;
+    width: 150px;
+    height: 150px;
+    background: #d1f7f5;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    z-index: 0;
+}
+
+
+.app-title {
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.app-subtitle {
+    margin: 10px 0 30px;
+    font-size: 14px;
+}
+
+.register-card {
+    background: #e6f7f6;
+    max-width: 450px;
+    margin: 0 auto;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+    position: relative;
+    z-index: 1;
+}
+
+.register-title {
+    color: #ff6a00;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    text-align: left;
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.form-group span {
+    color: red;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: none;
+    border-bottom: 2px solid #ccc;
+    background: transparent;
+    outline: none;
+}
+
+.password-group {
+    position: relative;
+}
+
+.eye {
+    position: absolute;
+    right: 8px;
+    top: 36px;
+    cursor: pointer;
+}
+
+.create-btn {
+    width: 100%;
+    background: #ff6a00;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    margin-top: 20px;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.login-link {
+    margin-top: 15px;
+    font-size: 13px;
+}
+
+.login-link span {
+    color: #1e90ff;
+    cursor: pointer;
+}
+
+.store-section {
+    margin-top: 40px;
+}
+
+.ratings {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.store-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.store-btn {
+    background: black;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+}
+
+.footer-text {
+    font-size: 12px;
+    color: gray;
+}
+
+/* MOBILE */
+@media (max-width: 600px) {
+    .ratings {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .store-buttons {
+        flex-direction: column;
+    }
+}

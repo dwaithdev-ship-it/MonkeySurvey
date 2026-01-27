@@ -76,7 +76,9 @@ function Register() {
     return (
         <div className="container" style={{ maxWidth: '400px', paddingTop: '60px' }}>
             <div className="card">
-                <h2 style={{ marginBottom: '24px', textAlign: 'center' }}>MonkeySurvey</h2>
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                    <img src={require('../assets/logo.png')} alt="MonkeySurvey" style={{ maxWidth: '100%', height: 'auto', maxHeight: '100px' }} />
+                </div>
                 <h3 style={{ marginBottom: '24px', textAlign: 'center', color: '#6b7280' }}>Sign Up</h3>
 
                 {error && <div className="error">{error}</div>}

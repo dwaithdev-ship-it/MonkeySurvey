@@ -31,11 +31,11 @@ app.use(limiter);
 
 // Service URLs
 const SERVICES = {
-  USER: process.env.USER_SERVICE_URL || 'http://user-service:3001',
-  SURVEY: process.env.SURVEY_SERVICE_URL || 'http://survey-service:3002',
-  RESPONSE: process.env.RESPONSE_SERVICE_URL || 'http://response-service:3003',
-  ANALYTICS: process.env.ANALYTICS_SERVICE_URL || 'http://analytics-service:3004',
-  NOTIFICATION: process.env.NOTIFICATION_SERVICE_URL || 'http://notification-service:3005',
+  USER: process.env.USER_SERVICE_URL || 'http://localhost:3001',
+  SURVEY: process.env.SURVEY_SERVICE_URL || 'http://localhost:3002',
+  RESPONSE: process.env.RESPONSE_SERVICE_URL || 'http://localhost:3003',
+  ANALYTICS: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:3004',
+  NOTIFICATION: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3005',
   AI: process.env.AI_SERVICE_URL || 'http://localhost:3006'
 };
 

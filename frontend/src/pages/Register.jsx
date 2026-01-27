@@ -1,103 +1,148 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { userAPI } from '../services/api';
-import './Auth.css';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import "./Register.css";
 
-export default function Register() {
+const demoTemplates = [
+  "Airline Service Evaluation",
+  "Brand Performance Survey",
+  "Clubs and Resorts",
+  "Course Evaluation",
+  "Customer Satisfaction Survey",
+  "Customer Service Feedback Survey",
+  "Department Evaluation Survey",
+  "Elections and Political Survey",
+  "Employee Exit Interview",
+  "Employee Job Satisfaction Survey",
+  "Employee Self Assessment",
+  "Environment",
+  "Evaluation of Event Planning Event Satisfaction for Visitors",
+  "General",
+  "Graduation Exit Survey",
+  "Gym Member Feedback Survey",
+  "Health Care well-being Survey",
+  "Hospital Inspection Survey",
+  "Hotel Customer Feedback",
+  "Lead Capture",
+  "Market Research",
+  "Mystery Shopper Survey",
+  "Parent Feedback",
+  "Patient Satisfaction",
+  "Physician Practices Survey",
+  "Post Event Survey Evaluation",
+  "Product Satisfaction",
+  "Quick Lead Contact Information Survey",
+  "Real Estate Enquiry",
+  "Real Estate Maintenance Survey",
+  "Real Estate Property Management",
+  "Real Estate Satisfaction",
+  "Restaurant Customer Feedback",
+  "Retail - Mystery Shoppers Survey",
+  "Retail Customer Satisfaction",
+  "Retail Store Evaluation",
+  "Salon & Spa Customer Feedback Survey",
+  "Student Feedback",
+  "Teacher Feedback",
+  "Tourist Feedback",
+  "Trade Show Customer Feedback",
+];
+
+const Register = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    firstName: '',
-    lastName: ''
-  });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      const response = await userAPI.register(formData);
-      if (response.success) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify({ email: formData.email, firstName: formData.firstName }));
-        navigate('/dashboard');
-      }
-    } catch (err) {
-      setError(err.error?.message || 'Registration failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <h1>MonkeySurvey</h1>
-        <h2>Register</h2>
-        
-        {error && <div className="error-message">{error}</div>}
-        
-        <form onSubmit={handleSubmit}>
-          <div className="form-row">
-            <div className="form-group">
-              <label>First Name</label>
-              <input
-                type="text"
-                value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                required
-                placeholder="First name"
-              />
-            </div>
+    <div className="register-wrapper">
+      {/* Background Decorations */}
+      <div className="bg-dots"></div>
+      <div className="bg-circle-outline"></div>
+      <div className="bg-circle-left"></div>
+      <div className="bg-circle-right"></div>
 
-            <div className="form-group">
-              <label>Last Name</label>
-              <input
-                type="text"
-                value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                required
-                placeholder="Last name"
-              />
-            </div>
-          </div>
+      {/* HEADER */}
+      <h1 className="app-title">Offline Survey App</h1>
+      <p className="app-subtitle">
+        Conduct surveys without internet connection on mobile devices.
+      </p>
 
-          <div className="form-group">
-            <label>Email</label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-              placeholder="Enter your email"
-            />
-          </div>
+      {/* CARD */}
+      <div className="register-card">
+        <h2 className="register-title">Create Your GoSurvey Account</h2>
 
-          <div className="form-group">
-            <label>Password</label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-              minLength="6"
-              placeholder="At least 6 characters"
-            />
-          </div>
+        <div className="form-group">
+          <label>Name</label>
+          <input type="text" />
+        </div>
 
-          <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? 'Creating Account...' : 'Register'}
-          </button>
-        </form>
+        <div className="form-group">
+          <label>
+            Username <span>*</span>
+          </label>
+          <input type="text" />
+        </div>
 
-        <p className="auth-link">
-          Already have an account? <Link to="/login">Login here</Link>
+        <div className="form-group password-group">
+          <label>
+            Password <span>*</span>
+          </label>
+          <input type="password" />
+          <span className="eye">👁</span>
+        </div>
+
+        <div className="form-group">
+          <label>
+            Company Email <span>*</span>
+          </label>
+          <input type="email" />
+        </div>
+
+        <div className="form-group">
+          <label>Company</label>
+          <input type="text" />
+        </div>
+
+        <div className="form-group">
+          <label>Phone Number</label>
+          <input type="text" />
+        </div>
+
+        <div className="form-group">
+          <label>
+            Demo Template <span>*</span>
+          </label>
+          <select>
+            <option value="">Select Demo Template</option>
+            {demoTemplates.map((item, index) => (
+              <option key={index}>{item}</option>
+            ))}
+          </select>
+        </div>
+
+        <button className="create-btn">Create Account</button>
+
+        <p className="login-link">
+          Already have an account? <span onClick={() => navigate('/login')}>Login</span>
+        </p>
+      </div>
+
+      {/* BOTTOM SECTION */}
+      <div className="store-section">
+        <div className="ratings">
+          <span>★★★★★ Capterra</span>
+          <span>★★★★★ GetApp</span>
+          <span>★★★★★ Google Play</span>
+          <span>★★★★★ App Store</span>
+        </div>
+
+        <div className="store-buttons">
+          <button className="store-btn"> App Store</button>
+          <button className="store-btn">▶ Google Play</button>
+        </div>
+
+        <p className="footer-text">
+          © 2026 Techgrains Technologies Pvt. Ltd. All rights reserved.
         </p>
       </div>
     </div>
   );
-}
+};
+
+export default Register;

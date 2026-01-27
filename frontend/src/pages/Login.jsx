@@ -1,73 +1,96 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { userAPI } from '../services/api';
-import './Auth.css';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { userAPI } from "../services/api";
+import "./Login.css";
+import logo from "../assets/logo.png";
 
-export default function Login() {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
+const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const response = await userAPI.login(formData);
+      const response = await userAPI.login({ email, password });
+
       if (response.success) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        navigate('/dashboard');
+        localStorage.setItem("token", response.data.token);
+        if (response.data.user) {
+          localStorage.setItem("user", JSON.stringify(response.data.user));
+        }
+        navigate("/dashboard");
+      } else {
+        setError(response.error?.message || "Login failed");
       }
     } catch (err) {
-      setError(err.error?.message || 'Login failed. Please try again.');
+      console.error("Login error:", err);
+      setError(err.response?.data?.error?.message || "Invalid credentials. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <h1>MonkeySurvey</h1>
-        <h2>Login</h2>
-        
-        {error && <div className="error-message">{error}</div>}
-        
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Email</label>
+    <div className="login-container">
+      {/* LEFT SIDE */}
+      <div className="login-left">
+        <h4 className="welcome-small">Nice to see you again</h4>
+        <h1 className="welcome-title">WELCOME</h1>
+        <p className="welcome-desc">
+          Login to manage your surveys, view responses, and analyze reports
+          easily with Bodha Survey.
+        </p>
+      </div>
+
+      {/* RIGHT SIDE */}
+      <div className="login-right">
+        <img src={logo} alt="Bodha Survey" className="login-logo" />
+        <h2 className="login-title">Login Account</h2>
+
+        <div className="login-card">
+          {error && <div style={{ color: "red", marginBottom: "15px", fontSize: "14px", textAlign: "left" }}>{error}</div>}
+
+          <form onSubmit={handleLogin}>
             <input
               type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="Email ID"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
-              placeholder="Enter your email"
             />
-          </div>
-
-          <div className="form-group">
-            <label>Password</label>
             <input
               type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
-              placeholder="Enter your password"
             />
-          </div>
 
-          <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
+            <div className="login-options">
+              <label>
+                <input type="checkbox" /> Keep me signed in
+              </label>
+              <span className="link">Already a member?</span>
+            </div>
 
-        <p className="auth-link">
-          Don't have an account? <Link to="/register">Register here</Link>
-        </p>
+            <button type="submit" className="login-btn" disabled={loading}>
+              {loading ? "LOGGING IN..." : "LOGIN"}
+            </button>
+          </form>
+
+          <p className="signup-text">
+            Don’t have an account? <span className="link" onClick={() => navigate('/register')}>Sign Up</span>
+          </p>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default Login;

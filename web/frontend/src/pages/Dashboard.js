@@ -1,9 +1,15 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 function Dashboard() {
   const { user, isAdmin, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="container">
@@ -18,7 +24,7 @@ function Dashboard() {
           {isAdmin && (
             <Link to="/admin" className="btn btn-primary">Admin Panel</Link>
           )}
-          <button onClick={logout} className="btn btn-secondary">Logout</button>
+          <button onClick={handleLogout} className="btn btn-secondary">Logout</button>
         </div>
       </div>
     </div>
