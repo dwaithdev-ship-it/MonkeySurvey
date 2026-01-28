@@ -42,7 +42,7 @@ services:
   # Frontend
   frontend:
     build:
-      context: ./web/frontend
+      context: ./frontend
       dockerfile: Dockerfile
     container_name: monkeysurvey-frontend
     restart: always
@@ -53,11 +53,12 @@ services:
       - api-gateway
     networks:
       - monkeysurvey-network
-    volumes:
-      - /etc/letsencrypt/live/bodhasurvey.duckdns.org/fullchain.pem:/etc/nginx/ssl/server.crt:ro
-      - /etc/letsencrypt/live/bodhasurvey.duckdns.org/privkey.pem:/etc/nginx/ssl/server.key:ro
+    # SSL volumes commented out for initial deployment
+    # volumes:
+    #   - /etc/letsencrypt/live/bodhasurvey.duckdns.org/fullchain.pem:/etc/nginx/ssl/server.crt:ro
+    #   - /etc/letsencrypt/live/bodhasurvey.duckdns.org/privkey.pem:/etc/nginx/ssl/server.key:ro
 
-  # API Gateway
+    # API Gateway
   api-gateway:
     build:
       context: ./backend

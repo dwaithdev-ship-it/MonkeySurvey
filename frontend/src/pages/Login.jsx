@@ -27,7 +27,7 @@ const Login = () => {
           if (response.data.user.role === 'admin') {
             navigate("/dashboard");
           } else {
-            navigate("/take-survey/1");
+            navigate("/survey/1");
           }
         } else {
           navigate("/dashboard");
@@ -87,7 +87,7 @@ const Login = () => {
             </div>
 
             <button type="submit" className="login-btn" disabled={loading}>
-              {loading ? "LOGGING IN..." : "LOGIN"}
+              {loading ? "LOGGING IN..." : "Login"}
             </button>
           </form>
 

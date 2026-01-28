@@ -95,8 +95,14 @@ const UsersPage = () => {
     };
 
     const sendWhatsAppCredentials = (userData) => {
-        const loginUrl = window.location.origin + '/login';
-        const message = `*Welcome to Bodha Survey!*%0A%0AHello ${userData.name}, your account has been created.%0A%0A*Login Details:*%0AURL: ${loginUrl}%0AUsername: ${userData.username}%0APassword: ${userData.password}%0A%0APlease login and change your password.`;
+        // Using production domain
+        const loginUrl = 'https://bodhasurvey.duckdns.org/';
+
+        // Use Email as username for login if available (since login requires email)
+        const loginId = userData.companyEmail || userData.username;
+
+        // Using code block (backticks) for username to prevent auto-linking
+        const message = `*Welcome to Bodha Survey!*%0A%0AHello ${userData.name}, your account has been created.%0A%0A*Click here to login:*%0A${loginUrl}%0A%0A*Credentials:*%0AUsername: \`${loginId}\`%0APassword: ${userData.password}%0A%0APlease login and change your password.`;
 
         // Clean phone number (remove non-digits, add country code if missing)
         let phone = userData.phoneNumber.replace(/\D/g, '');
@@ -227,6 +233,7 @@ const UsersPage = () => {
                                             <button className="icon-btn-action whatsapp" title="Send WhatsApp" onClick={() => sendWhatsAppCredentials({
                                                 name: user.name,
                                                 username: user.username,
+                                                companyEmail: user.companyEmail,
                                                 password: 'YourPassword', // Password hashing prevents us from showing the real one here
                                                 phoneNumber: user.phoneNumber
                                             })}>
