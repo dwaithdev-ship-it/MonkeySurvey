@@ -1,6 +1,66 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const MSRUser = require('../models/MSRUser');
+
+/**
+ * POST /users/msr-register
+ * Special MSR User Registration
+ */
+router.post('/msr-register', async (req, res) => {
+  try {
+    const { name, username, password, companyEmail, company, phoneNumber, demoTemplate } = req.body;
+
+    const existingUser = await MSRUser.findOne({
+      $or: [{ companyEmail }, { username }]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'USER_EXISTS',
+          message: 'Username or Email already exists'
+        }
+      });
+    }
+
+    const hashedPassword = await hashPassword(password);
+    const user = new MSRUser({
+      name,
+      username,
+      password: hashedPassword,
+      companyEmail,
+      company,
+      phoneNumber,
+      demoTemplate
+    });
+
+    await user.save();
+
+    // Create standard user for login compatibility
+    const standardUser = new User({
+      email: companyEmail,
+      password: hashedPassword,
+      firstName: name || username,
+      lastName: company || 'MSR',
+      role: 'creator'
+    });
+
+    await standardUser.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'MSR Account created successfully'
+    });
+  } catch (error) {
+    console.error('MSR Registration error:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: error.message }
+    });
+  }
+});
 const {
   generateToken,
   hashPassword,
@@ -262,6 +322,168 @@ router.get('/', authMiddleware, async (req, res) => {
         message: 'Failed to list users'
       }
     });
+  }
+});
+
+/**
+ * POST /users/msr-users
+ * Create MSR user (admin only)
+ */
+router.post('/msr-users', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: { message: 'Unauthorized' } });
+    }
+
+    const { name, username, password, companyEmail, company, phoneNumber, demoTemplate } = req.body;
+
+    const existingUser = await MSRUser.findOne({
+      $or: [{ companyEmail }, { username }]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ success: false, error: { message: 'Username or Email already exists' } });
+    }
+
+    const hashedPassword = await hashPassword(password);
+    const msrUser = new MSRUser({
+      name,
+      username,
+      password: hashedPassword,
+      companyEmail,
+      company,
+      phoneNumber,
+      demoTemplate
+    });
+
+    await msrUser.save();
+
+    // Create standard user for login compatibility
+    const standardUser = new User({
+      email: companyEmail,
+      password: hashedPassword,
+      firstName: name || username,
+      lastName: company || 'MSR',
+      role: 'creator'
+    });
+
+    await standardUser.save();
+
+    res.status(201).json({ success: true, data: msrUser });
+  } catch (error) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+});
+
+/**
+ * PUT /users/msr-users/:id
+ * Update MSR user (admin only)
+ */
+router.get('/msr-users', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: { message: 'Only admins can list MSR users' }
+      });
+    }
+
+    const users = await MSRUser.find({}).sort({ createdAt: -1 });
+    res.json({
+      success: true,
+      data: users
+    });
+  } catch (error) {
+    console.error('List MSR users error:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Failed to list MSR users' }
+    });
+  }
+});
+
+router.put('/msr-users/:id', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: { message: 'Unauthorized' } });
+    }
+
+    const { name, companyEmail, company, phoneNumber, demoTemplate } = req.body;
+    const msrUser = await MSRUser.findById(req.params.id);
+
+    if (!msrUser) {
+      return res.status(404).json({ success: false, error: { message: 'User not found' } });
+    }
+
+    // Update MSR User
+    msrUser.name = name || msrUser.name;
+    msrUser.companyEmail = companyEmail || msrUser.companyEmail;
+    msrUser.company = company || msrUser.company;
+    msrUser.phoneNumber = phoneNumber || msrUser.phoneNumber;
+    msrUser.demoTemplate = demoTemplate || msrUser.demoTemplate;
+    await msrUser.save();
+
+    // Sync with standard User
+    await User.findOneAndUpdate(
+      { email: msrUser.companyEmail },
+      { firstName: msrUser.name, lastName: msrUser.company }
+    );
+
+    res.json({ success: true, data: msrUser });
+  } catch (error) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+});
+
+/**
+ * PATCH /users/msr-users/:id/status
+ * Toggle MSR user status (admin only)
+ */
+router.patch('/msr-users/:id/status', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: { message: 'Unauthorized' } });
+    }
+
+    const { isActive } = req.body;
+    const msrUser = await MSRUser.findByIdAndUpdate(req.params.id, { isActive }, { new: true });
+
+    // Sync with standard User
+    if (msrUser) {
+      await User.findOneAndUpdate({ email: msrUser.companyEmail }, { isActive });
+    }
+
+    res.json({ success: true, data: msrUser });
+  } catch (error) {
+    res.status(500).json({ success: false, error: { message: error.message } });
+  }
+});
+
+/**
+ * PATCH /users/msr-users/:id/password
+ * Change MSR user password (admin only)
+ */
+router.patch('/msr-users/:id/password', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: { message: 'Unauthorized' } });
+    }
+
+    const { password } = req.body;
+    const hashedPassword = await hashPassword(password);
+
+    const msrUser = await MSRUser.findById(req.params.id);
+    if (!msrUser) return res.status(404).json({ success: false, error: { message: 'User not found' } });
+
+    msrUser.password = hashedPassword;
+    await msrUser.save();
+
+    // Sync with standard User
+    await User.findOneAndUpdate({ email: msrUser.companyEmail }, { password: hashedPassword });
+
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: { message: error.message } });
   }
 });
 

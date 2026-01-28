@@ -96,7 +96,19 @@ router.get('/', authMiddleware, async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const survey = await Survey.findById(req.params.id);
+    const { id } = req.params;
+
+    // Check if ID is a valid MongoDB ObjectId
+    const isValidId = mongoose.Types.ObjectId.isValid(id);
+
+    let survey;
+    if (isValidId) {
+      survey = await Survey.findById(id);
+    } else {
+      // If it's a numeric ID like '1', try searching by a custom field if we had one, 
+      // but for now just return 404 as it won't be in the DB
+      survey = await Survey.findOne({ _id: id }).catch(() => null);
+    }
 
     if (!survey) {
       return res.status(404).json({

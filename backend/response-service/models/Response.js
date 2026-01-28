@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const answerSchema = new mongoose.Schema({
   questionId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: String, // Changed from ObjectId to String to support mixed ID types
     required: true
   },
   value: {
@@ -13,14 +13,19 @@ const answerSchema = new mongoose.Schema({
 
 const responseSchema = new mongoose.Schema({
   surveyId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Survey',
+    type: String,
     required: true
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  userName: String, // Extracted user name
+  parliament: String,
+  municipality: String,
+  ward_num: String,
+  Question_1: String, // The main question/answer
+  googleMapsLink: String,
   location: {
     latitude: Number,
     longitude: Number
@@ -39,7 +44,8 @@ const responseSchema = new mongoose.Schema({
   startedAt: Date,
   completedAt: Date
 }, {
-  timestamps: true
+  timestamps: true,
+  collection: 'msr_responses' // Set specific collection name
 });
 
 responseSchema.index({ surveyId: 1 });

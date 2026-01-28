@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const surveyRoutes = require('./routes/surveys');
+const parlConsRoutes = require('./routes/parlCons');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -32,6 +33,7 @@ app.use(limiter);
 
 // Routes
 app.use('/surveys', surveyRoutes);
+app.use('/parl-cons', parlConsRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

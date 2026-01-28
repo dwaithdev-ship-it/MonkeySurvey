@@ -36,9 +36,15 @@ api.interceptors.response.use(
 // User Service APIs
 export const userAPI = {
   register: (data) => api.post('/users/register', data),
+  msrRegister: (data) => api.post('/users/msr-register', data),
   login: (data) => api.post('/users/login', data),
   getProfile: () => api.get('/users/profile'),
   updateProfile: (data) => api.put('/users/profile', data),
+  getMSRUsers: () => api.get('/users/msr-users'),
+  createMSRUser: (data) => api.post('/users/msr-users', data),
+  updateMSRUser: (id, data) => api.put(`/users/msr-users/${id}`, data),
+  updateMSRStatus: (id, isActive) => api.patch(`/users/msr-users/${id}/status`, { isActive }),
+  updateMSRPassword: (id, password) => api.patch(`/users/msr-users/${id}/password`, { password }),
 };
 
 // Survey Service APIs
@@ -57,6 +63,12 @@ export const responseAPI = {
   submit: (data) => api.post('/responses', data),
   savePartial: (data) => api.post('/responses/partial', data),
   getAll: (params) => api.get('/responses', { params }),
+};
+
+// ParlCons APIs (hosted on survey service)
+export const parlConsAPI = {
+  getParliaments: () => api.get('/parl-cons/parliaments'),
+  getMunicipalities: (parlName) => api.get(`/parl-cons/municipalities/${parlName}`),
 };
 
 export default api;

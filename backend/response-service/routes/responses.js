@@ -16,10 +16,32 @@ router.post('/', optionalAuth, async (req, res) => {
   try {
     console.log('Submitting response:', req.body);
 
+    const {
+      surveyId,
+      userName,
+      parliament,
+      municipality,
+      ward_num,
+      Question_1_answer,
+      location,
+      answers
+    } = req.body;
+
+    let googleMapsLink = '';
+    if (location && location.latitude && location.longitude) {
+      googleMapsLink = `https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
+    }
+
     const responseData = {
-      surveyId: req.body.surveyId,
-      answers: req.body.answers,
-      location: req.body.location,
+      surveyId,
+      userName: userName || (req.user ? req.user.name : 'Anonymous'),
+      parliament,
+      municipality,
+      ward_num,
+      Question_1: Question_1_answer,
+      googleMapsLink,
+      location,
+      answers,
       submittedAt: new Date(),
       metadata: {
         userAgent: req.headers['user-agent'],
@@ -52,12 +74,16 @@ router.post('/', optionalAuth, async (req, res) => {
   }
 });
 
-router.get('/', authMiddleware, async (req, res) => {
+// List responses (optional auth to allow public count fetching)
+router.get('/', optionalAuth, async (req, res) => {
   try {
-    const { surveyId, page = 1, limit = 50 } = req.query;
+    const { surveyId, page = 1, limit = 50, userName } = req.query;
 
     const query = {};
     if (surveyId) query.surveyId = surveyId;
+    if (userName) query.userName = userName;
+
+    console.log('Querying responses with:', query);
 
     const skip = (page - 1) * limit;
     const responses = await Response.find(query)
@@ -66,6 +92,8 @@ router.get('/', authMiddleware, async (req, res) => {
       .limit(parseInt(limit));
 
     const total = await Response.countDocuments(query);
+    const globalTotal = await Response.countDocuments({}); // Total across all surveys
+    console.log('Found total responses for query:', total, 'Global total:', globalTotal);
 
     res.json({
       success: true,
@@ -75,6 +103,7 @@ router.get('/', authMiddleware, async (req, res) => {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
+          globalTotal,
           pages: Math.ceil(total / limit)
         }
       }

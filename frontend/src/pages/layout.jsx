@@ -2,6 +2,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import "./Dashboard.css";
 
+import logo from "../assets/logo.png";
+
 const Layout = ({ user = {}, children }) => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -18,7 +20,10 @@ const Layout = ({ user = {}, children }) => {
         <div className="app-layout">
             {/* TOP NAVBAR */}
             <header className="topbar">
-                <div className="logo">Bodha Survey</div>
+                <div className="logo" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <img src={logo} alt="Bodha Survey Logo" style={{ height: '45px' }} />
+                    Bodha Survey
+                </div>
 
                 <div className="topbar-right">
                     <span className="welcome-text">
@@ -38,7 +43,11 @@ const Layout = ({ user = {}, children }) => {
                             <circle cx="12" cy="7" r="4"></circle>
                         </svg>
                     </button>
-                    <button className="icon-btn" title="Logout" onClick={() => navigate('/login')}>
+                    <button className="icon-btn" title="Logout" onClick={() => {
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                        navigate('/login');
+                    }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                             <polyline points="16 17 21 12 16 7"></polyline>
@@ -67,11 +76,17 @@ const Layout = ({ user = {}, children }) => {
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
                             <span>Surveys</span>
                         </li>
-                        <li>
+                        <li
+                            className={location.pathname === '/data' ? 'active' : ''}
+                            onClick={() => navigate('/data')}
+                        >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                             <span>Data</span>
                         </li>
-                        <li>
+                        <li
+                            className={location.pathname === '/users' ? 'active' : ''}
+                            onClick={() => navigate('/users')}
+                        >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                             <span>Users</span>
                         </li>

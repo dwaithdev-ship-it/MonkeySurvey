@@ -111,6 +111,11 @@ app.use('/ai', createProxyMiddleware({
   ...proxyOptions
 }));
 
+app.use('/parl-cons', createProxyMiddleware({
+  target: SERVICES.SURVEY,
+  ...proxyOptions
+}));
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({

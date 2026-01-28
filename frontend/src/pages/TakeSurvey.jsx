@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { surveyAPI, responseAPI } from '../services/api';
+import { surveyAPI, responseAPI, parlConsAPI } from '../services/api';
+import logo from '../assets/logo.png';
 import './TakeSurvey.css';
 
 export default function TakeSurvey() {
@@ -11,10 +12,27 @@ export default function TakeSurvey() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [responseCount, setResponseCount] = useState(0);
+
+  const [location, setLocation] = useState(null);
 
   useEffect(() => {
     fetchSurvey();
+    captureLocation();
   }, [surveyId]);
+
+  const captureLocation = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        setLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+      }, (error) => {
+        console.warn("Geolocation permission denied or error:", error);
+      });
+    }
+  };
 
   const fetchSurvey = async () => {
     try {
@@ -24,6 +42,22 @@ export default function TakeSurvey() {
       if (response.success) {
         setSurvey(response.data);
         initializeAnswers(response.data);
+
+        // Fetch response count for current user
+        try {
+          const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+          const currentUserName = storedUser.name || storedUser.firstName;
+          const resData = await responseAPI.getAll({
+            surveyId,
+            limit: 1,
+            userName: currentUserName
+          });
+          if (resData.success) {
+            setResponseCount(resData.data.pagination.total || 0);
+          }
+        } catch (cErr) {
+          console.warn('Failed to fetch response count:', cErr);
+        }
       } else {
         throw new Error('Survey not found');
       }
@@ -31,26 +65,75 @@ export default function TakeSurvey() {
       console.warn('API fetch failed, checking localStorage:', err);
       // Fallback to localStorage for prototype
       const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
-      const found = localSurveys.find(s => s.id.toString() === surveyId.toString());
+      let found = localSurveys.find(s => s.id.toString() === surveyId.toString());
+
+      // Emergency fallback for ID '1' (MSR Survey) if not in localStorage or API (or if empty)
+      if (surveyId.toString() === "1" && (!found || !found.questions || found.questions.length === 0)) {
+        // Fetch Parliaments to populate Q1
+        let parlOptions = [];
+        try {
+          const pRes = await parlConsAPI.getParliaments();
+          if (pRes.success) {
+            parlOptions = pRes.data.map(p => ({ label: p, value: p }));
+          }
+        } catch (pErr) {
+          console.error("Failed to fetch parliaments:", pErr);
+        }
+
+        found = {
+          name: "MSR Survey",
+          description: "MSR Municipal Survey - Prototype",
+          branding: { logo: '/logo.png' },
+          questions: [
+            { id: "q1", displayTitle: "Select your Parliament", type: "dropdown", options: parlOptions.map(p => p.label).join('\n'), required: true },
+            { id: "q2", displayTitle: "Select your Municipality", type: "dropdown", options: "Select Parliament first", required: true },
+            { id: "q3", displayTitle: "Ward Number", type: "Singleline Text Input", required: true },
+            { id: "q4", displayTitle: "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?", type: "Radio Button", options: "1. బీజేపీ\n2. కాంగ్రెస్\n3. బిఆర్ఎస్\n4. ఇతరులు", required: true }
+          ]
+        };
+      }
 
       if (found) {
         // Adapt mock structure to what TakeSurvey expects
         const adaptedSurvey = {
+          _id: surveyId,
           title: found.name,
           description: found.description || 'Welcome to this survey.',
+          branding: found.branding || { logo: '/logo.png' },
           questions: (found.questions || []).map(q => ({
-            _id: q.id,
-            question: q.displayTitle || q.type,
+            _id: q._id || q.id,
+            question: q.displayTitle || q.question || q.type,
             type: mapType(q.type),
             required: q.required,
             mediaUrl: q.mediaUrl,
             mediaType: q.mediaType,
-            optionMedia: q.optionMedia || {},
-            options: q.options ? q.options.split('\n').map(o => ({ label: o, value: o })) : []
+            optionMedia: q.id === "q4" ? {
+              "1. బీజేపీ": "/bjp.jpeg",
+              "2. కాంగ్రెస్": "/congress.jpeg",
+              "3. బిఆర్ఎస్": "/brs.jpeg",
+              "4. ఇతరులు": "/others.jpeg"
+            } : (q.optionMedia || {}),
+            options: q.options ? (typeof q.options === 'string' ? q.options.split('\n').map(o => ({ label: o, value: o })) : q.options) : []
           }))
         };
         setSurvey(adaptedSurvey);
         initializeAnswers(adaptedSurvey);
+
+        // Fetch response count for current user
+        try {
+          const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+          const currentUserName = storedUser.name || storedUser.firstName;
+          const resData = await responseAPI.getAll({
+            surveyId,
+            limit: 1,
+            userName: currentUserName
+          });
+          if (resData.success) {
+            setResponseCount(resData.data.pagination.total || 0);
+          }
+        } catch (cErr) {
+          console.warn('Failed to fetch response count:', cErr);
+        }
       } else {
         setError(err.error?.message || err.message || 'Survey not found');
       }
@@ -61,7 +144,7 @@ export default function TakeSurvey() {
 
   const mapType = (type) => {
     const t = type.toLowerCase();
-    if (t.includes('radio')) return 'multiple_choice';
+    if (t.includes('radio')) return 'radio';
     if (t.includes('checkbox')) return 'checkbox';
     if (t.includes('rating') || t.includes('net promoter score')) return 'rating';
     if (t.includes('date')) return 'date';
@@ -91,9 +174,37 @@ export default function TakeSurvey() {
     setAnswers(initialAnswers);
   };
 
-  const handleAnswerChange = (questionId, value) => {
+  const handleAnswerChange = async (questionId, value) => {
     console.log('Answer change:', questionId, value);
     setAnswers(prev => ({ ...prev, [questionId]: value }));
+
+    // Dynamic Municipality Fetch Logic for MSR Prototype
+    const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
+    const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
+
+    if (questionId === q1Id && value) {
+      try {
+        const mRes = await parlConsAPI.getMunicipalities(value);
+        if (mRes.success) {
+          const newMuniOptions = mRes.data.map(m => ({ label: m, value: m }));
+
+          // Update the survey definition's question 2 options
+          setSurvey(prevSurvey => {
+            const updatedQuestions = [...prevSurvey.questions];
+            updatedQuestions[1] = {
+              ...updatedQuestions[1],
+              options: newMuniOptions
+            };
+            return { ...prevSurvey, questions: updatedQuestions };
+          });
+
+          // Clear previous municipality answer
+          setAnswers(prev => ({ ...prev, [q2Id]: '' }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch municipalities:", err);
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -102,16 +213,45 @@ export default function TakeSurvey() {
     setError('');
 
     try {
-      // Convert answers object to array format
-      const answersArray = Object.entries(answers).map(([questionId, value]) => ({
-        questionId,
-        value
-      }));
+      // Get user from localStorage if logged in
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const userName = storedUser.name || storedUser.firstName || 'Anonymous';
 
-      const response = await responseAPI.submit({
-        surveyId,
-        answers: answersArray
-      });
+      // Specifically target the "Ward Councilor" question for Question_1 storage
+      const targetQuestionText = "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?";
+      const wardCouncilorQuestion = survey?.questions?.find(q => q.question === targetQuestionText);
+      const wardCouncilorId = wardCouncilorQuestion?._id || wardCouncilorQuestion?.id;
+
+      let question1Value = answers[wardCouncilorId] || '';
+      if (Array.isArray(question1Value)) {
+        question1Value = question1Value.join(', ');
+      }
+
+      // Extract specific fields for Question 1, 2, 3 (Header Questions)
+      const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
+      const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
+      const q3Id = survey?.questions?.[2]?._id || survey?.questions?.[2]?.id;
+
+      // Question 4 is the first main content question
+      const q4 = survey?.questions?.[3];
+      const q4Id = q4?._id || q4?.id;
+
+      const payload = {
+        surveyId: survey?._id || surveyId, // Use real DB ID if available
+        userName,
+        parliament: answers[q1Id] || '',
+        municipality: answers[q2Id] || '',
+        ward_num: answers[q3Id] || '',
+        Question_1_title: targetQuestionText,
+        Question_1_answer: question1Value,
+        location,
+        answers: Object.entries(answers).map(([qId, value]) => ({
+          questionId: qId,
+          value
+        }))
+      };
+
+      const response = await responseAPI.submit(payload);
 
       if (response.success) {
         // Clear saved progress after successful submission
@@ -132,6 +272,12 @@ export default function TakeSurvey() {
     alert('Your progress has been saved!');
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
 
   const renderQuestionMedia = (question) => {
     if (!question.mediaUrl) return null;
@@ -150,7 +296,7 @@ export default function TakeSurvey() {
   const renderQuestion = (question, index) => {
     const questionId = question.id || question._id;
 
-    switch (question.type) {
+    switch (question.type.toLowerCase()) {
       case 'text':
         return (
           <input
@@ -210,9 +356,18 @@ export default function TakeSurvey() {
                   checked={(answers[questionId] || []).includes(opt.value)}
                   onChange={(e) => {
                     const currentAnswers = answers[questionId] || [];
-                    const newAnswers = e.target.checked
-                      ? [...currentAnswers, opt.value]
-                      : currentAnswers.filter(a => a !== opt.value);
+                    let newAnswers;
+
+                    const isPartyQuestion = question.question === "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?";
+
+                    // If maxSelect is 1 or it's the specific party question for MSR, treat it like a single choice
+                    if (question.validation?.maxSelect === 1 || isPartyQuestion) {
+                      newAnswers = e.target.checked ? [opt.value] : [];
+                    } else {
+                      newAnswers = e.target.checked
+                        ? [...currentAnswers, opt.value]
+                        : currentAnswers.filter(a => a !== opt.value);
+                    }
                     handleAnswerChange(questionId, newAnswers);
                   }}
                 />
@@ -329,11 +484,31 @@ export default function TakeSurvey() {
   return (
     <div className="take-survey-container">
       <div className="survey-header-section">
-        <button onClick={() => navigate('/dashboard')} className="back-button">
-          ← Back
-        </button>
-        <h1>{survey?.title}</h1>
-        {survey?.description && <p className="survey-description">{survey.description}</p>}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <button onClick={() => navigate('/dashboard')} className="back-button" style={{ marginBottom: 0 }}>
+            ← Back
+          </button>
+          <button onClick={handleLogout} className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '14px' }}>
+            Logout
+          </button>
+        </div>
+        <div className="survey-title-row">
+          <div className="title-left">
+            <div className="survey-logo-wrapper">
+              {survey?.branding?.logo ? (
+                <img src={survey.branding.logo} alt="Survey Logo" className="survey-logo" />
+              ) : (
+                <img src={logo} alt="Default Logo" className="survey-logo" />
+              )}
+            </div>
+            <h1>{survey?.title}</h1>
+            {survey?.description && <p className="survey-description">{survey.description}</p>}
+          </div>
+          <div className="responses-count-box">
+            <span className="responses-label">RESPONSES</span>
+            <span className="responses-number">{responseCount}</span>
+          </div>
+        </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}

@@ -5,7 +5,9 @@ import Dashboard from './pages/Dashboard';
 import TakeSurvey from './pages/TakeSurvey';
 import SurveyView from './pages/SurveyView';
 import SurveyAnalytics from './pages/SurveyAnalytics';
+import SurveyData from './pages/SurveyData';
 import Profile from './pages/Profile';
+import UsersPage from './pages/UsersPage';
 import './App.css';
 
 function PrivateRoute({ children }) {
@@ -69,10 +71,26 @@ function App() {
             }
           />
           <Route
+            path="/data"
+            element={
+              <PrivateRoute>
+                <SurveyData />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/profile"
             element={
               <PrivateRoute>
                 <Profile />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <PrivateRoute>
+                <UsersPage />
               </PrivateRoute>
             }
           />

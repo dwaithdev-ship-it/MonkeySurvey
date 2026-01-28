@@ -23,8 +23,15 @@ const Login = () => {
         localStorage.setItem("token", response.data.token);
         if (response.data.user) {
           localStorage.setItem("user", JSON.stringify(response.data.user));
+          // Direct survey access for all except admin
+          if (response.data.user.role === 'admin') {
+            navigate("/dashboard");
+          } else {
+            navigate("/take-survey/1");
+          }
+        } else {
+          navigate("/dashboard");
         }
-        navigate("/dashboard");
       } else {
         setError(response.error?.message || "Login failed");
       }

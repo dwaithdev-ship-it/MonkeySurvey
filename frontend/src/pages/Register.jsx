@@ -1,5 +1,6 @@
-import React from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { userAPI } from "../services/api";
 import "./Register.css";
 
 const demoTemplates = [
@@ -48,6 +49,49 @@ const demoTemplates = [
 
 const Register = () => {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    name: "",
+    username: "",
+    password: "",
+    companyEmail: "",
+    company: "",
+    phoneNumber: "",
+    demoTemplate: "",
+  });
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    // Basic Validation
+    if (!formData.username || !formData.password || !formData.companyEmail || !formData.demoTemplate) {
+      setError("Please fill in all required fields (*)");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await userAPI.msrRegister(formData);
+
+      if (response.success) {
+        alert("Account created successfully! Please login.");
+        navigate("/login");
+      }
+    } catch (err) {
+      setError(err.error?.message || err.message || "Registration failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="register-wrapper">
@@ -64,64 +108,118 @@ const Register = () => {
       </p>
 
       {/* CARD */}
-      <div className="register-card">
+      <form className="register-card" onSubmit={handleSubmit}>
         <h2 className="register-title">Create Your GoSurvey Account</h2>
+
+        {error && <div className="error-message" style={{ color: 'red', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
 
         <div className="form-group">
           <label>Name</label>
-          <input type="text" />
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+          />
         </div>
 
         <div className="form-group">
           <label>
             Username <span>*</span>
           </label>
-          <input type="text" />
+          <input
+            type="text"
+            name="username"
+            value={formData.username}
+            onChange={handleChange}
+            required
+          />
         </div>
 
         <div className="form-group password-group">
           <label>
             Password <span>*</span>
           </label>
-          <input type="password" />
-          <span className="eye">👁</span>
+          <div style={{ position: 'relative' }}>
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+            <span
+              className="eye"
+              style={{ cursor: 'pointer', position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }}
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? "🔒" : "👁"}
+            </span>
+          </div>
         </div>
 
         <div className="form-group">
           <label>
             Company Email <span>*</span>
           </label>
-          <input type="email" />
+          <input
+            type="email"
+            name="companyEmail"
+            value={formData.companyEmail}
+            onChange={handleChange}
+            required
+          />
         </div>
 
         <div className="form-group">
           <label>Company</label>
-          <input type="text" />
+          <input
+            type="text"
+            name="company"
+            value={formData.company}
+            onChange={handleChange}
+          />
         </div>
 
         <div className="form-group">
           <label>Phone Number</label>
-          <input type="text" />
+          <input
+            type="text"
+            name="phoneNumber"
+            value={formData.phoneNumber}
+            onChange={handleChange}
+          />
         </div>
 
         <div className="form-group">
           <label>
             Demo Template <span>*</span>
           </label>
-          <select>
+          <select
+            name="demoTemplate"
+            value={formData.demoTemplate}
+            onChange={handleChange}
+            required
+          >
             <option value="">Select Demo Template</option>
             {demoTemplates.map((item, index) => (
-              <option key={index}>{item}</option>
+              <option key={index} value={item}>{item}</option>
             ))}
           </select>
         </div>
 
-        <button className="create-btn">Create Account</button>
+        <button
+          type="submit"
+          className="create-btn"
+          disabled={loading}
+        >
+          {loading ? "Creating Account..." : "Create Account"}
+        </button>
 
         <p className="login-link">
           Already have an account? <span onClick={() => navigate('/login')}>Login</span>
         </p>
-      </div>
+      </form>
 
       {/* BOTTOM SECTION */}
       <div className="store-section">

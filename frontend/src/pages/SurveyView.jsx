@@ -2550,11 +2550,11 @@ const SurveyView = () => {
                       <span className="survey-icon">{survey.type === 'app' ? '📱' : '🌐'}</span>
                       <div>
                         <a
-                          href="#"
+                          href={`/take-survey/${survey.id}`}
                           className="survey-link"
                           onClick={(e) => {
                             e.preventDefault();
-                            openEditSurvey(survey);
+                            navigate(`/take-survey/${survey.id}`);
                           }}
                         >
                           {survey.name}
@@ -2591,6 +2591,7 @@ const SurveyView = () => {
                     </button>
                   </td>
                   <td className="center actions">
+                    <span title="Edit Settings" onClick={() => openEditSurvey(survey)}>⚙️</span>
                     <span title="Profile">👤</span><span title="Copy">📄</span><span title="Delete">🗑️</span>
                   </td>
                 </tr>
