@@ -23,21 +23,72 @@ export default function TakeSurvey() {
       console.log('Survey response:', response);
       if (response.success) {
         setSurvey(response.data);
-        // Initialize answers object
-        const initialAnswers = {};
-        response.data.questions?.forEach(q => {
-          initialAnswers[q._id] = '';
-        });
-        setAnswers(initialAnswers);
+        initializeAnswers(response.data);
       } else {
-        setError('Survey not found');
+        throw new Error('Survey not found');
       }
     } catch (err) {
-      console.error('Failed to load survey:', err);
-      setError(err.error?.message || err.message || 'Failed to load survey');
+      console.warn('API fetch failed, checking localStorage:', err);
+      // Fallback to localStorage for prototype
+      const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
+      const found = localSurveys.find(s => s.id.toString() === surveyId.toString());
+
+      if (found) {
+        // Adapt mock structure to what TakeSurvey expects
+        const adaptedSurvey = {
+          title: found.name,
+          description: found.description || 'Welcome to this survey.',
+          questions: (found.questions || []).map(q => ({
+            _id: q.id,
+            question: q.displayTitle || q.type,
+            type: mapType(q.type),
+            required: q.required,
+            mediaUrl: q.mediaUrl,
+            mediaType: q.mediaType,
+            optionMedia: q.optionMedia || {},
+            options: q.options ? q.options.split('\n').map(o => ({ label: o, value: o })) : []
+          }))
+        };
+        setSurvey(adaptedSurvey);
+        initializeAnswers(adaptedSurvey);
+      } else {
+        setError(err.error?.message || err.message || 'Survey not found');
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const mapType = (type) => {
+    const t = type.toLowerCase();
+    if (t.includes('radio')) return 'multiple_choice';
+    if (t.includes('checkbox')) return 'checkbox';
+    if (t.includes('rating') || t.includes('net promoter score')) return 'rating';
+    if (t.includes('date')) return 'date';
+    if (t.includes('multiline') || t.includes('text block')) return 'textarea';
+    if (t.includes('drop down') || t.includes('dropdown')) return 'dropdown';
+    return 'text'; // Default
+  };
+
+  const initializeAnswers = (surveyData) => {
+    const initialAnswers = {};
+    (surveyData.questions || []).forEach(q => {
+      initialAnswers[q._id || q.id] = '';
+    });
+
+    // Load saved progress if available
+    const savedProgress = localStorage.getItem(`survey_progress_${surveyId}`);
+    if (savedProgress) {
+      try {
+        const parsedProgress = JSON.parse(savedProgress);
+        setAnswers({ ...initialAnswers, ...parsedProgress });
+        return;
+      } catch (err) {
+        console.warn('Failed to load saved progress:', err);
+      }
+    }
+
+    setAnswers(initialAnswers);
   };
 
   const handleAnswerChange = (questionId, value) => {
@@ -63,6 +114,8 @@ export default function TakeSurvey() {
       });
 
       if (response.success) {
+        // Clear saved progress after successful submission
+        localStorage.removeItem(`survey_progress_${surveyId}`);
         alert('Thank you for completing the survey!');
         navigate('/dashboard');
       }
@@ -73,9 +126,30 @@ export default function TakeSurvey() {
     }
   };
 
+  const handleSave = () => {
+    // Save current progress to localStorage
+    localStorage.setItem(`survey_progress_${surveyId}`, JSON.stringify(answers));
+    alert('Your progress has been saved!');
+  };
+
+
+  const renderQuestionMedia = (question) => {
+    if (!question.mediaUrl) return null;
+
+    const type = question.mediaType;
+    if (type === 'Image') {
+      return <img src={question.mediaUrl} alt="Question Media" className="question-media-img" />;
+    } else if (type === 'Audio') {
+      return <audio controls src={question.mediaUrl} className="question-media-audio" />;
+    } else if (type === 'Video') {
+      return <video controls src={question.mediaUrl} className="question-media-video" />;
+    }
+    return null;
+  };
+
   const renderQuestion = (question, index) => {
     const questionId = question.id || question._id;
-    
+
     switch (question.type) {
       case 'text':
         return (
@@ -88,7 +162,7 @@ export default function TakeSurvey() {
             className="answer-input"
           />
         );
-      
+
       case 'textarea':
         return (
           <textarea
@@ -100,49 +174,59 @@ export default function TakeSurvey() {
             className="answer-textarea"
           />
         );
-      
-      case 'multiple_choice':
+
+      case 'radio':
         return (
-          <div className="options-list">
-            {(question.options || []).map((option, i) => (
-              <label key={option._id || i} className="option-label">
+          <div className="options-container">
+            {(question.options || []).map((opt, idx) => (
+              <label key={idx} className="option-label">
                 <input
                   type="radio"
-                  name={questionId}
-                  value={option.value}
-                  checked={answers[questionId] === option.value}
+                  name={`question-${questionId}`}
+                  value={opt.value}
+                  checked={answers[questionId] === opt.value}
                   onChange={(e) => handleAnswerChange(questionId, e.target.value)}
                   required={question.required}
                 />
-                <span>{option.label}</span>
+                <div className="option-content">
+                  {question.optionMedia?.[opt.label] && (
+                    <img src={question.optionMedia[opt.label]} alt={opt.label} className="option-media-img" />
+                  )}
+                  <span>{opt.label}</span>
+                </div>
               </label>
             ))}
           </div>
         );
-      
+
       case 'checkbox':
         return (
-          <div className="options-list">
-            {(question.options || []).map((option, i) => (
-              <label key={option._id || i} className="option-label">
+          <div className="options-container">
+            {(question.options || []).map((opt, idx) => (
+              <label key={idx} className="option-label">
                 <input
                   type="checkbox"
-                  value={option.value}
-                  checked={(answers[questionId] || []).includes(option.value)}
+                  value={opt.value}
+                  checked={(answers[questionId] || []).includes(opt.value)}
                   onChange={(e) => {
-                    const current = answers[questionId] || [];
-                    const updated = e.target.checked
-                      ? [...current, option.value]
-                      : current.filter(v => v !== option.value);
-                    handleAnswerChange(questionId, updated);
+                    const currentAnswers = answers[questionId] || [];
+                    const newAnswers = e.target.checked
+                      ? [...currentAnswers, opt.value]
+                      : currentAnswers.filter(a => a !== opt.value);
+                    handleAnswerChange(questionId, newAnswers);
                   }}
                 />
-                <span>{option.label}</span>
+                <div className="option-content">
+                  {question.optionMedia?.[opt.label] && (
+                    <img src={question.optionMedia[opt.label]} alt={opt.label} className="option-media-img" />
+                  )}
+                  <span>{opt.label}</span>
+                </div>
               </label>
             ))}
           </div>
         );
-      
+
       case 'rating':
         return (
           <div className="rating-scale">
@@ -158,7 +242,7 @@ export default function TakeSurvey() {
             ))}
           </div>
         );
-      
+
       case 'scale':
         return (
           <div className="scale-container">
@@ -177,7 +261,7 @@ export default function TakeSurvey() {
             </div>
           </div>
         );
-      
+
       case 'date':
         return (
           <input
@@ -188,7 +272,7 @@ export default function TakeSurvey() {
             className="answer-input"
           />
         );
-      
+
       case 'dropdown':
         return (
           <select
@@ -205,7 +289,7 @@ export default function TakeSurvey() {
             ))}
           </select>
         );
-      
+
       default:
         return (
           <input
@@ -255,45 +339,64 @@ export default function TakeSurvey() {
       {error && <div className="error-message">{error}</div>}
 
       <form onSubmit={handleSubmit} className="survey-form">
-        {/* First 5 fields in a single row without question numbers */}
-        <div className="question-block">
-          <div className="inline-fields-row">
-            {survey?.questions?.slice(0, 5).map((question, index) => {
-              const questionId = question.id || question._id;
-              return (
-                <div key={questionId} className="inline-field">
-                  <label className="field-label">
-                    {question.question.replace(':', '')}
-                    {question.required && <span className="required-indicator">*</span>}
-                  </label>
-                  <input
-                    type="text"
-                    value={answers[questionId] || ''}
-                    onChange={(e) => handleAnswerChange(questionId, e.target.value)}
-                    onInput={(e) => handleAnswerChange(questionId, e.target.value)}
-                    required={question.required}
-                    maxLength={question.maxLength || undefined}
-                    placeholder="Enter text here"
-                    className="answer-input"
-                    autoComplete="off"
-                    disabled={false}
-                  />
+        {/* Header Block: First 3 questions in a row */}
+        {survey?.questions?.length > 0 && (
+          <div className="question-block header-group-block">
+            <div className="inline-fields-row">
+              {survey.questions.slice(0, 3).map((question, index) => {
+                const questionId = question.id || question._id;
+                return (
+                  <div key={questionId} className="inline-field">
+                    <div className="question-header compact">
+                      <span className="question-number">Question {index + 1}</span>
+                      {question.required && <span className="required-indicator">*</span>}
+                    </div>
+                    <label className="field-label-compact">{question.question}</label>
+                    <div className="inline-render-box">
+                      {renderQuestion(question, index)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Progress Bar */}
+            {survey?.questions?.length > 3 && (
+              <div className="progress-bar-container">
+                <div className="progress-bar-track">
+                  <div
+                    className="progress-bar-fill"
+                    style={{
+                      width: `${Math.round(
+                        (Object.values(answers).filter(val =>
+                          Array.isArray(val) ? val.length > 0 : (val !== '' && val !== null && val !== undefined)
+                        ).length / (survey.questions.length || 1)) * 100
+                      )}%`
+                    }}
+                  ></div>
                 </div>
-              );
-            })}
+                <div style={{ textAlign: 'right', fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                  {Math.round(
+                    (Object.values(answers).filter(val =>
+                      Array.isArray(val) ? val.length > 0 : (val !== '' && val !== null && val !== undefined)
+                    ).length / (survey.questions.length || 1)) * 100
+                  )}% Completed
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
-        {/* Remaining questions with question numbers */}
-        {survey?.questions?.slice(5).map((question, index) => (
-          <div key={question.id || question._id} className="question-block">
+        {/* Individual Blocks: 4th question onwards */}
+        {survey?.questions?.slice(3).map((question, index) => (
+          <div key={question.id || question._id} className="question-block full-width-block">
             <div className="question-header">
-              <span className="question-number">Question {index + 1}</span>
+              <span className="question-number">Question {index + 4}</span>
               {question.required && <span className="required-indicator">*</span>}
             </div>
+            {renderQuestionMedia(question)}
             <h3 className="question-text">{question.question}</h3>
             <div className="question-answer">
-              {renderQuestion(question, index + 5)}
+              {renderQuestion(question, index + 3)}
             </div>
           </div>
         ))}
@@ -305,6 +408,13 @@ export default function TakeSurvey() {
             className="btn-secondary"
           >
             Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="btn-save"
+          >
+            Save Progress
           </button>
           <button
             type="submit"

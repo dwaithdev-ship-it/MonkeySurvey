@@ -37,6 +37,14 @@ function App() {
             }
           />
           <Route
+            path="/surveys/:surveyId"
+            element={
+              <PrivateRoute>
+                <SurveyView />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/survey/:surveyId"
             element={
               <PrivateRoute>
