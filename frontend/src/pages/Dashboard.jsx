@@ -262,8 +262,13 @@ const Dashboard = () => {
           return `${value} (${percentage}%)`;
         },
         display: (context) => {
-          return context.dataset.data[context.dataIndex] > 0; // Only show if value > 0
+          return context.dataset.data[context.dataIndex] > 0;
         }
+      }
+    },
+    layout: {
+      padding: {
+        top: 30
       }
     },
     maintainAspectRatio: false
@@ -357,9 +362,9 @@ const Dashboard = () => {
           ) : (
             <div className="chart-wrapper">
               {chartType === 'pie' ? (
-                <Pie data={chartData} options={options} />
+                <Pie data={chartData} options={options} plugins={[ChartDataLabels]} />
               ) : (
-                <Bar data={chartData} options={options} />
+                <Bar data={chartData} options={options} plugins={[ChartDataLabels]} />
               )}
             </div>
           )}

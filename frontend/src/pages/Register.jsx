@@ -109,7 +109,7 @@ const Register = () => {
 
       {/* CARD */}
       <form className="register-card" onSubmit={handleSubmit}>
-        <h2 className="register-title">Create Your MSRSurvey Account</h2>
+        <h2 className="register-title">Create Your MSRSurvey</h2>
 
         {error && <div className="error-message" style={{ color: 'red', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
 
