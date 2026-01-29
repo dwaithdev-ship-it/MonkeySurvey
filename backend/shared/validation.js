@@ -16,9 +16,10 @@ const registerSchema = Joi.object({
  * User login validation schema
  */
 const loginSchema = Joi.object({
-  email: Joi.string().email().required(),
+  email: Joi.string().email(),
+  phoneNumber: Joi.string(),
   password: Joi.string().required()
-});
+}).or('email', 'phoneNumber');
 
 /**
  * Survey creation validation schema

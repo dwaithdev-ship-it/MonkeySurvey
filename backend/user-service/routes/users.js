@@ -141,10 +141,21 @@ router.post('/register', validate(registerSchema), async (req, res) => {
  */
 router.post('/login', validate(loginSchema), async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, phoneNumber, password } = req.body;
+    console.log(`Login attempt for: ${email || phoneNumber}, password length: ${password?.length}`);
 
-    // Find user
-    const user = await User.findOne({ email });
+    let user = null;
+
+    if (email) {
+      user = await User.findOne({ email });
+    } else if (phoneNumber) {
+      // Find MSRUser by phone number first to get the email
+      const msrUser = await MSRUser.findOne({ phoneNumber });
+      if (msrUser) {
+        // Find standard user by email derived from MSRUser
+        user = await User.findOne({ email: msrUser.companyEmail });
+      }
+    }
     if (!user) {
       return res.status(401).json({
         success: false,

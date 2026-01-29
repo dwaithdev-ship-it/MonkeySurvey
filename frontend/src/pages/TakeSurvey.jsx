@@ -251,6 +251,23 @@ export default function TakeSurvey() {
         }))
       };
 
+      if (!navigator.onLine) {
+        const offlineData = {
+          id: Date.now(),
+          payload,
+          timestamp: new Date().toISOString()
+        };
+        const existing = JSON.parse(localStorage.getItem('offline_responses') || '[]');
+        existing.push(offlineData);
+        localStorage.setItem('offline_responses', JSON.stringify(existing));
+
+        // Clear saved progress after offline save
+        localStorage.removeItem(`survey_progress_${surveyId}`);
+        alert('You are offline. Response saved locally and will be synced when online.');
+        navigate('/dashboard');
+        return;
+      }
+
       const response = await responseAPI.submit(payload);
 
       if (response.success) {

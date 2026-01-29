@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { responseAPI } from './services/api';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -26,6 +28,51 @@ function AdminRoute({ children }) {
 }
 
 function App() {
+  useEffect(() => {
+    const syncOfflineResponses = async () => {
+      if (navigator.onLine) {
+        const offlineResponses = JSON.parse(localStorage.getItem('offline_responses') || '[]');
+        if (offlineResponses.length > 0) {
+          console.log('Found offline responses, syncing...');
+          const remaining = [];
+          for (const item of offlineResponses) {
+            try {
+              const res = await responseAPI.submit(item.payload);
+              if (res.success) {
+                console.log(`Synced response ${item.id}`);
+              } else {
+                remaining.push(item);
+              }
+            } catch (err) {
+              console.error(`Failed to sync response ${item.id}`, err);
+              remaining.push(item);
+            }
+          }
+
+          // Update storage with remaining items (failed ones)
+          if (remaining.length !== offlineResponses.length) {
+            if (remaining.length === 0) {
+              localStorage.removeItem('offline_responses');
+              alert('Offline responses have been successfully synced to the server.');
+            } else {
+              localStorage.setItem('offline_responses', JSON.stringify(remaining));
+            }
+          } else if (remaining.length === 0 && offlineResponses.length > 0) {
+            // Handle case where loop finished and all succeeded but logic skipped 'if' above? 
+            // actually the logic covers it. if remaining.length (0) != offlineResponses.length (N) -> remove all.
+            localStorage.removeItem('offline_responses');
+            alert('Offline responses have been successfully synced to the server.');
+          }
+        }
+      }
+    };
+
+    window.addEventListener('online', syncOfflineResponses);
+    syncOfflineResponses(); // Check on load/mount
+
+    return () => window.removeEventListener('online', syncOfflineResponses);
+  }, []);
+
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAuthenticated = !!localStorage.getItem('token');
 

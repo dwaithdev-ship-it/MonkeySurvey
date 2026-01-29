@@ -73,7 +73,7 @@ const Register = () => {
     setError("");
 
     // Basic Validation
-    if (!formData.username || !formData.password || !formData.companyEmail || !formData.demoTemplate) {
+    if (!formData.username || !formData.password || !formData.companyEmail || !formData.demoTemplate || !formData.phoneNumber) {
       setError("Please fill in all required fields (*)");
       return;
     }
@@ -182,12 +182,15 @@ const Register = () => {
         </div>
 
         <div className="form-group">
-          <label>Phone Number</label>
+          <label>Phone Number <span>*</span></label>
           <input
-            type="text"
+            type="tel"
             name="phoneNumber"
             value={formData.phoneNumber}
             onChange={handleChange}
+            required
+            pattern="[0-9]{10}"
+            title="Ten digit phone number"
           />
         </div>
 

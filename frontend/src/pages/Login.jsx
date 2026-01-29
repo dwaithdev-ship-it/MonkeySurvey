@@ -5,7 +5,7 @@ import "./Login.css";
 import logo from "../assets/logo.png";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,7 +17,7 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await userAPI.login({ email, password });
+      const response = await userAPI.login({ phoneNumber, password });
 
       if (response.success) {
         localStorage.setItem("token", response.data.token);
@@ -65,10 +65,12 @@ const Login = () => {
 
           <form onSubmit={handleLogin}>
             <input
-              type="email"
-              placeholder="Email ID"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="tel"
+              placeholder="Phone Number"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              pattern="[0-9]{10}"
+              title="Ten digit phone number"
               required
             />
             <input
