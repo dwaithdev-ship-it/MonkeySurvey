@@ -351,3 +351,49 @@ body {
   color: #888;
   font-style: italic;
 }
+
+.dropdown-filters-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.dropdown-group {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.dropdown-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.dropdown-item label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #555;
+}
+
+.dropdown-item select {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.dropdown-item select:focus {
+  border-color: #1368df;
+  outline: none;
+}
+
+.dropdown-item select:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  color: #999;
+}

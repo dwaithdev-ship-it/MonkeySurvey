@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "./layout";
-import { responseAPI } from "../services/api";
+import { responseAPI, parlConsAPI } from "../services/api";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -37,7 +37,7 @@ const Dashboard = () => {
 
   const [responses, setResponses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [chartType, setChartType] = useState('column'); // 'column' (vertical bar), 'pie', 'bar' (horizontal bar)
+  const [chartType, setChartType] = useState('column');
   const [filters, setFilters] = useState({
     parliament: true,
     municipality: true,
@@ -47,6 +47,12 @@ const Dashboard = () => {
     brs: true,
     others: true
   });
+
+  // Dropdown Filter States
+  const [parliaments, setParliaments] = useState([]);
+  const [municipalities, setMunicipalities] = useState([]);
+  const [selectedParl, setSelectedParl] = useState("all");
+  const [selectedMuni, setSelectedMuni] = useState("all");
 
   const navigate = useNavigate();
 
@@ -67,21 +73,45 @@ const Dashboard = () => {
       navigate("/login");
     }
 
-    fetchAllResponses();
+    fetchInitialData();
   }, [navigate]);
 
-  const fetchAllResponses = async () => {
+  const fetchInitialData = async () => {
     try {
       setLoading(true);
-      // Fetch with a large limit to get all data for analytics
-      const res = await responseAPI.getAll({ limit: 10000 });
-      if (res.success) {
-        setResponses(res.data.responses || []);
+      const [responsesRes, parlRes] = await Promise.all([
+        responseAPI.getAll({ limit: 10000 }),
+        parlConsAPI.getParliaments()
+      ]);
+
+      if (responsesRes.success) {
+        setResponses(responsesRes.data.responses || []);
+      }
+      if (parlRes.success) {
+        setParliaments(parlRes.data || []);
       }
     } catch (err) {
-      console.error("Failed to fetch responses:", err);
+      console.error("Failed to fetch initial data:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleParlChange = async (e) => {
+    const val = e.target.value;
+    setSelectedParl(val);
+    setSelectedMuni("all");
+    setMunicipalities([]);
+
+    if (val !== "all") {
+      try {
+        const res = await parlConsAPI.getMunicipalities(val);
+        if (res.success) {
+          setMunicipalities(res.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to fetch municipalities:", err);
+      }
     }
   };
 
@@ -90,6 +120,13 @@ const Dashboard = () => {
   };
 
   const aggregateData = () => {
+    // Filter responses based on dropdowns
+    const filteredResponses = responses.filter(res => {
+      const parlMatch = selectedParl === "all" || res.parliament === selectedParl;
+      const muniMatch = selectedMuni === "all" || res.municipality === selectedMuni;
+      return parlMatch && muniMatch;
+    });
+
     const counts = {
       parliament: new Set(),
       municipality: new Set(),
@@ -100,7 +137,7 @@ const Dashboard = () => {
       others: 0
     };
 
-    responses.forEach(res => {
+    filteredResponses.forEach(res => {
       if (res.parliament) counts.parliament.add(res.parliament);
       if (res.municipality) counts.municipality.add(res.municipality);
       if (res.ward_num) counts.ward_num.add(res.ward_num);
@@ -120,10 +157,10 @@ const Dashboard = () => {
       parliament: '#FF6384',
       municipality: '#36A2EB',
       ward_num: '#FFCE56',
-      bjp: '#FF9933', // Saffron
-      congress: '#00AEF0', // Blue
-      brs: '#FF00FF', // Pink
-      others: '#999999' // Gray
+      bjp: '#FF9933',
+      congress: '#00AEF0',
+      brs: '#FF00FF',
+      others: '#999999'
     };
 
     if (filters.parliament) {
@@ -166,7 +203,7 @@ const Dashboard = () => {
       labels,
       datasets: [
         {
-          label: 'MSR Survey Analytics',
+          label: `Chart (Filtered: ${filteredResponses.length} Responses)`,
           data,
           backgroundColor: colors,
           borderColor: colors.map(c => c + 'CC'),
@@ -199,10 +236,38 @@ const Dashboard = () => {
       <h1 className="page-title">Dashboard Analytics</h1>
 
       <div className="dashboard-analytics">
-        {/* FILTERS PANEL */}
+        {/* DROPDOWN FILTERS */}
+        <div className="controls-panel dropdown-filters-panel">
+          <div className="dropdown-group">
+            <div className="dropdown-item">
+              <label>Parliament</label>
+              <select value={selectedParl} onChange={handleParlChange}>
+                <option value="all">All Parliaments</option>
+                {parliaments.map((parl, idx) => (
+                  <option key={idx} value={parl}>{parl}</option>
+                ))}
+              </select>
+            </div>
+            <div className="dropdown-item">
+              <label>Municipality</label>
+              <select
+                value={selectedMuni}
+                onChange={(e) => setSelectedMuni(e.target.value)}
+                disabled={selectedParl === "all"}
+              >
+                <option value="all">All Municipalities</option>
+                {municipalities.map((muni, idx) => (
+                  <option key={idx} value={muni}>{muni}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* METRIC SELECTION */}
         <div className="controls-panel">
           <div className="control-group">
-            <h3>Search Inputs (Select to compare)</h3>
+            <h3>Display Metrics (X-Axis)</h3>
             <div className="checkbox-group">
               {Object.keys(filters).map(key => (
                 <label key={key} className="checkbox-item">
@@ -220,24 +285,15 @@ const Dashboard = () => {
           <div className="control-group">
             <h3>Chart Type</h3>
             <div className="chart-type-group">
-              <button
-                className={`chart-type-btn ${chartType === 'column' ? 'active' : ''}`}
-                onClick={() => setChartType('column')}
-              >
-                Column Chart
-              </button>
-              <button
-                className={`chart-type-btn ${chartType === 'bar' ? 'active' : ''}`}
-                onClick={() => setChartType('bar')}
-              >
-                Bar Chart
-              </button>
-              <button
-                className={`chart-type-btn ${chartType === 'pie' ? 'active' : ''}`}
-                onClick={() => setChartType('pie')}
-              >
-                Pie Chart
-              </button>
+              {['column', 'bar', 'pie'].map(type => (
+                <button
+                  key={type}
+                  className={`chart-type-btn ${chartType === type ? 'active' : ''}`}
+                  onClick={() => setChartType(type)}
+                >
+                  {type.charAt(0).toUpperCase() + type.slice(1)} Chart
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -246,10 +302,8 @@ const Dashboard = () => {
         <div className="chart-display-container">
           {loading ? (
             <div className="no-data-msg">Loading data...</div>
-          ) : responses.length === 0 ? (
-            <div className="no-data-msg">No responses found in msr_responses.</div>
           ) : chartData.labels.length === 0 ? (
-            <div className="no-data-msg">Select at least one filter to see the chart.</div>
+            <div className="no-data-msg">Select at least one metric to see the chart.</div>
           ) : (
             <div className="chart-wrapper">
               {chartType === 'pie' ? (
