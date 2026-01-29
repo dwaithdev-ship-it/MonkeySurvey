@@ -15,6 +15,7 @@ import {
   LineElement
 } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import "./Dashboard.css";
 
 ChartJS.register(
@@ -26,7 +27,8 @@ ChartJS.register(
   Legend,
   ArcElement,
   PointElement,
-  LineElement
+  LineElement,
+  ChartDataLabels
 );
 
 const Dashboard = () => {
@@ -243,6 +245,24 @@ const Dashboard = () => {
             const percentage = ((value / total) * 100).toFixed(1);
             return `${label}: ${value} (${percentage}%)`;
           }
+        }
+      },
+      datalabels: {
+        color: chartType === 'pie' ? '#fff' : '#444',
+        anchor: 'end',
+        align: 'top',
+        offset: 5,
+        font: {
+          weight: 'bold',
+          size: 11
+        },
+        formatter: (value) => {
+          const total = chartData.total || 1;
+          const percentage = ((value / total) * 100).toFixed(1);
+          return `${value} (${percentage}%)`;
+        },
+        display: (context) => {
+          return context.dataset.data[context.dataIndex] > 0; // Only show if value > 0
         }
       }
     },
