@@ -224,154 +224,159 @@ const Dashboard = () => {
 
   const chartData = aggregateData();
 
-  const options = {
+  animation: false, // Disable animation to prevent delay/glitch
     responsive: true,
-    indexAxis: chartType === 'bar' ? 'y' : 'x',
-    plugins: {
-      legend: {
-        position: 'top',
+      indexAxis: chartType === 'bar' ? 'y' : 'x',
+        plugins: {
+    legend: {
+      position: 'top',
         display: chartType === 'pie'
-      },
-      title: {
-        display: true,
+    },
+    title: {
+      display: true,
         text: 'Survey Response Distribution',
       },
-      tooltip: {
-        callbacks: {
-          label: (context) => {
-            const label = context.label || '';
-            const value = context.raw || 0;
-            const total = chartData.total || 1;
-            const percentage = ((value / total) * 100).toFixed(1);
-            return `${label}: ${value} (${percentage}%)`;
-          }
-        }
-      },
-      datalabels: {
-        color: chartType === 'pie' ? '#fff' : '#444',
-        anchor: 'end',
-        align: 'top',
-        offset: 5,
-        font: {
-          weight: 'bold',
-          size: 11
-        },
-        formatter: (value) => {
+    tooltip: {
+      callbacks: {
+        label: (context) => {
+          const label = context.label || '';
+          const value = context.raw || 0;
           const total = chartData.total || 1;
           const percentage = ((value / total) * 100).toFixed(1);
-          return `${value} (${percentage}%)`;
-        },
+          return `${label}: ${value} (${percentage}%)`;
+        }
+      }
+    },
+    datalabels: {
+      color: chartType === 'pie' ? '#fff' : '#444',
+        // Dynamic anchor/align based on chart type
+        anchor: chartType === 'pie' ? 'center' : 'end',
+          align: chartType === 'pie' ? 'center' : 'end',
+            offset: 4,
+              clip: false, // Prevent labels from being clipped
+                font: {
+        weight: 'bold',
+          size: 11
+      },
+      formatter: (value) => {
+        const total = chartData.total || 1;
+        const percentage = ((value / total) * 100).toFixed(1);
+        return `${value} (${percentage}%)`;
+      },
         display: (context) => {
           return context.dataset.data[context.dataIndex] > 0;
         }
-      }
-    },
-    layout: {
-      padding: {
-        top: 30
-      }
-    },
-    maintainAspectRatio: false
-  };
+    }
+  },
+  layout: {
+    padding: {
+      top: 30,
+        right: 50, // Extra padding for right-aligned labels in horizontal bar
+          left: 20,
+            bottom: 20
+    }
+  },
+  maintainAspectRatio: false
+};
 
-  return (
-    <Layout user={user}>
-      <h1 className="page-title">Dashboard Analytics</h1>
+return (
+  <Layout user={user}>
+    <h1 className="page-title">Dashboard Analytics</h1>
 
-      <div className="dashboard-analytics">
-        {/* DROPDOWN FILTERS */}
-        <div className="controls-panel dropdown-filters-panel">
-          <div className="dropdown-group">
-            <div className="dropdown-item">
-              <label>Parliament</label>
-              <select value={selectedParl} onChange={handleParlChange}>
-                <option value="all">All Parliaments</option>
-                {parliaments.map((parl, idx) => (
-                  <option key={idx} value={parl}>{parl}</option>
-                ))}
-              </select>
-            </div>
-            <div className="dropdown-item">
-              <label>Municipality</label>
-              <select
-                value={selectedMuni}
-                onChange={(e) => setSelectedMuni(e.target.value)}
-                disabled={selectedParl === "all"}
-              >
-                <option value="all">All Municipalities</option>
-                {municipalities.map((muni, idx) => (
-                  <option key={idx} value={muni}>{muni}</option>
-                ))}
-              </select>
-            </div>
-            <div className="dropdown-item">
-              <label>Ward Number</label>
-              <select
-                value={selectedWard}
-                onChange={(e) => setSelectedWard(e.target.value)}
-              >
-                <option value="all">All Wards</option>
-                {wardNumbers.map((num) => (
-                  <option key={num} value={num}>{num}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* METRIC SELECTION */}
-        <div className="controls-panel">
-          <div className="control-group">
-            <h3>Display Metrics (X-Axis)</h3>
-            <div className="checkbox-group">
-              {Object.keys(filters).map(key => (
-                <label key={key} className="checkbox-item">
-                  <input
-                    type="checkbox"
-                    checked={filters[key]}
-                    onChange={() => handleFilterChange(key)}
-                  />
-                  {key.charAt(0).toUpperCase() + key.slice(1).replace('_', ' ')}
-                </label>
+    <div className="dashboard-analytics">
+      {/* DROPDOWN FILTERS */}
+      <div className="controls-panel dropdown-filters-panel">
+        <div className="dropdown-group">
+          <div className="dropdown-item">
+            <label>Parliament</label>
+            <select value={selectedParl} onChange={handleParlChange}>
+              <option value="all">All Parliaments</option>
+              {parliaments.map((parl, idx) => (
+                <option key={idx} value={parl}>{parl}</option>
               ))}
-            </div>
+            </select>
           </div>
-
-          <div className="control-group">
-            <h3>Chart Type</h3>
-            <div className="chart-type-group">
-              {['column', 'bar', 'pie'].map(type => (
-                <button
-                  key={type}
-                  className={`chart-type-btn ${chartType === type ? 'active' : ''}`}
-                  onClick={() => setChartType(type)}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)} Chart
-                </button>
+          <div className="dropdown-item">
+            <label>Municipality</label>
+            <select
+              value={selectedMuni}
+              onChange={(e) => setSelectedMuni(e.target.value)}
+              disabled={selectedParl === "all"}
+            >
+              <option value="all">All Municipalities</option>
+              {municipalities.map((muni, idx) => (
+                <option key={idx} value={muni}>{muni}</option>
               ))}
-            </div>
+            </select>
           </div>
-        </div>
-
-        {/* CHART DISPLAY */}
-        <div className="chart-display-container">
-          {loading ? (
-            <div className="no-data-msg">Loading data...</div>
-          ) : chartData.labels.length === 0 ? (
-            <div className="no-data-msg">Select at least one metric to see the chart.</div>
-          ) : (
-            <div className="chart-wrapper">
-              {chartType === 'pie' ? (
-                <Pie data={chartData} options={options} plugins={[ChartDataLabels]} />
-              ) : (
-                <Bar data={chartData} options={options} plugins={[ChartDataLabels]} />
-              )}
-            </div>
-          )}
+          <div className="dropdown-item">
+            <label>Ward Number</label>
+            <select
+              value={selectedWard}
+              onChange={(e) => setSelectedWard(e.target.value)}
+            >
+              <option value="all">All Wards</option>
+              {wardNumbers.map((num) => (
+                <option key={num} value={num}>{num}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
-    </Layout>
-  );
+
+      {/* METRIC SELECTION */}
+      <div className="controls-panel">
+        <div className="control-group">
+          <h3>Display Metrics (X-Axis)</h3>
+          <div className="checkbox-group">
+            {Object.keys(filters).map(key => (
+              <label key={key} className="checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={filters[key]}
+                  onChange={() => handleFilterChange(key)}
+                />
+                {key.charAt(0).toUpperCase() + key.slice(1).replace('_', ' ')}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="control-group">
+          <h3>Chart Type</h3>
+          <div className="chart-type-group">
+            {['column', 'bar', 'pie'].map(type => (
+              <button
+                key={type}
+                className={`chart-type-btn ${chartType === type ? 'active' : ''}`}
+                onClick={() => setChartType(type)}
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)} Chart
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* CHART DISPLAY */}
+      <div className="chart-display-container">
+        {loading ? (
+          <div className="no-data-msg">Loading data...</div>
+        ) : chartData.labels.length === 0 ? (
+          <div className="no-data-msg">Select at least one metric to see the chart.</div>
+        ) : (
+          <div className="chart-wrapper">
+            {chartType === 'pie' ? (
+              <Pie data={chartData} options={options} plugins={[ChartDataLabels]} />
+            ) : (
+              <Bar data={chartData} options={options} plugins={[ChartDataLabels]} />
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  </Layout>
+);
 };
 
 export default Dashboard;
