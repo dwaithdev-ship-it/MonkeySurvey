@@ -15,43 +15,60 @@ function PrivateRoute({ children }) {
   return token ? children : <Navigate to="/login" />;
 }
 
+function AdminRoute({ children }) {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  if (!token) return <Navigate to="/login" />;
+  if (user.role !== 'admin') return <Navigate to="/take-survey/1" />;
+
+  return children;
+}
+
 function App() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAuthenticated = !!localStorage.getItem('token');
+
   return (
     <div className="app">
       <Router>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route path="/login" element={
+            isAuthenticated ? (
+              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/take-survey/1" />
+            ) : <Login />
+          } />
           <Route path="/register" element={<Register />} />
           <Route
             path="/dashboard"
             element={
-              <PrivateRoute>
+              <AdminRoute>
                 <Dashboard />
-              </PrivateRoute>
+              </AdminRoute>
             }
           />
           <Route
             path="/surveys"
             element={
-              <PrivateRoute>
+              <AdminRoute>
                 <SurveyView />
-              </PrivateRoute>
+              </AdminRoute>
             }
           />
           <Route
             path="/surveys/:surveyId"
             element={
-              <PrivateRoute>
+              <AdminRoute>
                 <SurveyView />
-              </PrivateRoute>
+              </AdminRoute>
             }
           />
           <Route
             path="/survey/:surveyId"
             element={
-              <PrivateRoute>
+              <AdminRoute>
                 <SurveyView />
-              </PrivateRoute>
+              </AdminRoute>
             }
           />
           <Route
@@ -65,17 +82,17 @@ function App() {
           <Route
             path="/analytics/:surveyId"
             element={
-              <PrivateRoute>
+              <AdminRoute>
                 <SurveyAnalytics />
-              </PrivateRoute>
+              </AdminRoute>
             }
           />
           <Route
             path="/data"
             element={
-              <PrivateRoute>
+              <AdminRoute>
                 <SurveyData />
-              </PrivateRoute>
+              </AdminRoute>
             }
           />
           <Route
@@ -89,13 +106,21 @@ function App() {
           <Route
             path="/users"
             element={
-              <PrivateRoute>
+              <AdminRoute>
                 <UsersPage />
-              </PrivateRoute>
+              </AdminRoute>
             }
           />
-          <Route path="/" element={<Navigate to="/login" />} />
-          <Route path="*" element={<Navigate to="/login" />} />
+          <Route path="/" element={
+            isAuthenticated ? (
+              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/take-survey/1" />
+            ) : <Navigate to="/login" />
+          } />
+          <Route path="*" element={
+            isAuthenticated ? (
+              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/take-survey/1" />
+            ) : <Navigate to="/login" />
+          } />
         </Routes>
       </Router>
     </div>

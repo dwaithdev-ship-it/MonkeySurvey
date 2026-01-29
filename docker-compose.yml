@@ -53,11 +53,10 @@ services:
       - api-gateway
     networks:
       - monkeysurvey-network
-    # SSL volumes commented out for initial deployment
-    # volumes:
-    #   - /etc/letsencrypt/live/bodhasurvey.duckdns.org/fullchain.pem:/etc/nginx/ssl/server.crt:ro
-    #   - /etc/letsencrypt/live/bodhasurvey.duckdns.org/privkey.pem:/etc/nginx/ssl/server.key:ro
-
+    # SSL volumes
+    volumes:
+      - /etc/letsencrypt/live/bodhasurvey.duckdns.org/fullchain.pem:/etc/nginx/ssl/server.crt:ro
+      - /etc/letsencrypt/live/bodhasurvey.duckdns.org/privkey.pem:/etc/nginx/ssl/server.key:ro
     # API Gateway
   api-gateway:
     build:

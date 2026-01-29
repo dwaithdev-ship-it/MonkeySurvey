@@ -27,10 +27,10 @@ const Login = () => {
           if (response.data.user.role === 'admin') {
             navigate("/dashboard");
           } else {
-            navigate("/survey/1");
+            navigate("/take-survey/1");
           }
         } else {
-          navigate("/dashboard");
+          navigate("/take-survey/1");
         }
       } else {
         setError(response.error?.message || "Login failed");

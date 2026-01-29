@@ -484,10 +484,7 @@ export default function TakeSurvey() {
   return (
     <div className="take-survey-container">
       <div className="survey-header-section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <button onClick={() => navigate('/dashboard')} className="back-button" style={{ marginBottom: 0 }}>
-            ← Back
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1rem' }}>
           <button onClick={handleLogout} className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '14px' }}>
             Logout
           </button>
@@ -600,6 +597,6 @@ export default function TakeSurvey() {
           </button>
         </div>
       </form>
-    </div>
+    </div >
   );
 }
