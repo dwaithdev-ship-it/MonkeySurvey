@@ -9,7 +9,12 @@ const MSRUser = require('../models/MSRUser');
  */
 router.post('/msr-register', async (req, res) => {
   try {
-    const { name, username, password, companyEmail, company, phoneNumber, demoTemplate } = req.body;
+    let { name, username, password, companyEmail, company, phoneNumber, demoTemplate } = req.body;
+
+    // Sanitize phone number (strip all non-digits)
+    if (phoneNumber) {
+      phoneNumber = phoneNumber.toString().replace(/\D/g, '');
+    }
 
     const existingUser = await MSRUser.findOne({
       $or: [{ companyEmail }, { username }]
@@ -44,7 +49,8 @@ router.post('/msr-register', async (req, res) => {
       password: hashedPassword,
       firstName: name || username,
       lastName: company || 'MSR',
-      role: 'creator'
+      role: 'creator',
+      phoneNumber // Sync phone number to standard user for login compatibility
     });
 
     await standardUser.save();
@@ -141,53 +147,120 @@ router.post('/register', validate(registerSchema), async (req, res) => {
  */
 router.post('/login', validate(loginSchema), async (req, res) => {
   try {
-    const { email, phoneNumber, password } = req.body;
-    console.log(`Login attempt for: ${email || phoneNumber}, password length: ${password?.length}`);
+    let { email, phoneNumber, password, deviceId } = req.body;
 
-    let user = null;
-
-    if (email) {
-      user = await User.findOne({ email });
-    } else if (phoneNumber) {
-      // Find MSRUser by phone number first to get the email
-      const msrUser = await MSRUser.findOne({ phoneNumber });
-      if (msrUser) {
-        // Find standard user by email derived from MSRUser
-        user = await User.findOne({ email: msrUser.companyEmail });
-      }
+    // Sanitize phone number if provided (strip all non-digits)
+    if (phoneNumber) {
+      phoneNumber = phoneNumber.toString().replace(/\D/g, '');
     }
+
+    console.log('Login attempt:', { email, phoneNumber, deviceId });
+
+    // Find user
+    const user = await User.findOne({
+      $or: [
+        { email: email },
+        { phoneNumber: phoneNumber }
+      ]
+    });
+
     if (!user) {
+      console.log('Login failed: User not found');
       return res.status(401).json({
         success: false,
         error: {
           code: 'INVALID_CREDENTIALS',
-          message: 'Invalid email or password'
+          message: 'Invalid credentials. Please try again.'
         }
       });
     }
 
-    // Check if user is active
-    if (!user.isActive) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          code: 'ACCOUNT_DISABLED',
-          message: 'Your account has been disabled'
-        }
-      });
-    }
+    console.log('User found:', user._id, user.roles);
 
     // Verify password
     const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
+      console.log('Login failed: Password mismatch for user', user.email);
       return res.status(401).json({
         success: false,
         error: {
           code: 'INVALID_CREDENTIALS',
-          message: 'Invalid email or password'
+          message: 'Invalid credentials. Please try again.'
         }
       });
     }
+
+    console.log('Password valid. Checking device restrictions...');
+
+    // Apply device restriction to any account that has a phone number (except admins)
+    // This prevents bypassing the lock by logging in via email.
+    if (user.phoneNumber && user.role !== 'admin') {
+      const currentDeviceId = (deviceId || '').toString().trim();
+      const registeredId = (user.registeredDeviceId || '').toString().trim();
+      const sessionDeviceId = (user.activeSession?.deviceId || '').toString().trim();
+
+      console.log('🔐 Restriction Check:', {
+        user: user.email,
+        currentDeviceId,
+        registeredId,
+        sessionDeviceId,
+        hasSession: !!user.activeSession?.token
+      });
+
+      // 1. Hardware Match (Registered Device)
+      if (registeredId && currentDeviceId && registeredId !== currentDeviceId) {
+        console.log('🚫 BLOCK: Device Hardware Mismatch', { registeredId, currentDeviceId });
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'DEVICE_MISMATCH',
+            message: `Your account is locked to a different device. (Registered: ...${registeredId.slice(-4)}, Current: ...${currentDeviceId.slice(-4)})`
+          }
+        });
+      }
+
+      // 2. Session Match (Single Active Session)
+      if (user.activeSession?.token) {
+        if (currentDeviceId && sessionDeviceId && sessionDeviceId !== currentDeviceId) {
+          console.log('🚫 BLOCK: Active session on different device');
+          return res.status(403).json({
+            success: false,
+            error: {
+              code: 'ALREADY_LOGGED_IN',
+              message: 'This account is already active on another device.'
+            }
+          });
+        }
+        console.log('✅ Re-login on same device allowed.');
+      }
+
+      // 3. Device Ownership Check (No sharing devices)
+      if (currentDeviceId) {
+        const otherUser = await User.findOne({
+          registeredDeviceId: currentDeviceId,
+          _id: { $ne: user._id }
+        });
+
+        if (otherUser) {
+          console.log('🚫 BLOCK: Device already owned by another user', { otherUser: otherUser.email });
+          return res.status(403).json({
+            success: false,
+            error: {
+              code: 'DEVICE_OWNED',
+              message: `This device is already registered to user: ${otherUser.email}. Multiple users per device are not allowed.`
+            }
+          });
+        }
+      }
+
+      // 4. Register device if not yet set
+      if (!user.registeredDeviceId && currentDeviceId) {
+        user.registeredDeviceId = currentDeviceId;
+        console.log('📱 Registered first device:', currentDeviceId);
+      }
+    }
+
+
 
     // Generate token
     const token = generateToken({
@@ -195,6 +268,16 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       email: user.email,
       role: user.role
     });
+
+    // Update active session
+    user.activeSession = {
+      token,
+      deviceId: deviceId || null,
+      loginTime: new Date(),
+      ipAddress: req.ip || req.connection.remoteAddress
+    };
+
+    await user.save();
 
     res.json({
       success: true,
@@ -207,7 +290,8 @@ router.post('/login', validate(loginSchema), async (req, res) => {
           lastName: user.lastName,
           role: user.role,
           district: user.district,
-          municipality: user.municipality
+          municipality: user.municipality,
+          phoneNumber: user.phoneNumber
         }
       }
     });
@@ -222,6 +306,40 @@ router.post('/login', validate(loginSchema), async (req, res) => {
     });
   }
 });
+
+/**
+ * POST /users/logout
+ * Logout user and clear active session
+ */
+router.post('/logout', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (user) {
+      user.activeSession = {
+        token: null,
+        deviceId: null,
+        loginTime: null,
+        ipAddress: null
+      };
+      await user.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to logout'
+      }
+    });
+  }
+});
+
 
 /**
  * GET /users/profile
@@ -375,7 +493,8 @@ router.post('/msr-users', authMiddleware, async (req, res) => {
       password: hashedPassword,
       firstName: name || username,
       lastName: company || 'MSR',
-      role: 'creator'
+      role: 'creator',
+      phoneNumber // Sync phone number to standard user
     });
 
     await standardUser.save();
@@ -437,7 +556,11 @@ router.put('/msr-users/:id', authMiddleware, async (req, res) => {
     // Sync with standard User
     await User.findOneAndUpdate(
       { email: msrUser.companyEmail },
-      { firstName: msrUser.name, lastName: msrUser.company }
+      {
+        firstName: msrUser.name,
+        lastName: msrUser.company,
+        phoneNumber: msrUser.phoneNumber // Sync phone number
+      }
     );
 
     res.json({ success: true, data: msrUser });

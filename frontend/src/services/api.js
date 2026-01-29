@@ -1,6 +1,12 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'; // API Gateway
+// Dynamic API URL for LAN access
+const getBaseUrl = (port) => {
+  const hostname = window.location.hostname;
+  return `http://${hostname}:${port}`;
+};
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || getBaseUrl(3000);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -37,7 +43,8 @@ api.interceptors.response.use(
 export const userAPI = {
   register: (data) => api.post('/users/register', data),
   msrRegister: (data) => api.post('/users/msr-register', data),
-  login: (data) => api.post('/users/login', data),
+  // Login directly to User Service (Port 3001) using dynamic hostname
+  login: (data) => axios.post(`${getBaseUrl(3001)}/users/login`, data).then(res => res.data),
   getProfile: () => api.get('/users/profile'),
   updateProfile: (data) => api.put('/users/profile', data),
   getMSRUsers: () => api.get('/users/msr-users'),

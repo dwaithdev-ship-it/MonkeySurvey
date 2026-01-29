@@ -45,6 +45,27 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  phoneNumber: {
+    type: String,
+    required: function () {
+      // Phone number is required for respondent users
+      return this.role === 'respondent';
+    },
+    unique: true,
+    trim: true,
+    sparse: true,
+    index: true
+  },
+  activeSession: {
+    token: { type: String, default: null },
+    deviceId: { type: String, default: null },
+    loginTime: { type: Date, default: null },
+    ipAddress: { type: String, default: null }
+  },
+  registeredDeviceId: {
+    type: String,
+    default: null
+  },
   settings: {
     notifications: {
       type: Boolean,
@@ -64,7 +85,6 @@ const userSchema = new mongoose.Schema({
 });
 
 // Index for email lookups
-userSchema.index({ email: 1 });
 userSchema.index({ role: 1 });
 
 // Remove password from JSON output

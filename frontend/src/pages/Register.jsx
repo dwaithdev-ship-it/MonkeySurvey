@@ -78,16 +78,35 @@ const Register = () => {
       return;
     }
 
+    // Phone number validation
+    if (formData.phoneNumber && !/^[0-9]{10}$/.test(formData.phoneNumber)) {
+      setError("Please enter a valid 10-digit phone number");
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await userAPI.msrRegister(formData);
 
       if (response.success) {
-        alert("Account created successfully! Please login.");
+        alert("Account created successfully! Please login with your phone number and password.");
         navigate("/login");
       }
     } catch (err) {
-      setError(err.error?.message || err.message || "Registration failed");
+      console.error('Registration error:', err);
+
+      // Handle specific errors
+      const errorMessage = err.error?.message || err.message || "Registration failed";
+
+      if (errorMessage.includes('duplicate') || errorMessage.includes('already exists')) {
+        if (errorMessage.toLowerCase().includes('phone')) {
+          setError("This phone number is already registered. Please login or use a different phone number.");
+        } else {
+          setError("Username or email already exists. Please use different credentials.");
+        }
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -190,8 +209,12 @@ const Register = () => {
             onChange={handleChange}
             required
             pattern="[0-9]{10}"
-            title="Ten digit phone number"
+            placeholder="10 digit mobile number"
+            title="Enter a valid 10-digit phone number"
           />
+          <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
+            You will use this number to login to the survey
+          </small>
         </div>
 
         <div className="form-group">

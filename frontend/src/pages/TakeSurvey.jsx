@@ -23,14 +23,46 @@ export default function TakeSurvey() {
 
   const captureLocation = () => {
     if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-      }, (error) => {
-        console.warn("Geolocation permission denied or error:", error);
-      });
+      // Request location with high accuracy
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          console.log('Location captured:', position.coords);
+          setLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.warn("Geolocation error:", error);
+          let errorMessage = 'Location access is required to submit the survey. ';
+
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage += 'Please enable location permissions in your browser settings.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage += 'Location information is unavailable.';
+              break;
+            case error.TIMEOUT:
+              errorMessage += 'Location request timed out. Please try again.';
+              break;
+            default:
+              errorMessage += 'An unknown error occurred.';
+          }
+
+          alert(errorMessage);
+          setError(errorMessage);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    } else {
+      const errorMsg = 'Geolocation is not supported by your browser. Please use a modern browser.';
+      alert(errorMsg);
+      setError(errorMsg);
     }
   };
 
@@ -213,6 +245,18 @@ export default function TakeSurvey() {
     setError('');
 
     try {
+      // Validate location is captured
+      if (!location || !location.latitude || !location.longitude) {
+        setError('Location is required to submit the survey. Please enable location permissions and refresh the page.');
+        setSubmitting(false);
+
+        // Try to capture location again
+        captureLocation();
+
+        alert('Location is required to submit the survey. Please allow location access when prompted.');
+        return;
+      }
+
       // Get user from localStorage if logged in
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
       const userName = storedUser.name || storedUser.firstName || 'Anonymous';
@@ -289,10 +333,27 @@ export default function TakeSurvey() {
     alert('Your progress has been saved!');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        // Call logout API to clear server-side session
+        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/users/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Logout API error:', error);
+      // Continue with logout even if API fails
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/login');
+    }
   };
 
 
@@ -501,7 +562,24 @@ export default function TakeSurvey() {
   return (
     <div className="take-survey-container">
       <div className="survey-header-section">
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {location ? (
+              <span style={{ color: '#10b981', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.857 5.857l-4.5 4.5a.5.5 0 01-.707 0l-2-2a.5.5 0 01.707-.707L7 9.293l4.146-4.147a.5.5 0 01.707.707z" />
+                </svg>
+                Location Enabled
+              </span>
+            ) : (
+              <span style={{ color: '#ef4444', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 0a8 8 0 100 16A8 8 0 008 0zM7 4h2v5H7V4zm0 6h2v2H7v-2z" />
+                </svg>
+                Location Required
+              </span>
+            )}
+          </div>
           <button onClick={handleLogout} className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '14px' }}>
             Logout
           </button>

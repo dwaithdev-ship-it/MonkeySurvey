@@ -5,11 +5,22 @@ import "./Login.css";
 import logo from "../assets/logo.png";
 
 const Login = () => {
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Generate or retrieve device ID
+  const getDeviceId = () => {
+    let deviceId = localStorage.getItem('deviceId');
+    if (!deviceId) {
+      // Generate a unique device ID based on browser fingerprint
+      deviceId = `device_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      localStorage.setItem('deviceId', deviceId);
+    }
+    return deviceId;
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -17,7 +28,16 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const response = await userAPI.login({ phoneNumber, password });
+      // Determine if identifier is email or phone number
+      const cleanIdentifier = identifier.trim();
+      const isEmail = cleanIdentifier.includes('@');
+      const deviceId = getDeviceId();
+
+      const loginData = isEmail
+        ? { email: cleanIdentifier, password, deviceId }
+        : { phoneNumber: cleanIdentifier, password, deviceId };
+
+      const response = await userAPI.login(loginData);
 
       if (response.success) {
         localStorage.setItem("token", response.data.token);
@@ -37,7 +57,24 @@ const Login = () => {
       }
     } catch (err) {
       console.error("Login error:", err);
-      setError(err.response?.data?.error?.message || "Invalid credentials. Please try again.");
+
+      // Handle specific error codes
+      const errorCode = err.response?.data?.error?.code;
+      const errorMessage = err.response?.data?.error?.message;
+
+      if (errorCode === 'ALREADY_LOGGED_IN') {
+        setError('You are already logged in on another device. Please logout from that device first or contact admin.');
+      } else if (errorCode === 'DEVICE_MISMATCH') {
+        setError('Your account is locked to a different device. Please use the phone you registered with.');
+      } else if (errorCode === 'DEVICE_OWNED') {
+        setError('This device is already registered to another user. You cannot use this device with this account.');
+      } else if (errorCode === 'ACCOUNT_DISABLED') {
+        setError('Your account has been disabled. Please contact admin.');
+      } else if (errorCode === 'INVALID_CREDENTIALS') {
+        setError('Invalid phone number or password. Please try again.');
+      } else {
+        setError(errorMessage || "Invalid credentials. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -65,12 +102,10 @@ const Login = () => {
 
           <form onSubmit={handleLogin}>
             <input
-              type="tel"
-              placeholder="Phone Number"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              pattern="[0-9]{10}"
-              title="Ten digit phone number"
+              type="text"
+              placeholder="Email or Phone Number"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               required
             />
             <input
