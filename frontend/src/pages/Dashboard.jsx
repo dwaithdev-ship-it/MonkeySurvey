@@ -53,6 +53,9 @@ const Dashboard = () => {
   const [municipalities, setMunicipalities] = useState([]);
   const [selectedParl, setSelectedParl] = useState("all");
   const [selectedMuni, setSelectedMuni] = useState("all");
+  const [selectedWard, setSelectedWard] = useState("all");
+
+  const wardNumbers = Array.from({ length: 100 }, (_, i) => i + 1);
 
   const navigate = useNavigate();
 
@@ -124,7 +127,8 @@ const Dashboard = () => {
     const filteredResponses = responses.filter(res => {
       const parlMatch = selectedParl === "all" || res.parliament === selectedParl;
       const muniMatch = selectedMuni === "all" || res.municipality === selectedMuni;
-      return parlMatch && muniMatch;
+      const wardMatch = selectedWard === "all" || res.ward_num === selectedWard.toString();
+      return parlMatch && muniMatch && wardMatch;
     });
 
     const counts = {
@@ -199,8 +203,11 @@ const Dashboard = () => {
       colors.push(colorMap.others);
     }
 
+    const total = data.reduce((a, b) => a + b, 0);
+
     return {
       labels,
+      total,
       datasets: [
         {
           label: `Chart (Filtered: ${filteredResponses.length} Responses)`,
@@ -227,6 +234,17 @@ const Dashboard = () => {
         display: true,
         text: 'Survey Response Distribution',
       },
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            const label = context.label || '';
+            const value = context.raw || 0;
+            const total = chartData.total || 1;
+            const percentage = ((value / total) * 100).toFixed(1);
+            return `${label}: ${value} (${percentage}%)`;
+          }
+        }
+      }
     },
     maintainAspectRatio: false
   };
@@ -258,6 +276,18 @@ const Dashboard = () => {
                 <option value="all">All Municipalities</option>
                 {municipalities.map((muni, idx) => (
                   <option key={idx} value={muni}>{muni}</option>
+                ))}
+              </select>
+            </div>
+            <div className="dropdown-item">
+              <label>Ward Number</label>
+              <select
+                value={selectedWard}
+                onChange={(e) => setSelectedWard(e.target.value)}
+              >
+                <option value="all">All Wards</option>
+                {wardNumbers.map((num) => (
+                  <option key={num} value={num}>{num}</option>
                 ))}
               </select>
             </div>
