@@ -146,7 +146,7 @@ export default function TakeSurvey() {
           questions: [
             { id: "q1", displayTitle: "Select your Parliament", type: "dropdown", options: "Chevella\nMalkajgiri\nHyderabad", required: true },
             { id: "q2", displayTitle: "Select your Municipality", type: "dropdown", options: "Chevella\nManikonda\nNarsingi", required: true },
-            { id: "q3", displayTitle: "Ward Number", type: "text", required: true },
+            { id: "q3", displayTitle: "Ward num", type: "text", required: true },
             { id: "q4", displayTitle: "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?", type: "radio", options: "1. బీజేపీ\n2. కాంగ్రెస్\n3. బిఆర్ఎస్\n4. ఇతరులు", required: true }
           ]
         };
@@ -265,11 +265,22 @@ export default function TakeSurvey() {
     if (isHeaderLocked && qIndex !== -1 && qIndex < 3) {
       return;
     }
-    setAnswers(prev => ({ ...prev, [questionId]: value }));
+    const newAnswers = { ...answers, [questionId]: value };
+    setAnswers(newAnswers);
+
+    // Auto-submit if it's question 4 (the final party question)
+    if (qIndex === 3) {
+      performSubmit(newAnswers);
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = (e) => {
+    if (e) e.preventDefault();
+    performSubmit(answers);
+  };
+
+  const performSubmit = async (currentAnswers) => {
+    if (submitting) return;
     setSubmitting(true);
     try {
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -282,20 +293,20 @@ export default function TakeSurvey() {
       const targetQuestionText = "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?";
       const wardCouncilorQuestion = survey?.questions?.find(q => q.question === targetQuestionText) || survey?.questions?.[3];
       const wardCouncilorId = wardCouncilorQuestion?._id || wardCouncilorQuestion?.id;
-      let question1Value = answers[wardCouncilorId] || '';
+      let question1Value = currentAnswers[wardCouncilorId] || '';
       if (Array.isArray(question1Value)) question1Value = question1Value.join(', ');
 
       const payload = {
         surveyId: survey?._id || surveyId,
         userName,
-        parliament: answers[q1Id] || '',
-        municipality: answers[q2Id] || '',
-        ward_num: answers[q3Id] || '',
+        parliament: currentAnswers[q1Id] || '',
+        municipality: currentAnswers[q2Id] || '',
+        ward_num: currentAnswers[q3Id] || '',
         Question_1_title: targetQuestionText,
         Question_1_answer: question1Value,
         Question_1: question1Value,
         location,
-        answers: Object.entries(answers).map(([qId, val]) => ({ questionId: qId, value: val }))
+        answers: Object.entries(currentAnswers).map(([qId, val]) => ({ questionId: qId, value: val }))
       };
 
       const response = await responseAPI.submit(payload);
@@ -313,12 +324,14 @@ export default function TakeSurvey() {
           }
         }
 
+        setResponseCount(prev => prev + 1);
         alert('Survey submitted successfully!');
 
         // RE-INITIALIZE with locked values
         const freshAnswers = initializeAnswers(survey);
-        if (localStorage.getItem(`ward_batch_${surveyId}`)) {
-          const batch = JSON.parse(localStorage.getItem(`ward_batch_${surveyId}`));
+        const activeBatch = localStorage.getItem(`ward_batch_${surveyId}`);
+        if (activeBatch) {
+          const batch = JSON.parse(activeBatch);
           setAnswers({
             ...freshAnswers,
             [q1Id]: batch.parliament,
@@ -363,11 +376,18 @@ export default function TakeSurvey() {
       return (
         <div className="options-container">
           {(question.options || []).map((opt, i) => (
-            <label key={i} className="option-label">
-              <input type="radio" name={`q-${qId}`} checked={value === (opt.value || opt.label)} onChange={() => handleAnswerChange(qId, opt.value || opt.label)} disabled={isDisabled} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {optionImages[opt.label] && <img src={optionImages[opt.label]} alt="" className="option-media-img" />}
-                <span>{opt.label}</span>
+            <label key={i} className="option-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '10px' }}>
+              <input
+                type="radio"
+                name={`q-${qId}`}
+                checked={value === (opt.value || opt.label)}
+                onChange={() => handleAnswerChange(qId, opt.value || opt.label)}
+                disabled={isDisabled}
+                style={{ accentColor: '#6366f1', cursor: 'pointer', transform: 'scale(1.2)' }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                {optionImages[opt.label] && <img src={optionImages[opt.label]} alt="" className="option-media-img" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />}
+                <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#1f2937' }}>{opt.label}</span>
               </div>
             </label>
           ))}
@@ -385,165 +405,118 @@ export default function TakeSurvey() {
   return (
     <div className="take-survey-container">
       <div className="survey-header-section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <div style={{ color: '#6366f1', fontSize: '13px' }}>📍 Location Synced</div>
-          <button onClick={() => { localStorage.removeItem('token'); navigate('/login'); }} className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '14px' }}>Logout</button>
-        </div>
-        <div className="survey-title-row">
-          <div className="title-left">
-            <div className="survey-logo-wrapper">
-              <img src={survey?.branding?.logo || logo} alt="Logo" className="survey-logo" />
-            </div>
-            <h1>{(survey?.title === '1' || survey?.title === '2' || survey?.title === 1 || survey?.title === 2 || !survey?.title) ? 'MSR Survey' : survey.title}</h1>
-            <p className="survey-description">{survey?.description}</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div className="survey-logo-wrapper" style={{ margin: 0, flex: '0 0 auto' }}>
+            <img src={survey?.branding?.logo || logo} alt="Logo" className="survey-logo" />
           </div>
-          <div className="responses-count-box">
-            <span className="responses-label">RESPONSES</span>
-            <span className="responses-number">{responseCount}</span>
+          <div style={{ flex: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', minWidth: '120px' }}>
+            <h1 style={{ margin: 0, fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 'bold', color: '#333', whiteSpace: 'nowrap' }}>MSR SURVEY</h1>
+            <img src="https://img.icons8.com/color/48/000000/marker.png" alt="Location" style={{ width: 'clamp(18px, 4vw, 22px)', height: 'clamp(18px, 4vw, 22px)' }} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '0 0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', padding: 'clamp(3px, 1vw, 5px) clamp(8px, 2vw, 15px)', borderRadius: '12px', border: '1px solid #dcfce7' }}>
+              <img src="https://img.icons8.com/color/48/000000/checklist.png" alt="Responses" style={{ width: 'clamp(18px, 4vw, 24px)', height: 'clamp(18px, 4vw, 24px)' }} />
+              <span style={{ fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 'bold', color: '#10b981' }}>{responseCount}</span>
+            </div>
+            <button
+              onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
+              className="btn-secondary"
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '4px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title="Logout"
+            >
+              <img
+                src="https://img.icons8.com/material-outlined/32/000000/logout-rounded-left.png"
+                alt="Logout"
+                style={{ width: 'clamp(22px, 4vw, 28px)', height: 'clamp(22px, 4vw, 28px)' }}
+              />
+            </button>
           </div>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="survey-form">
-
-        {/* SETUP MODE: Show when not locked */}
         {!isHeaderLocked && (
-          <div className="question-block" style={{ border: '2px dashed #6366f1', background: '#f8f9ff', borderRadius: '16px' }}>
-            <h2 style={{ color: '#4f46e5', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              ⚙️ Batch Holding Setup
-            </h2>
-            <p style={{ color: '#6366f1', marginBottom: '2rem' }}>
-              Choose your location and how many surveys you want to hold these options for.
-            </p>
-
-            <div className="setup-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+          <div className="question-block" style={{ border: '1.5px dashed #6366f1', background: '#f8f9ff', borderRadius: '12px', padding: '1rem 2rem', marginBottom: '0.75rem' }}>
+            <h2 style={{ color: '#4f46e5', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px' }}>⚙️ Batch Holding Setup</h2>
+            <div className="setup-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
               <div className="setup-field">
-                <label style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>Parliament</label>
-                <select
-                  className="answer-select"
-                  value={wardBatch?.parliament}
-                  onChange={(e) => handleParlChange(e.target.value)}
-                >
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px', fontSize: '12px' }}>Parliament</label>
+                <select className="answer-select" style={{ padding: '0.5rem', fontSize: '13px' }} value={wardBatch?.parliament} onChange={(e) => handleParlChange(e.target.value)}>
                   <option value="">Select Parliament</option>
                   {parliaments.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
-
               <div className="setup-field">
-                <label style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>Municipality</label>
-                <select
-                  className="answer-select"
-                  value={wardBatch?.municipality}
-                  onChange={(e) => setWardBatch(prev => ({ ...prev, municipality: e.target.value }))}
-                >
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px', fontSize: '12px' }}>Municipality</label>
+                <select className="answer-select" style={{ padding: '0.5rem', fontSize: '13px' }} value={wardBatch?.municipality} onChange={(e) => setWardBatch(prev => ({ ...prev, municipality: e.target.value }))}>
                   <option value="">Select Municipality</option>
                   {municipalities.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
-
               <div className="setup-field">
-                <label style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>Ward Number</label>
-                <input
-                  type="text"
-                  className="answer-input"
-                  placeholder="e.g. 15"
-                  value={wardBatch?.ward_num}
-                  onChange={(e) => setWardBatch(prev => ({ ...prev, ward_num: e.target.value }))}
-                />
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px', fontSize: '12px' }}>Ward num</label>
+                <input type="text" className="answer-input" style={{ padding: '0.5rem', fontSize: '13px' }} placeholder="e.g. 15" value={wardBatch?.ward_num} onChange={(e) => setWardBatch(prev => ({ ...prev, ward_num: e.target.value }))} />
               </div>
-
               <div className="setup-field">
-                <label style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>Holding Limit (Surveys)</label>
-                <select
-                  className="answer-select"
-                  value={wardBatch?.limit}
-                  onChange={(e) => setWardBatch(prev => ({ ...prev, limit: parseInt(e.target.value) }))}
-                >
-                  {[1, 2, 3, 5, 10, 15, 20, 50].map(n => (
-                    <option key={n} value={n}>{n} Surveys</option>
-                  ))}
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px', fontSize: '12px' }}>Holding Limit</label>
+                <select className="answer-select" style={{ padding: '0.5rem', fontSize: '13px' }} value={wardBatch?.limit} onChange={(e) => setWardBatch(prev => ({ ...prev, limit: parseInt(e.target.value) }))}>
+                  {[1, 2, 3, 5, 10, 15, 20, 50, 100].map(n => <option key={n} value={n}>{n} Surveys</option>)}
                 </select>
               </div>
             </div>
-
-            <button
-              type="button"
-              className="btn-primary"
-              style={{ width: '100%', padding: '1.2rem' }}
-              onClick={startBatch}
-            >
-              Confirm & Start Surveying
-            </button>
+            <button type="button" className="btn-primary" style={{ width: '100%', padding: '0.75rem', fontSize: '14px' }} onClick={startBatch}>Confirm & Start Surveying</button>
           </div>
         )}
 
-        {/* SURVEY MODE: Show when locked */}
         {isHeaderLocked && (
-          <>
-            <div className={`question-block header-group-block is-locked`}>
-              <div className="lock-indicator-bar" style={{ background: '#fffbeb', border: '2px solid #fbbf24', borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '20px' }}>🔒</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: '700', color: '#92400e' }}>Location Locked for {wardBatch?.limit} survey batch.</div>
-                  <div style={{ fontSize: '12px', color: '#b45309' }}>Complete all {wardBatch?.limit} surveys to change location.</div>
+          <div className={`question-block header-group-block is-locked`} style={{ padding: '0.75rem 2rem', marginBottom: '0.75rem' }}>
+            <div className="lock-indicator-bar" style={{ padding: '0.5rem 0.75rem', marginBottom: '0.75rem', fontSize: '13px' }}>
+              <span style={{ fontSize: '16px' }}>🔒</span>
+              <div style={{ flex: 1 }}><div style={{ fontWeight: '700', color: '#92400e' }}>Location Locked</div></div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: '6px' }}>
+                  <span style={{ fontSize: '10px', color: '#92400e', fontWeight: '700' }}>Limit:</span>
+                  <select style={{ border: '1px solid #fbbf24', borderRadius: '4px', fontSize: '10px', padding: '0 2px', background: 'white', cursor: 'pointer' }} value={wardBatch?.limit} onChange={(e) => updateBatchLimit(parseInt(e.target.value))}>
+                    {[1, 2, 3, 5, 10, 15, 20, 50, 100].map(n => <option key={n} value={n}>{n} Q</option>)}
+                  </select>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.5)', padding: '4px 8px', borderRadius: '8px' }}>
-                    <span style={{ fontSize: '11px', color: '#92400e', fontWeight: '700' }}>Change Limit:</span>
-                    <select
-                      style={{ border: '1px solid #fbbf24', borderRadius: '4px', fontSize: '11px', padding: '1px 4px', background: 'white', cursor: 'pointer' }}
-                      value={wardBatch?.limit}
-                      onChange={(e) => updateBatchLimit(parseInt(e.target.value))}
-                    >
-                      {[1, 2, 3, 5, 10, 15, 20, 50, 100].map(n => (
-                        <option key={n} value={n}>{n} Surveys</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ background: '#fbbf24', color: '#92400e', padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', fontSize: '13px' }}>
-                      {wardBatch?.count} / {wardBatch?.limit}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => { if (window.confirm("Reset batch?")) { localStorage.removeItem(`ward_batch_${surveyId}`); setupBatchAndAnswers(survey, initializeAnswers(survey)); } }}
-                      style={{ background: 'none', border: 'none', color: '#92400e', fontSize: '11px', textDecoration: 'underline', cursor: 'pointer', fontWeight: '600' }}
-                    >
-                      Reset
-                    </button>
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ background: '#fbbf24', color: '#92400e', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold', fontSize: '11px' }}>{wardBatch?.count} / {wardBatch?.limit}</span>
+                  <button type="button" onClick={() => { if (window.confirm("Reset batch?")) { localStorage.removeItem(`ward_batch_${surveyId}`); setupBatchAndAnswers(survey, initializeAnswers(survey)); } }} style={{ background: 'none', border: 'none', color: '#92400e', fontSize: '10px', textDecoration: 'underline', cursor: 'pointer', fontWeight: '600' }}>Reset</button>
                 </div>
-              </div>
-              <div className="inline-fields-row">
-                {survey?.questions?.slice(0, 3).map((q, i) => (
-                  <div key={q._id || q.id} className="inline-field">
-                    <div className="question-header compact">
-                      <span className="question-number">Question {i + 1}</span>
-                      {q.required && <span className="required-indicator">*</span>}
-                    </div>
-                    <label className="field-label-compact">{q.question}</label>
-                    {renderQuestion(q, i)}
-                  </div>
-                ))}
               </div>
             </div>
-
-            {survey?.questions?.slice(3).map((q, i) => (
-              <div key={q._id || q.id} className="question-block full-width-block">
-                <div className="question-header">
-                  <span className="question-number">Question {i + 4}</span>
-                  {q.required && <span className="required-indicator">*</span>}
+            <div className="inline-fields-row" style={{ gap: '0.75rem' }}>
+              {survey?.questions?.slice(0, 3).map((q, i) => (
+                <div key={q._id || q.id} className="inline-field">
+                  <label className="field-label-compact" style={{ fontSize: '11px', marginBottom: '4px' }}>{q.question}</label>
+                  {renderQuestion(q, i)}
                 </div>
-                <h3 className="question-text">{q.question}</h3>
-                {renderQuestion(q, i + 3)}
-              </div>
-            ))}
-
-            <div className="form-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              <button type="button" onClick={() => navigate('/dashboard')} className="btn-secondary">Cancel</button>
-              <button type="submit" disabled={submitting} className="btn-primary">{submitting ? 'Submitting...' : 'Submit Survey'}</button>
+              ))}
             </div>
-          </>
+          </div>
+        )}
+
+        {isHeaderLocked && survey?.questions?.slice(3).map((q, i) => (
+          <div key={q._id || q.id} className="question-block full-width-block" style={{ padding: '1rem 2rem', marginBottom: '0.5rem' }}>
+            <div className="question-header" style={{ marginBottom: '0.5rem' }}>
+              <span className="question-number" style={{ fontSize: '11px' }}>Question {i + 4}</span>
+            </div>
+            <h3 className="question-text" style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{q.question}</h3>
+            {renderQuestion(q, i + 3)}
+          </div>
+        ))}
+
+        {submitting && (
+          <div style={{ textAlign: 'center', padding: '0.5rem', color: '#6366f1', fontWeight: 'bold' }}>⌛ Submitting...</div>
         )}
       </form>
     </div>

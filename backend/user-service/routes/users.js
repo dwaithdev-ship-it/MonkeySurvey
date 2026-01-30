@@ -156,13 +156,24 @@ router.post('/login', validate(loginSchema), async (req, res) => {
 
     console.log('Login attempt:', { email, phoneNumber, deviceId });
 
+    // Construct query based on provided credentials
+    const query = {};
+    if (email) {
+      query.email = email.toLowerCase();
+    } else if (phoneNumber) {
+      query.phoneNumber = phoneNumber;
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'MISSING_CREDENTIALS',
+          message: 'Email or Phone Number is required'
+        }
+      });
+    }
+
     // Find user
-    const user = await User.findOne({
-      $or: [
-        { email: email },
-        { phoneNumber: phoneNumber }
-      ]
-    });
+    const user = await User.findOne(query);
 
     if (!user) {
       console.log('Login failed: User not found');
