@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -7,17 +7,27 @@ function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth(); // Added 'user' to destructuring
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  useEffect(() => {
+    if (user && user.role !== 'admin') {
+      navigate('/survey/1');
+    }
+  }, [user, navigate]);
+
+  const handleSubmit = async (e) => { // Renamed handleLogout to handleSubmit to match existing function
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      await login({ email, password });
-      navigate('/dashboard');
+      const res = await login({ email, password });
+      if (res.data.user.role === 'admin') {
+        navigate('/dashboard');
+      } else {
+        navigate('/survey/1');
+      }
     } catch (err) {
       setError(err.response?.data?.error?.message || 'Login failed');
     } finally {

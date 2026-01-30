@@ -43,7 +43,6 @@ const Login = () => {
         localStorage.setItem("token", response.data.token);
         if (response.data.user) {
           localStorage.setItem("user", JSON.stringify(response.data.user));
-          // Direct survey access for all except admin
           if (response.data.user.role === 'admin') {
             navigate("/dashboard");
           } else {
