@@ -43,7 +43,7 @@ done
 # Frontend
 if [ ! -f "frontend/.env" ]; then
    # Create a basic production env for frontend
-   echo "VITE_API_URL=http://$(curl -s http://checkip.amazonaws.com):3000" > frontend/.env
+   echo "VITE_API_URL=/api" > frontend/.env
 fi
 
 # 4. Stop existing services
