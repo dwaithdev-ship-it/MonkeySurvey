@@ -397,3 +397,104 @@ body {
   cursor: not-allowed;
   color: #999;
 }
+
+/* WARD STATISTICS TABLE */
+.ward-stats-container {
+  background: white;
+  margin-top: 30px;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.ward-stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+.ward-stats-header h3 {
+  margin: 0;
+  color: #444;
+  font-size: 18px;
+  border: none;
+  padding: 0;
+}
+
+.ward-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+
+.ward-table td {
+  text-align: center;
+}
+
+.ward-table td:first-child {
+  font-weight: bold;
+  color: #555;
+}
+
+/* Reusing export-btn styles from above, making sure they look good */
+.export-options {
+  display: flex;
+  gap: 10px;
+}
+
+.export-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  color: white;
+  font-weight: bold;
+}
+
+.export-btn.csv {
+  background-color: #28a745;
+}
+
+.export-btn.xls {
+  background-color: #217346;
+}
+
+.export-btn.pdf {
+  background-color: #dc3545;
+}
+
+/* Print Styles */
+@media print {
+
+  .sidebar,
+  .topbar,
+  .navbar,
+  .controls-panel,
+  .chart-display-container,
+  .export-options {
+    display: none !important;
+  }
+
+  .body-area {
+    background: white;
+    padding: 0;
+  }
+
+  .content {
+    padding: 0;
+    overflow: visible;
+  }
+
+  .ward-stats-container {
+    box-shadow: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .page-title {
+    display: none;
+  }
+}

@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+const { initReportJob } = require('./jobs/reportJob');
 
 const app = express();
 const PORT = process.env.PORT || 3005;
@@ -70,6 +71,10 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/monkey
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('✓ Connected to MongoDB');
+
+    // Initialize scheduled report job
+    initReportJob();
+
     app.listen(PORT, () => {
       console.log(`✓ Notification Service running on port ${PORT}`);
     });

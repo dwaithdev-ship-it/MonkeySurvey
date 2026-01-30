@@ -328,3 +328,153 @@
     border: 1px solid #e2e8f0;
     border-radius: 3px;
 }
+
+/* EMAIL SCHEDULE TOGGLE */
+.header-left-group {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
+.email-schedule-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: #f8f9fa;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid #eef2f7;
+}
+
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Switch Styles */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #cbd5e1;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked+.slider {
+    background-color: #10b981;
+}
+
+input:focus+.slider {
+    box-shadow: 0 0 1px #10b981;
+}
+
+input:checked+.slider:before {
+    transform: translateX(16px);
+}
+
+.toggle-label {
+    font-size: 13px;
+    color: #475569;
+    font-weight: 500;
+}
+
+.email-freq-select {
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #334155;
+    background-color: white;
+    cursor: pointer;
+}
+
+.email-freq-select:focus {
+    outline: none;
+    border-color: #5399e1;
+}
+
+/* Tooltip Styles */
+.tooltip-icon-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    cursor: help;
+}
+
+.info-icon {
+    font-size: 16px;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.tooltip-icon-wrapper:hover .info-icon {
+    opacity: 1;
+}
+
+.tooltip-text {
+    visibility: hidden;
+    width: 320px;
+    background-color: #334155;
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 12px;
+    position: absolute;
+    z-index: 100;
+    top: 140%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 12px;
+    line-height: 1.5;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    font-weight: normal;
+}
+
+.tooltip-text::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent #334155 transparent;
+}
+
+.tooltip-icon-wrapper:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}

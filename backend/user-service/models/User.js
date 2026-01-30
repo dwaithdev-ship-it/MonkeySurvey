@@ -78,6 +78,15 @@ const userSchema = new mongoose.Schema({
     timezone: {
       type: String,
       default: 'UTC'
+    },
+    reportFrequency: {
+      type: String,
+      enum: ['1m', '1h', '24h'],
+      default: '1m'
+    },
+    lastReportSentAt: {
+      type: Date,
+      default: null
     }
   }
 }, {

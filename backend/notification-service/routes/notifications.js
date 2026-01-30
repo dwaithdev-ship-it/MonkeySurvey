@@ -6,7 +6,7 @@ const { authMiddleware } = require('../../shared/auth');
 router.post('/invite', authMiddleware, async (req, res) => {
   try {
     const { surveyId, recipients, message, scheduleAt } = req.body;
-    
+
     if (!surveyId || !recipients || recipients.length === 0) {
       return res.status(400).json({
         success: false,
@@ -16,7 +16,7 @@ router.post('/invite', authMiddleware, async (req, res) => {
         }
       });
     }
-    
+
     // Mock sending invitations
     res.json({
       success: true,
@@ -67,14 +67,38 @@ router.get('/settings', authMiddleware, async (req, res) => {
 // Update notification settings
 router.put('/settings', authMiddleware, async (req, res) => {
   try {
-    const settings = req.body;
-    
-    // Mock updating settings
+    const { frequency, types } = req.body;
+    const mongoose = require('mongoose');
+    const User = mongoose.model('User');
+
+    // Update the user's settings in MongoDB
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
+      {
+        $set: {
+          'settings.reportFrequency': frequency,
+          'settings.notificationTypes': types
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'USER_NOT_FOUND',
+          message: 'User settings could not be updated.'
+        }
+      });
+    }
+
     res.json({
       success: true,
-      data: settings
+      data: updatedUser.settings
     });
   } catch (error) {
+    console.error('Update settings error:', error);
     res.status(400).json({
       success: false,
       error: {

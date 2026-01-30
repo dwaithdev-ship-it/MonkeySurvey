@@ -25,14 +25,14 @@ async function seedTSMunicipalSurvey() {
         console.log('Connected.');
 
         // 1. Create/Get Admin User
-        const adminEmail = 'admin@monkeysurvey.com';
+        const adminEmail = 'dwaith.dev@mail.com';
         let adminUser = await User.findOne({ email: adminEmail });
 
         if (!adminUser) {
             console.log('Admin user not found. Creating...');
             adminUser = new User({
                 email: adminEmail,
-                password: 'admin123',
+                password: 'Dh@1thdev123',
                 firstName: 'Admin',
                 lastName: 'User',
                 role: 'admin'

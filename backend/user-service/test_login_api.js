@@ -3,8 +3,8 @@ async function testLoginApi() {
     try {
         const url = 'http://localhost:3000/users/login';
         const payload = {
-            email: 'admin@monkeysurvey.com',
-            password: 'admin123'
+            email: 'dwaith.dev@mail.com',
+            password: 'Dh@1thdev123'
         };
 
         console.log(`Sending POST to ${url}`);

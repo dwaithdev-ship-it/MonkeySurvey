@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "./layout";
 import { responseAPI, parlConsAPI } from "../services/api";
@@ -280,6 +280,153 @@ const Dashboard = () => {
     maintainAspectRatio: false
   };
 
+  // Aggregate Ward Stats Memoized
+  const wardStatsData = useMemo(() => {
+    // Filter responses based on current selection
+    const filtered = responses.filter(res => {
+      const parlMatch = selectedParl === "all" || res.parliament === selectedParl;
+      const muniMatch = selectedMuni === "all" || res.municipality === selectedMuni;
+      // Ward filter is ignored for the ward-wise table as we want to show all wards or relevant wards
+      return parlMatch && muniMatch;
+    });
+
+    const stats = {};
+
+    filtered.forEach(res => {
+      const ward = res.ward_num;
+      const parl = res.parliament || 'N/A';
+      const muni = res.municipality || 'N/A';
+
+      if (!ward) return;
+
+      // Composite key to distinguish same ward number in different areas
+      const key = `${parl}_${muni}_${ward}`;
+
+      if (!stats[key]) {
+        stats[key] = {
+          parliament: parl,
+          municipality: muni,
+          ward: ward,
+          bjp: 0,
+          congress: 0,
+          brs: 0,
+          others: 0,
+          total: 0
+        };
+      }
+
+      const q1 = res.Question_1 || '';
+      if (q1.includes('బీజేపీ')) stats[key].bjp++;
+      else if (q1.includes('కాంగ్రెస్')) stats[key].congress++;
+      else if (q1.includes('బిఆర్ఎస్')) stats[key].brs++;
+      else if (q1.includes('ఇతరులు')) stats[key].others++;
+
+      stats[key].total++;
+    });
+
+    // Determine sort order: 
+    // If specific Parliament/Muni selected, sort by Ward.
+    // If All selected, sort by Parliament -> Municipality -> Ward.
+    return Object.values(stats).sort((a, b) => {
+      if (a.parliament !== b.parliament) return a.parliament.localeCompare(b.parliament);
+      if (a.municipality !== b.municipality) return a.municipality.localeCompare(b.municipality);
+      return parseInt(a.ward) - parseInt(b.ward);
+    });
+  }, [responses, selectedParl, selectedMuni]);
+
+  const exportWardCSV = () => {
+    if (wardStatsData.length === 0) return;
+
+    const headers = ["Parliament", "Municipality", "Ward Number", "BJP", "Congress", "BRS", "Others", "Total Responses"];
+    const rows = wardStatsData.map(row => [
+      row.parliament, row.municipality, row.ward, row.bjp, row.congress, row.brs, row.others, row.total
+    ]);
+
+    let csvContent = "data:text/csv;charset=utf-8,"
+      + headers.join(",") + "\n"
+      + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `ward_stats_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportWardXLS = () => {
+    if (wardStatsData.length === 0) return;
+
+    // XML-based XLS template for better compatibility than simple CSV
+    let xlsContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="UTF-8">
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Ward Statistics</x:Name>
+                <x:WorksheetOptions>
+                  <x:DisplayGridlines/>
+                </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+      </head>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>Parliament</th>
+              <th>Municipality</th>
+              <th>Ward Number</th>
+              <th>BJP</th>
+              <th>Congress</th>
+              <th>BRS</th>
+              <th>Others</th>
+              <th>Total Responses</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${wardStatsData.map(row => `
+              <tr>
+                <td>${row.parliament}</td>
+                <td>${row.municipality}</td>
+                <td>${row.ward}</td>
+                <td>${row.bjp}</td>
+                <td>${row.congress}</td>
+                <td>${row.brs}</td>
+                <td>${row.others}</td>
+                <td>${row.total}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([xlsContent], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ward_stats_${new Date().toISOString().slice(0, 10)}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const printWardStats = () => {
+    // Create a printable window or use a specific print style
+    // For simplicity and effectiveness in SPA, we can clone the node and print it, or just use window.print with CSS media queries
+    window.print();
+  };
+
   return (
     <Layout user={user}>
       <h1 className="page-title">Dashboard Analytics</h1>
@@ -368,12 +515,68 @@ const Dashboard = () => {
           ) : (
             <div className="chart-wrapper">
               {chartType === 'pie' ? (
-                <Pie data={chartData} options={options} plugins={[ChartDataLabels]} />
+                <Pie
+                  key={`${selectedParl}-${selectedMuni}-${selectedWard}-${chartType}`}
+                  data={chartData}
+                  options={options}
+                  plugins={[ChartDataLabels]}
+                />
               ) : (
-                <Bar data={chartData} options={options} plugins={[ChartDataLabels]} />
+                <Bar
+                  key={`${selectedParl}-${selectedMuni}-${selectedWard}-${chartType}`}
+                  data={chartData}
+                  options={options}
+                  plugins={[ChartDataLabels]}
+                />
               )}
             </div>
           )}
+        </div>
+
+        {/* WARD STATISTICS TABLE */}
+        <div className="ward-stats-container no-break">
+          <div className="ward-stats-header">
+            <h3>Ward-wise Statistics</h3>
+            <div className="export-options">
+              <button className="export-btn csv" onClick={exportWardCSV}>Export CSV</button>
+              <button className="export-btn xls" onClick={exportWardXLS}>Export XLS</button>
+              <button className="export-btn pdf" onClick={printWardStats}>Print PDF</button>
+            </div>
+          </div>
+          <div className="data-table-wrapper">
+            <table className="data-table ward-table">
+              <thead>
+                <tr>
+                  <th>Parliament</th>
+                  <th>Municipality</th>
+                  <th>Ward Number</th>
+                  <th style={{ color: '#FF9933' }}>BJP</th>
+                  <th style={{ color: '#00AEF0' }}>Congress</th>
+                  <th style={{ color: '#FF00FF' }}>BRS</th>
+                  <th style={{ color: '#666' }}>Others</th>
+                  <th>Total Responses</th>
+                </tr>
+              </thead>
+              <tbody>
+                {wardStatsData.length === 0 ? (
+                  <tr><td colSpan="8" className="empty-cell">No data available for the current selection.</td></tr>
+                ) : (
+                  wardStatsData.map((row) => (
+                    <tr key={`${row.parliament}-${row.municipality}-${row.ward}`}>
+                      <td>{row.parliament}</td>
+                      <td>{row.municipality}</td>
+                      <td>{row.ward}</td>
+                      <td>{row.bjp}</td>
+                      <td>{row.congress}</td>
+                      <td>{row.brs}</td>
+                      <td>{row.others}</td>
+                      <td><strong>{row.total}</strong></td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </Layout>

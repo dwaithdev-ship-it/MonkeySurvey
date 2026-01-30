@@ -11,8 +11,27 @@ async function verifyLogin() {
         await mongoose.connect(uri);
         console.log('Connected.');
 
-        const email = 'admin@monkeysurvey.com';
-        const password = 'admin123';
+        const email = 'dwaith.dev@mail.com';
+        const password = 'Dh@1thdev123';
+
+        // 1. Create/Get Admin User
+        const adminEmail = 'dwaith.dev@mail.com';
+        let adminUser = await User.findOne({ email: adminEmail });
+
+        if (!adminUser) {
+            console.log('Admin user not found. Creating...');
+            adminUser = new User({
+                email: adminEmail,
+                password: 'Dh@1thdev123', // This password will be hashed by the pre-save hook
+                firstName: 'Admin',
+                lastName: 'User',
+                role: 'admin'
+            });
+            await adminUser.save();
+            console.log('Admin user created successfully.');
+        } else {
+            console.log('Admin user already exists.');
+        }
 
         console.log(`Attempting login simulation for: ${email} with password: ${password}`);
         const user = await User.findOne({ email });

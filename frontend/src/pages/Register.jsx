@@ -202,19 +202,21 @@ const Register = () => {
 
         <div className="form-group">
           <label>Phone Number <span>*</span></label>
-          <input
-            type="tel"
-            name="phoneNumber"
-            value={formData.phoneNumber}
-            onChange={handleChange}
-            required
-            pattern="[0-9]{10}"
-            placeholder="10 digit mobile number"
-            title="Enter a valid 10-digit phone number"
-          />
-          <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
-            You will use this number to login to the survey
-          </small>
+          <div>
+            <input
+              type="tel"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              required
+              pattern="[0-9]{10}"
+              placeholder="10 digit mobile number"
+              title="Enter a valid 10-digit phone number"
+            />
+            <small style={{ fontSize: '12px', color: '#666', marginTop: '4px', display: 'block' }}>
+              You will use this number to login to the survey
+            </small>
+          </div>
         </div>
 
         <div className="form-group">
@@ -245,10 +247,10 @@ const Register = () => {
         <p className="login-link">
           Already have an account? <span onClick={() => navigate('/login')}>Login</span>
         </p>
-      </form>
+      </form >
 
       {/* BOTTOM SECTION */}
-      <div className="store-section">
+      < div className="store-section" >
         <div className="ratings">
           <span>★★★★★ Capterra</span>
           <span>★★★★★ GetApp</span>
@@ -264,8 +266,8 @@ const Register = () => {
         <p className="footer-text">
           © 2026 Techgrains Technologies Pvt. Ltd. All rights reserved.
         </p>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

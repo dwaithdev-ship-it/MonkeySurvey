@@ -16,6 +16,9 @@ const SurveyData = () => {
     const [loadingResponses, setLoadingResponses] = useState(false);
     const [filteredSurveys, setFilteredSurveys] = useState([]);
 
+    const [emailScheduleEnabled, setEmailScheduleEnabled] = useState(false);
+    const [emailFrequency, setEmailFrequency] = useState("24h");
+
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
         setUser(storedUser);
@@ -214,7 +217,43 @@ const SurveyData = () => {
                 ) : (
                     <>
                         <div className="page-header">
-                            <h2>Survey Data</h2>
+                            <div className="header-left-group">
+                                <h2>Survey Data</h2>
+                                <div className="email-schedule-wrapper">
+                                    <div className="toggle-container">
+                                        <label className="switch">
+                                            <input
+                                                type="checkbox"
+                                                checked={emailScheduleEnabled}
+                                                onChange={(e) => setEmailScheduleEnabled(e.target.checked)}
+                                            />
+                                            <span className="slider round"></span>
+                                        </label>
+                                        <span className="toggle-label">
+                                            {emailScheduleEnabled ? "Disable" : "Enable"} Email Schedule
+                                        </span>
+                                    </div>
+
+                                    {emailScheduleEnabled && (
+                                        <select
+                                            className="email-freq-select"
+                                            value={emailFrequency}
+                                            onChange={(e) => setEmailFrequency(e.target.value)}
+                                        >
+                                            <option value="1m">Every 1 Minute</option>
+                                            <option value="1h">Every 1 Hour</option>
+                                            <option value="24h">Every 24 Hours</option>
+                                        </select>
+                                    )}
+
+                                    <div className="tooltip-icon-wrapper">
+                                        <span className="info-icon">ℹ️</span>
+                                        <div className="tooltip-text">
+                                            Email Schedule allows you to automatically receive survey response updates by email without revisiting the dashboard. When enabled, you can choose to receive updates every 1 minute, every 1 hour, or every 24 hours, including response counts, key insights, and summary information for the selected survey. Emails will be sent to your registered email address ({user.email || 'Admin'}), and you can disable this option at any time to stop receiving updates.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <button className="upload-summary-btn">Upload Summary</button>
                         </div>
 
