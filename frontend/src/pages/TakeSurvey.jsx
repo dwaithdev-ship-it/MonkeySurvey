@@ -14,76 +14,116 @@ export default function TakeSurvey() {
   const [error, setError] = useState('');
   const [responseCount, setResponseCount] = useState(0);
 
+  // Batch Holding States
+  const [isHeaderLocked, setIsHeaderLocked] = useState(false);
+  const [wardBatch, setWardBatch] = useState(null);
+  const [parliaments, setParliaments] = useState([]);
+  const [municipalities, setMunicipalities] = useState([]);
+
   const [location, setLocation] = useState(null);
 
   useEffect(() => {
     fetchSurvey();
     captureLocation();
+    fetchParliaments();
   }, [surveyId]);
 
   const captureLocation = () => {
     if ("geolocation" in navigator) {
-      // Request location with high accuracy
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          console.log('Location captured:', position.coords);
           setLocation({
             latitude: position.coords.latitude,
-            longitude: position.coords.longitude
+            longitude: position.coords.longitude,
+            method: 'gps'
           });
         },
-        (error) => {
-          console.warn("Geolocation error:", error);
-          let errorMessage = 'Location access is required to submit the survey. ';
-
-          switch (error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage += 'Please enable location permissions in your browser settings.';
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage += 'Location information is unavailable.';
-              break;
-            case error.TIMEOUT:
-              errorMessage += 'Location request timed out. Please try again.';
-              break;
-            default:
-              errorMessage += 'An unknown error occurred.';
-          }
-
-          alert(errorMessage);
-          setError(errorMessage);
+        async () => {
+          await getIPLocation();
         },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
       );
     } else {
-      const errorMsg = 'Geolocation is not supported by your browser. Please use a modern browser.';
-      alert(errorMsg);
-      setError(errorMsg);
+      getIPLocation();
     }
+  };
+
+  const getIPLocation = async () => {
+    try {
+      const response = await fetch('https://ipapi.co/json/');
+      const data = await response.json();
+      if (data.latitude && data.longitude) {
+        setLocation({
+          latitude: data.latitude,
+          longitude: data.longitude,
+          method: 'ip'
+        });
+      }
+    } catch (err) {
+      setLocation({ latitude: 0, longitude: 0, method: 'none' });
+    }
+  };
+
+  const fetchParliaments = async () => {
+    try {
+      const res = await parlConsAPI.getParliaments();
+      if (res.success) {
+        setParliaments(res.data);
+        const newOptions = res.data.map(p => ({ label: p, value: p }));
+        setSurvey(prev => {
+          if (!prev) return prev;
+          const updatedQs = [...prev.questions];
+          if (updatedQs.length >= 1) {
+            updatedQs[0] = { ...updatedQs[0], options: newOptions };
+          }
+          return { ...prev, questions: updatedQs };
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch parliaments");
+    }
+  };
+
+  const fetchMunis = async (parl) => {
+    try {
+      const res = await parlConsAPI.getMunicipalities(parl);
+      if (res.success) {
+        setMunicipalities(res.data);
+        const newMuniOptions = res.data.map(m => ({ label: m, value: m }));
+        setSurvey(prev => {
+          if (!prev) return prev;
+          const updatedQs = [...prev.questions];
+          if (updatedQs.length >= 2) {
+            updatedQs[1] = { ...updatedQs[1], options: newMuniOptions };
+          }
+          return { ...prev, questions: updatedQs };
+        });
+        return res.data;
+      }
+    } catch (err) {
+      console.error("Failed to fetch municipalities");
+    }
+    return [];
+  };
+
+  const handleParlChange = async (val) => {
+    setWardBatch(prev => ({ ...prev, parliament: val, municipality: '' }));
+    await fetchMunis(val);
   };
 
   const fetchSurvey = async () => {
     try {
-      console.log('Fetching survey:', surveyId);
       const response = await surveyAPI.getById(surveyId);
-      console.log('Survey response:', response);
       if (response.success) {
-        setSurvey(response.data);
-        initializeAnswers(response.data);
+        const surveyData = response.data;
+        setSurvey(surveyData);
+        const initializedAnswers = initializeAnswers(surveyData);
+        setupBatchAndAnswers(surveyData, initializedAnswers);
 
-        // Fetch response count for current user
         try {
           const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
           const currentUserName = storedUser.name || storedUser.firstName;
-          const resData = await responseAPI.getAll({
-            surveyId,
-            limit: 1,
-            userName: currentUserName
-          });
+          const resData = await responseAPI.getAll({ surveyId, limit: 1, userName: currentUserName });
           if (resData.success) {
             setResponseCount(resData.data.pagination.total || 0);
           }
@@ -94,80 +134,41 @@ export default function TakeSurvey() {
         throw new Error('Survey not found');
       }
     } catch (err) {
-      console.warn('API fetch failed, checking localStorage:', err);
-      // Fallback to localStorage for prototype
+      console.warn('API fetch failed, checking fallback:', err);
       const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
       let found = localSurveys.find(s => s.id.toString() === surveyId.toString());
 
-      // Emergency fallback for ID '1' (MSR Survey) if not in localStorage or API (or if empty)
       if (surveyId.toString() === "1" && (!found || !found.questions || found.questions.length === 0)) {
-        // Fetch Parliaments to populate Q1
-        let parlOptions = [];
-        try {
-          const pRes = await parlConsAPI.getParliaments();
-          if (pRes.success) {
-            parlOptions = pRes.data.map(p => ({ label: p, value: p }));
-          }
-        } catch (pErr) {
-          console.error("Failed to fetch parliaments:", pErr);
-        }
-
         found = {
           name: "MSR Survey",
           description: "MSR Municipal Survey - Prototype",
           branding: { logo: '/logo.png' },
           questions: [
-            { id: "q1", displayTitle: "Select your Parliament", type: "dropdown", options: parlOptions.map(p => p.label).join('\n'), required: true },
-            { id: "q2", displayTitle: "Select your Municipality", type: "dropdown", options: "Select Parliament first", required: true },
-            { id: "q3", displayTitle: "Ward Number", type: "Singleline Text Input", required: true },
-            { id: "q4", displayTitle: "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?", type: "Radio Button", options: "1. బీజేపీ\n2. కాంగ్రెస్\n3. బిఆర్ఎస్\n4. ఇతరులు", required: true }
+            { id: "q1", displayTitle: "Select your Parliament", type: "dropdown", options: "Chevella\nMalkajgiri\nHyderabad", required: true },
+            { id: "q2", displayTitle: "Select your Municipality", type: "dropdown", options: "Chevella\nManikonda\nNarsingi", required: true },
+            { id: "q3", displayTitle: "Ward Number", type: "text", required: true },
+            { id: "q4", displayTitle: "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?", type: "radio", options: "1. బీజేపీ\n2. కాంగ్రెస్\n3. బిఆర్ఎస్\n4. ఇతరులు", required: true }
           ]
         };
       }
 
       if (found) {
-        // Adapt mock structure to what TakeSurvey expects
         const adaptedSurvey = {
           _id: surveyId,
           title: found.name,
-          description: found.description || 'Welcome to this survey.',
-          branding: found.branding || { logo: '/logo.png' },
+          description: found.description,
+          branding: found.branding,
           questions: (found.questions || []).map(q => ({
             _id: q._id || q.id,
-            question: q.displayTitle || q.question || q.type,
+            question: q.displayTitle || q.question,
             type: mapType(q.type),
             required: q.required,
-            mediaUrl: q.mediaUrl,
-            mediaType: q.mediaType,
-            optionMedia: q.id === "q4" ? {
-              "1. బీజేపీ": "/bjp.jpeg",
-              "2. కాంగ్రెస్": "/congress.jpeg",
-              "3. బిఆర్ఎస్": "/brs.jpeg",
-              "4. ఇతరులు": "/others.jpeg"
-            } : (q.optionMedia || {}),
             options: q.options ? (typeof q.options === 'string' ? q.options.split('\n').map(o => ({ label: o, value: o })) : q.options) : []
           }))
         };
         setSurvey(adaptedSurvey);
-        initializeAnswers(adaptedSurvey);
-
-        // Fetch response count for current user
-        try {
-          const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-          const currentUserName = storedUser.name || storedUser.firstName;
-          const resData = await responseAPI.getAll({
-            surveyId,
-            limit: 1,
-            userName: currentUserName
-          });
-          if (resData.success) {
-            setResponseCount(resData.data.pagination.total || 0);
-          }
-        } catch (cErr) {
-          console.warn('Failed to fetch response count:', cErr);
-        }
-      } else {
-        setError(err.error?.message || err.message || 'Survey not found');
+        const initializedAnswers = initializeAnswers(adaptedSurvey);
+        setupBatchAndAnswers(adaptedSurvey, initializedAnswers);
       }
     } finally {
       setLoading(false);
@@ -178,11 +179,9 @@ export default function TakeSurvey() {
     const t = type.toLowerCase();
     if (t.includes('radio')) return 'radio';
     if (t.includes('checkbox')) return 'checkbox';
-    if (t.includes('rating') || t.includes('net promoter score')) return 'rating';
-    if (t.includes('date')) return 'date';
-    if (t.includes('multiline') || t.includes('text block')) return 'textarea';
-    if (t.includes('drop down') || t.includes('dropdown')) return 'dropdown';
-    return 'text'; // Default
+    if (t.includes('rating')) return 'rating';
+    if (t.includes('dropdown')) return 'dropdown';
+    return 'text';
   };
 
   const initializeAnswers = (surveyData) => {
@@ -190,411 +189,213 @@ export default function TakeSurvey() {
     (surveyData.questions || []).forEach(q => {
       initialAnswers[q._id || q.id] = '';
     });
+    return initialAnswers;
+  };
 
-    // Load saved progress if available
-    const savedProgress = localStorage.getItem(`survey_progress_${surveyId}`);
-    if (savedProgress) {
+  const setupBatchAndAnswers = (surveyData, initialAnswers) => {
+    const existingBatch = localStorage.getItem(`ward_batch_${surveyId}`);
+
+    if (existingBatch) {
       try {
-        const parsedProgress = JSON.parse(savedProgress);
-        setAnswers({ ...initialAnswers, ...parsedProgress });
-        return;
+        const batch = JSON.parse(existingBatch);
+        if (batch.count <= batch.limit) {
+          setIsHeaderLocked(true);
+          setWardBatch(batch);
+          setAnswers({
+            ...initialAnswers,
+            [surveyData.questions[0]._id || surveyData.questions[0].id]: batch.parliament,
+            [surveyData.questions[1]._id || surveyData.questions[1].id]: batch.municipality,
+            [surveyData.questions[2]._id || surveyData.questions[2].id]: batch.ward_num
+          });
+
+          if (batch.parliament) {
+            fetchMunis(batch.parliament);
+          }
+          return;
+        }
       } catch (err) {
-        console.warn('Failed to load saved progress:', err);
+        console.warn('Failed to load batch:', err);
       }
     }
 
+    // If no batch, show setup mode using user profile defaults
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    setIsHeaderLocked(false);
+    setWardBatch({
+      parliament: storedUser.district || '',
+      municipality: storedUser.municipality || '',
+      ward_num: '',
+      limit: 3,
+      count: 1
+    });
     setAnswers(initialAnswers);
   };
 
-  const handleAnswerChange = async (questionId, value) => {
-    console.log('Answer change:', questionId, value);
-    setAnswers(prev => ({ ...prev, [questionId]: value }));
+  const startBatch = () => {
+    if (!wardBatch.parliament || !wardBatch.municipality || !wardBatch.ward_num) {
+      alert("Please select and enter all location details first.");
+      return;
+    }
 
-    // Dynamic Municipality Fetch Logic for MSR Prototype
+    localStorage.setItem(`ward_batch_${surveyId}`, JSON.stringify(wardBatch));
+    setIsHeaderLocked(true);
+
+    // Pre-fill answers with locked values
     const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
     const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
+    const q3Id = survey?.questions?.[2]?._id || survey?.questions?.[2]?.id;
 
-    if (questionId === q1Id && value) {
-      try {
-        const mRes = await parlConsAPI.getMunicipalities(value);
-        if (mRes.success) {
-          const newMuniOptions = mRes.data.map(m => ({ label: m, value: m }));
+    setAnswers(prev => ({
+      ...prev,
+      [q1Id]: wardBatch.parliament,
+      [q2Id]: wardBatch.municipality,
+      [q3Id]: wardBatch.ward_num
+    }));
+  };
 
-          // Update the survey definition's question 2 options
-          setSurvey(prevSurvey => {
-            const updatedQuestions = [...prevSurvey.questions];
-            updatedQuestions[1] = {
-              ...updatedQuestions[1],
-              options: newMuniOptions
-            };
-            return { ...prevSurvey, questions: updatedQuestions };
-          });
+  const updateBatchLimit = (newLimit) => {
+    const updatedBatch = { ...wardBatch, limit: newLimit };
+    setWardBatch(updatedBatch);
+    localStorage.setItem(`ward_batch_${surveyId}`, JSON.stringify(updatedBatch));
+  };
 
-          // Clear previous municipality answer
-          setAnswers(prev => ({ ...prev, [q2Id]: '' }));
-        }
-      } catch (err) {
-        console.error("Failed to fetch municipalities:", err);
-      }
+  const handleAnswerChange = (questionId, value) => {
+    const qIndex = survey?.questions?.findIndex(q => (q._id || q.id) === questionId);
+    // In locked mode, Question 1, 2, 3 are strictly blocked
+    if (isHeaderLocked && qIndex !== -1 && qIndex < 3) {
+      return;
     }
+    setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setError('');
-
     try {
-      // Validate location is captured
-      if (!location || !location.latitude || !location.longitude) {
-        setError('Location is required to submit the survey. Please enable location permissions and refresh the page.');
-        setSubmitting(false);
-
-        // Try to capture location again
-        captureLocation();
-
-        alert('Location is required to submit the survey. Please allow location access when prompted.');
-        return;
-      }
-
-      // Get user from localStorage if logged in
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
       const userName = storedUser.name || storedUser.firstName || 'Anonymous';
-
-      // Specifically target the "Ward Councilor" question for Question_1 storage
-      const targetQuestionText = "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?";
-      const wardCouncilorQuestion = survey?.questions?.find(q => q.question === targetQuestionText);
-      const wardCouncilorId = wardCouncilorQuestion?._id || wardCouncilorQuestion?.id;
-
-      let question1Value = answers[wardCouncilorId] || '';
-      if (Array.isArray(question1Value)) {
-        question1Value = question1Value.join(', ');
-      }
-
-      // Extract specific fields for Question 1, 2, 3 (Header Questions)
       const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
       const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
       const q3Id = survey?.questions?.[2]?._id || survey?.questions?.[2]?.id;
 
-      // Question 4 is the first main content question
-      const q4 = survey?.questions?.[3];
-      const q4Id = q4?._id || q4?.id;
+      // Specifically target the "Ward Councilor" question for Question_1 storage (for records table)
+      const targetQuestionText = "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?";
+      const wardCouncilorQuestion = survey?.questions?.find(q => q.question === targetQuestionText) || survey?.questions?.[3];
+      const wardCouncilorId = wardCouncilorQuestion?._id || wardCouncilorQuestion?.id;
+      let question1Value = answers[wardCouncilorId] || '';
+      if (Array.isArray(question1Value)) question1Value = question1Value.join(', ');
 
       const payload = {
-        surveyId: survey?._id || surveyId, // Use real DB ID if available
+        surveyId: survey?._id || surveyId,
         userName,
         parliament: answers[q1Id] || '',
         municipality: answers[q2Id] || '',
         ward_num: answers[q3Id] || '',
         Question_1_title: targetQuestionText,
         Question_1_answer: question1Value,
+        Question_1: question1Value,
         location,
-        answers: Object.entries(answers).map(([qId, value]) => ({
-          questionId: qId,
-          value
-        }))
+        answers: Object.entries(answers).map(([qId, val]) => ({ questionId: qId, value: val }))
       };
 
-      if (!navigator.onLine) {
-        const offlineData = {
-          id: Date.now(),
-          payload,
-          timestamp: new Date().toISOString()
-        };
-        const existing = JSON.parse(localStorage.getItem('offline_responses') || '[]');
-        existing.push(offlineData);
-        localStorage.setItem('offline_responses', JSON.stringify(existing));
-
-        // Clear saved progress after offline save
-        localStorage.removeItem(`survey_progress_${surveyId}`);
-        alert('You are offline. Response saved locally and will be synced when online.');
-        navigate('/dashboard');
-        return;
-      }
-
       const response = await responseAPI.submit(payload);
-
       if (response.success) {
-        // Clear saved progress after successful submission
-        localStorage.removeItem(`survey_progress_${surveyId}`);
-        alert('Thank you for completing the survey!');
-        navigate('/dashboard');
+        const currentBatch = JSON.parse(localStorage.getItem(`ward_batch_${surveyId}`) || 'null');
+        if (currentBatch) {
+          const newCount = (currentBatch.count || 0) + 1;
+          if (newCount > currentBatch.limit) {
+            localStorage.removeItem(`ward_batch_${surveyId}`);
+            setIsHeaderLocked(false);
+          } else {
+            const updatedBatch = { ...currentBatch, count: newCount };
+            localStorage.setItem(`ward_batch_${surveyId}`, JSON.stringify(updatedBatch));
+            setWardBatch(updatedBatch);
+          }
+        }
+
+        alert('Survey submitted successfully!');
+
+        // RE-INITIALIZE with locked values
+        const freshAnswers = initializeAnswers(survey);
+        if (localStorage.getItem(`ward_batch_${surveyId}`)) {
+          const batch = JSON.parse(localStorage.getItem(`ward_batch_${surveyId}`));
+          setAnswers({
+            ...freshAnswers,
+            [q1Id]: batch.parliament,
+            [q2Id]: batch.municipality,
+            [q3Id]: batch.ward_num
+          });
+        } else {
+          setAnswers(freshAnswers);
+          setupBatchAndAnswers(survey, freshAnswers);
+        }
+
+        window.scrollTo(0, 0);
       }
     } catch (err) {
-      setError(err.error?.message || 'Failed to submit survey');
+      setError('Submission failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleSave = () => {
-    // Save current progress to localStorage
-    localStorage.setItem(`survey_progress_${surveyId}`, JSON.stringify(answers));
-    alert('Your progress has been saved!');
-  };
-
-  const handleLogout = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (token) {
-        // Call logout API to clear server-side session
-        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/api/users/logout`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Logout API error:', error);
-      // Continue with logout even if API fails
-    } finally {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      navigate('/login');
-    }
-  };
-
-
-  const renderQuestionMedia = (question) => {
-    if (!question.mediaUrl) return null;
-
-    const type = question.mediaType;
-    if (type === 'Image') {
-      return <img src={question.mediaUrl} alt="Question Media" className="question-media-img" />;
-    } else if (type === 'Audio') {
-      return <audio controls src={question.mediaUrl} className="question-media-audio" />;
-    } else if (type === 'Video') {
-      return <video controls src={question.mediaUrl} className="question-media-video" />;
-    }
-    return null;
-  };
-
   const renderQuestion = (question, index) => {
-    const questionId = question.id || question._id;
+    const qId = question._id || question.id;
+    const isDisabled = isHeaderLocked && index < 3;
+    const value = answers[qId] || '';
 
-    switch (question.type.toLowerCase()) {
-      case 'text':
-        return (
-          <input
-            type="text"
-            value={answers[questionId] || ''}
-            onChange={(e) => handleAnswerChange(questionId, e.target.value)}
-            required={question.required}
-            placeholder="Enter your answer"
-            className="answer-input"
-          />
-        );
-
-      case 'textarea':
-        return (
-          <textarea
-            value={answers[questionId] || ''}
-            onChange={(e) => handleAnswerChange(questionId, e.target.value)}
-            required={question.required}
-            placeholder="Enter your answer"
-            rows="4"
-            className="answer-textarea"
-          />
-        );
-
-      case 'radio':
-        return (
-          <div className="options-container">
-            {(question.options || []).map((opt, idx) => (
-              <label key={idx} className="option-label">
-                <input
-                  type="radio"
-                  name={`question-${questionId}`}
-                  value={opt.value}
-                  checked={answers[questionId] === opt.value}
-                  onChange={(e) => handleAnswerChange(questionId, e.target.value)}
-                  required={question.required}
-                />
-                <div className="option-content">
-                  {question.optionMedia?.[opt.label] && (
-                    <img src={question.optionMedia[opt.label]} alt={opt.label} className="option-media-img" />
-                  )}
-                  <span>{opt.label}</span>
-                </div>
-              </label>
-            ))}
-          </div>
-        );
-
-      case 'checkbox':
-        return (
-          <div className="options-container">
-            {(question.options || []).map((opt, idx) => (
-              <label key={idx} className="option-label">
-                <input
-                  type="checkbox"
-                  value={opt.value}
-                  checked={(answers[questionId] || []).includes(opt.value)}
-                  onChange={(e) => {
-                    const currentAnswers = answers[questionId] || [];
-                    let newAnswers;
-
-                    const isPartyQuestion = question.question === "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?";
-
-                    // If maxSelect is 1 or it's the specific party question for MSR, treat it like a single choice
-                    if (question.validation?.maxSelect === 1 || isPartyQuestion) {
-                      newAnswers = e.target.checked ? [opt.value] : [];
-                    } else {
-                      newAnswers = e.target.checked
-                        ? [...currentAnswers, opt.value]
-                        : currentAnswers.filter(a => a !== opt.value);
-                    }
-                    handleAnswerChange(questionId, newAnswers);
-                  }}
-                />
-                <div className="option-content">
-                  {question.optionMedia?.[opt.label] && (
-                    <img src={question.optionMedia[opt.label]} alt={opt.label} className="option-media-img" />
-                  )}
-                  <span>{opt.label}</span>
-                </div>
-              </label>
-            ))}
-          </div>
-        );
-
-      case 'rating':
-        return (
-          <div className="rating-scale">
-            {[1, 2, 3, 4, 5].map((value) => (
-              <button
-                key={value}
-                type="button"
-                className={`rating-button ${answers[questionId] === value ? 'active' : ''}`}
-                onClick={() => handleAnswerChange(questionId, value)}
-              >
-                {value}
-              </button>
-            ))}
-          </div>
-        );
-
-      case 'scale':
-        return (
-          <div className="scale-container">
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={answers[questionId] || 5}
-              onChange={(e) => handleAnswerChange(questionId, parseInt(e.target.value))}
-              className="scale-slider"
-            />
-            <div className="scale-labels">
-              <span>1</span>
-              <span className="scale-value">{answers[questionId] || 5}</span>
-              <span>10</span>
-            </div>
-          </div>
-        );
-
-      case 'date':
-        return (
-          <input
-            type="date"
-            value={answers[questionId] || ''}
-            onChange={(e) => handleAnswerChange(questionId, e.target.value)}
-            required={question.required}
-            className="answer-input"
-          />
-        );
-
-      case 'dropdown':
-        return (
-          <select
-            value={answers[questionId] || ''}
-            onChange={(e) => handleAnswerChange(questionId, e.target.value)}
-            required={question.required}
-            className="answer-select"
-          >
-            <option value="">Select an option</option>
-            {(question.options || []).map((option, i) => (
-              <option key={option._id || i} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        );
-
-      default:
-        return (
-          <input
-            type="text"
-            value={answers[questionId] || ''}
-            onChange={(e) => handleAnswerChange(questionId, e.target.value)}
-            required={question.required}
-            placeholder="Enter your answer"
-            className="answer-input"
-          />
-        );
+    if (question.type === 'dropdown') {
+      return (
+        <select value={value} onChange={(e) => handleAnswerChange(qId, e.target.value)} disabled={isDisabled} className="answer-select">
+          <option value="">Select an option</option>
+          {(question.options || []).map((opt, i) => <option key={i} value={opt.value || opt.label}>{opt.label}</option>)}
+        </select>
+      );
     }
+
+    if (question.type === 'radio') {
+      const optionImages = {
+        "1. బీజేపీ": "/bjp.jpeg",
+        "2. కాంగ్రెస్": "/congress.jpeg",
+        "3. బిఆర్ఎస్": "/brs.jpeg",
+        "4. ఇతరులు": "/others.jpeg"
+      };
+      return (
+        <div className="options-container">
+          {(question.options || []).map((opt, i) => (
+            <label key={i} className="option-label">
+              <input type="radio" name={`q-${qId}`} checked={value === (opt.value || opt.label)} onChange={() => handleAnswerChange(qId, opt.value || opt.label)} disabled={isDisabled} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {optionImages[opt.label] && <img src={optionImages[opt.label]} alt="" className="option-media-img" />}
+                <span>{opt.label}</span>
+              </div>
+            </label>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <input type="text" value={value} onChange={(e) => handleAnswerChange(qId, e.target.value)} disabled={isDisabled} className="answer-input" placeholder="Enter your answer" />
+    );
   };
 
-  if (loading) {
-    return (
-      <div className="take-survey-container">
-        <div className="loading">Loading survey...</div>
-      </div>
-    );
-  }
-
-  if (error && !survey) {
-    return (
-      <div className="take-survey-container">
-        <div className="error-container">
-          <h2>Error</h2>
-          <p>{error}</p>
-          <button onClick={() => navigate('/dashboard')} className="btn-primary">
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="take-survey-container"><div className="loading">Loading Survey...</div></div>;
 
   return (
     <div className="take-survey-container">
       <div className="survey-header-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {location ? (
-              <span style={{ color: '#10b981', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.857 5.857l-4.5 4.5a.5.5 0 01-.707 0l-2-2a.5.5 0 01.707-.707L7 9.293l4.146-4.147a.5.5 0 01.707.707z" />
-                </svg>
-                Location Enabled
-              </span>
-            ) : (
-              <span style={{ color: '#ef4444', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                  <path d="M8 0a8 8 0 100 16A8 8 0 008 0zM7 4h2v5H7V4zm0 6h2v2H7v-2z" />
-                </svg>
-                Location Required
-              </span>
-            )}
-          </div>
-          <button onClick={handleLogout} className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '14px' }}>
-            Logout
-          </button>
+          <div style={{ color: '#6366f1', fontSize: '13px' }}>📍 Location Synced</div>
+          <button onClick={() => { localStorage.removeItem('token'); navigate('/login'); }} className="btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '14px' }}>Logout</button>
         </div>
         <div className="survey-title-row">
           <div className="title-left">
             <div className="survey-logo-wrapper">
-              {survey?.branding?.logo ? (
-                <img src={survey.branding.logo} alt="Survey Logo" className="survey-logo" />
-              ) : (
-                <img src={logo} alt="Default Logo" className="survey-logo" />
-              )}
+              <img src={survey?.branding?.logo || logo} alt="Logo" className="survey-logo" />
             </div>
-            <h1>{survey?.title}</h1>
-            {survey?.description && <p className="survey-description">{survey.description}</p>}
+            <h1>{(survey?.title === '1' || survey?.title === '2' || survey?.title === 1 || survey?.title === 2 || !survey?.title) ? 'MSR Survey' : survey.title}</h1>
+            <p className="survey-description">{survey?.description}</p>
           </div>
           <div className="responses-count-box">
             <span className="responses-label">RESPONSES</span>
@@ -603,95 +404,148 @@ export default function TakeSurvey() {
         </div>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
-
       <form onSubmit={handleSubmit} className="survey-form">
-        {/* Header Block: First 3 questions in a row */}
-        {survey?.questions?.length > 0 && (
-          <div className="question-block header-group-block">
-            <div className="inline-fields-row">
-              {survey.questions.slice(0, 3).map((question, index) => {
-                const questionId = question.id || question._id;
-                return (
-                  <div key={questionId} className="inline-field">
-                    <div className="question-header compact">
-                      <span className="question-number">Question {index + 1}</span>
-                      {question.required && <span className="required-indicator">*</span>}
-                    </div>
-                    <label className="field-label-compact">{question.question}</label>
-                    <div className="inline-render-box">
-                      {renderQuestion(question, index)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {/* Progress Bar */}
-            {survey?.questions?.length > 3 && (
-              <div className="progress-bar-container">
-                <div className="progress-bar-track">
-                  <div
-                    className="progress-bar-fill"
-                    style={{
-                      width: `${Math.round(
-                        (Object.values(answers).filter(val =>
-                          Array.isArray(val) ? val.length > 0 : (val !== '' && val !== null && val !== undefined)
-                        ).length / (survey.questions.length || 1)) * 100
-                      )}%`
-                    }}
-                  ></div>
-                </div>
-                <div style={{ textAlign: 'right', fontSize: '12px', color: '#666', marginTop: '5px' }}>
-                  {Math.round(
-                    (Object.values(answers).filter(val =>
-                      Array.isArray(val) ? val.length > 0 : (val !== '' && val !== null && val !== undefined)
-                    ).length / (survey.questions.length || 1)) * 100
-                  )}% Completed
-                </div>
+
+        {/* SETUP MODE: Show when not locked */}
+        {!isHeaderLocked && (
+          <div className="question-block" style={{ border: '2px dashed #6366f1', background: '#f8f9ff', borderRadius: '16px' }}>
+            <h2 style={{ color: '#4f46e5', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              ⚙️ Batch Holding Setup
+            </h2>
+            <p style={{ color: '#6366f1', marginBottom: '2rem' }}>
+              Choose your location and how many surveys you want to hold these options for.
+            </p>
+
+            <div className="setup-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+              <div className="setup-field">
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>Parliament</label>
+                <select
+                  className="answer-select"
+                  value={wardBatch?.parliament}
+                  onChange={(e) => handleParlChange(e.target.value)}
+                >
+                  <option value="">Select Parliament</option>
+                  {parliaments.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
               </div>
-            )}
+
+              <div className="setup-field">
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>Municipality</label>
+                <select
+                  className="answer-select"
+                  value={wardBatch?.municipality}
+                  onChange={(e) => setWardBatch(prev => ({ ...prev, municipality: e.target.value }))}
+                >
+                  <option value="">Select Municipality</option>
+                  {municipalities.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+
+              <div className="setup-field">
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>Ward Number</label>
+                <input
+                  type="text"
+                  className="answer-input"
+                  placeholder="e.g. 15"
+                  value={wardBatch?.ward_num}
+                  onChange={(e) => setWardBatch(prev => ({ ...prev, ward_num: e.target.value }))}
+                />
+              </div>
+
+              <div className="setup-field">
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: '8px' }}>Holding Limit (Surveys)</label>
+                <select
+                  className="answer-select"
+                  value={wardBatch?.limit}
+                  onChange={(e) => setWardBatch(prev => ({ ...prev, limit: parseInt(e.target.value) }))}
+                >
+                  {[1, 2, 3, 5, 10, 15, 20, 50].map(n => (
+                    <option key={n} value={n}>{n} Surveys</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ width: '100%', padding: '1.2rem' }}
+              onClick={startBatch}
+            >
+              Confirm & Start Surveying
+            </button>
           </div>
         )}
 
-        {/* Individual Blocks: 4th question onwards */}
-        {survey?.questions?.slice(3).map((question, index) => (
-          <div key={question.id || question._id} className="question-block full-width-block">
-            <div className="question-header">
-              <span className="question-number">Question {index + 4}</span>
-              {question.required && <span className="required-indicator">*</span>}
+        {/* SURVEY MODE: Show when locked */}
+        {isHeaderLocked && (
+          <>
+            <div className={`question-block header-group-block is-locked`}>
+              <div className="lock-indicator-bar" style={{ background: '#fffbeb', border: '2px solid #fbbf24', borderRadius: '12px', padding: '1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '20px' }}>🔒</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '700', color: '#92400e' }}>Location Locked for {wardBatch?.limit} survey batch.</div>
+                  <div style={{ fontSize: '12px', color: '#b45309' }}>Complete all {wardBatch?.limit} surveys to change location.</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.5)', padding: '4px 8px', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#92400e', fontWeight: '700' }}>Change Limit:</span>
+                    <select
+                      style={{ border: '1px solid #fbbf24', borderRadius: '4px', fontSize: '11px', padding: '1px 4px', background: 'white', cursor: 'pointer' }}
+                      value={wardBatch?.limit}
+                      onChange={(e) => updateBatchLimit(parseInt(e.target.value))}
+                    >
+                      {[1, 2, 3, 5, 10, 15, 20, 50, 100].map(n => (
+                        <option key={n} value={n}>{n} Surveys</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ background: '#fbbf24', color: '#92400e', padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', fontSize: '13px' }}>
+                      {wardBatch?.count} / {wardBatch?.limit}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { if (window.confirm("Reset batch?")) { localStorage.removeItem(`ward_batch_${surveyId}`); setupBatchAndAnswers(survey, initializeAnswers(survey)); } }}
+                      style={{ background: 'none', border: 'none', color: '#92400e', fontSize: '11px', textDecoration: 'underline', cursor: 'pointer', fontWeight: '600' }}
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="inline-fields-row">
+                {survey?.questions?.slice(0, 3).map((q, i) => (
+                  <div key={q._id || q.id} className="inline-field">
+                    <div className="question-header compact">
+                      <span className="question-number">Question {i + 1}</span>
+                      {q.required && <span className="required-indicator">*</span>}
+                    </div>
+                    <label className="field-label-compact">{q.question}</label>
+                    {renderQuestion(q, i)}
+                  </div>
+                ))}
+              </div>
             </div>
-            {renderQuestionMedia(question)}
-            <h3 className="question-text">{question.question}</h3>
-            <div className="question-answer">
-              {renderQuestion(question, index + 3)}
-            </div>
-          </div>
-        ))}
 
-        <div className="form-actions">
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            className="btn-secondary"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="btn-save"
-          >
-            Save Progress
-          </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="btn-primary"
-          >
-            {submitting ? 'Submitting...' : 'Submit Survey'}
-          </button>
-        </div>
+            {survey?.questions?.slice(3).map((q, i) => (
+              <div key={q._id || q.id} className="question-block full-width-block">
+                <div className="question-header">
+                  <span className="question-number">Question {i + 4}</span>
+                  {q.required && <span className="required-indicator">*</span>}
+                </div>
+                <h3 className="question-text">{q.question}</h3>
+                {renderQuestion(q, i + 3)}
+              </div>
+            ))}
+
+            <div className="form-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+              <button type="button" onClick={() => navigate('/dashboard')} className="btn-secondary">Cancel</button>
+              <button type="submit" disabled={submitting} className="btn-primary">{submitting ? 'Submitting...' : 'Submit Survey'}</button>
+            </div>
+          </>
+        )}
       </form>
-    </div >
+    </div>
   );
 }

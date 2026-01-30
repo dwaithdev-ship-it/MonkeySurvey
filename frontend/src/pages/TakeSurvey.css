@@ -135,6 +135,58 @@
   width: 100%;
 }
 
+.inline-render-box .answer-select:disabled,
+.inline-render-box .answer-input:disabled {
+  background-color: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #6b7280;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.lock-indicator-bar {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #92400e;
+  font-size: 14px;
+  font-weight: 500;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.lock-icon {
+  font-size: 18px;
+}
+
+.batch-progress {
+  margin-left: auto;
+  background: #fde68a;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.header-group-block.is-locked {
+  border-left: 4px solid #f59e0b;
+}
+
 .field-label {
   font-size: 0.9rem;
   font-weight: 600;
@@ -204,7 +256,7 @@
 .answer-textarea:focus {
   outline: none;
   border-color: #6366f1;
-  ring: 3px solid rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .options-container {
@@ -330,8 +382,25 @@
   }
 
   .inline-fields-row {
-    flex-direction: column;
-    gap: 1.5rem;
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 0.75rem !important;
+    overflow-x: auto !important;
+    padding-bottom: 0.5rem;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .inline-field {
+    flex: 0 0 160px !important;
+    min-width: 160px !important;
+  }
+
+  .field-label-compact {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .form-actions {

@@ -66,6 +66,7 @@ const Dashboard = () => {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
+        // Redirect non-admins to survey page
         if (parsedUser.role !== 'admin') {
           navigate("/take-survey/1");
           return;
@@ -429,7 +430,16 @@ const Dashboard = () => {
 
   return (
     <Layout user={user}>
-      <h1 className="page-title">Dashboard Analytics</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <h1 className="page-title" style={{ marginBottom: 0 }}>Dashboard Analytics</h1>
+        <button
+          onClick={() => navigate('/take-survey/1')}
+          className="btn-primary"
+          style={{ padding: '0.8rem 2rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)' }}
+        >
+          🚀 Take MSR Survey
+        </button>
+      </div>
 
       <div className="dashboard-analytics">
         {/* DROPDOWN FILTERS */}

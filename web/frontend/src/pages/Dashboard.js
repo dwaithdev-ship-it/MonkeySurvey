@@ -1,10 +1,16 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 function Dashboard() {
   const { user, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user && user.role !== 'admin') {
+      navigate('/survey/1');
+    }
+  }, [user, navigate]);
 
   const handleLogout = () => {
     logout();
