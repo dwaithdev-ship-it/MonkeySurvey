@@ -4,11 +4,11 @@ WORKDIR /app
 
 # 1. Install shared dependencies
 COPY shared/package*.json ./shared/
-RUN cd shared && npm ci --only=production
+RUN cd shared && npm ci --omit=dev
 
 # 2. Install service dependencies
 COPY ai-service/package*.json ./ai-service/
-RUN cd ai-service && npm ci --only=production
+RUN cd ai-service && npm ci --omit=dev
 
 # 3. Copy source code
 COPY shared ./shared

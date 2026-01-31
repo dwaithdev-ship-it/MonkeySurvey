@@ -4,11 +4,11 @@ WORKDIR /app
 
 # 1. Install shared dependencies
 COPY shared/package*.json ./shared/
-RUN cd shared && npm ci --only=production
+RUN cd shared && npm ci --omit=dev
 
 # 2. Install service dependencies
 COPY notification-service/package*.json ./notification-service/
-RUN cd notification-service && npm ci --only=production
+RUN cd notification-service && npm ci --omit=dev
 
 # 3. Copy source code
 COPY shared ./shared
