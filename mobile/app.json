@@ -1,18 +1,29 @@
 {
+  "name": "BodhaSurvey",
+  "displayName": "BodhaSurvey",
+  "expo": {
     "name": "BodhaSurvey",
-    "displayName": "BodhaSurvey",
-    "expo": {
-        "name": "BodhaSurvey",
-        "slug": "bodhasurvey-mobile",
-        "version": "1.0.0",
-        "assetBundlePatterns": [
-            "**/*"
-        ],
-        "ios": {
-            "bundleIdentifier": "com.monkeyapp.monkeysurvey"
-        },
-        "android": {
-            "package": "com.monkeyapp"
-        }
+    "slug": "bodhasurvey-mobile",
+    "version": "1.0.0",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "icon": "./assets/icon.png",
+    "ios": {
+      "bundleIdentifier": "com.monkeyapp.monkeysurvey",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.monkeyapp",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c5115618-b160-45e0-abcc-77ab64387dc3"
+      }
     }
+  }
 }

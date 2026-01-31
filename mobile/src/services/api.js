@@ -1,7 +1,15 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
+import { addToOfflineQueue } from '../redux/slices/offlineSlice';
 
 const API_BASE_URL = 'https://api.bodhasurvey.duckdns.org/v1';
+
+// Store reference injection to avoid circular dependency
+let reduxStore = null;
+export const injectStore = (store) => {
+  reduxStore = store;
+};
 
 // Create axios instance
 const api = axios.create({
@@ -12,13 +20,73 @@ const api = axios.create({
   }
 });
 
-// Request interceptor to add auth token
+// Request interceptor
 api.interceptors.request.use(
   async (config) => {
+    // Add Auth Token
     const token = await AsyncStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Check Offline Status
+    const netState = await NetInfo.fetch();
+    const isOffline = !(netState.isConnected && netState.isInternetReachable !== false);
+
+    if (isOffline) {
+      config.adapter = async (cfg) => {
+        return new Promise(async (resolve, reject) => {
+          const { url, method, data, params } = cfg;
+
+          if (method.toLowerCase() === 'get') {
+            // Try to read from cache
+            try {
+              const cacheKey = `API_CACHE_${url}_${JSON.stringify(params || {})}`;
+              const cachedData = await AsyncStorage.getItem(cacheKey);
+
+              if (cachedData) {
+                console.log(`[Offline] Serving cached data for ${url}`);
+                resolve({
+                  data: JSON.parse(cachedData),
+                  status: 200,
+                  statusText: 'OK',
+                  headers: {},
+                  config: cfg,
+                  request: {}
+                });
+              } else {
+                reject({ message: 'No internet connection and no cached data available.' });
+              }
+            } catch (e) {
+              reject(e);
+            }
+          } else {
+            // Write operation: Queue it
+            console.log(`[Offline] Queuing request for ${url}`);
+
+            if (reduxStore) {
+              reduxStore.dispatch(addToOfflineQueue({
+                url,
+                method,
+                data,
+                params
+              }));
+            }
+
+            // Return a success mock
+            resolve({
+              data: { message: 'Saved locally. Will sync when online.', _offline: true },
+              status: 200,
+              statusText: 'OK',
+              headers: {},
+              config: cfg,
+              request: {}
+            });
+          }
+        });
+      };
+    }
+
     return config;
   },
   (error) => {
@@ -26,14 +94,25 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
+// Response interceptor
 api.interceptors.response.use(
-  (response) => response.data,
+  async (response) => {
+    // Cache GET requests
+    if (response.config.method.toLowerCase() === 'get') {
+      try {
+        const { url, params } = response.config;
+        const cacheKey = `API_CACHE_${url}_${JSON.stringify(params || {})}`;
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(response.data));
+      } catch (e) {
+        console.warn('Failed to cache response', e);
+      }
+    }
+    return response.data;
+  },
   async (error) => {
     if (error.response?.status === 401) {
-      // Token expired, logout user
       await AsyncStorage.removeItem('authToken');
-      // Navigate to login screen
+      // Navigate to login handled by App state usually
     }
     return Promise.reject(error);
   }
