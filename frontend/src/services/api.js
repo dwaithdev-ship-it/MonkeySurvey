@@ -43,8 +43,8 @@ api.interceptors.response.use(
 export const userAPI = {
   register: (data) => api.post('/users/register', data),
   msrRegister: (data) => api.post('/users/msr-register', data),
-  // Login directly to User Service (Port 3001) using dynamic hostname
-  login: (data) => axios.post(`${getBaseUrl(3001)}/users/login`, data).then(res => res.data),
+  // Login through API Gateway
+  login: (data) => api.post('/users/login', data),
   getProfile: () => api.get('/users/profile'),
   updateProfile: (data) => api.put('/users/profile', data),
   getMSRUsers: () => api.get('/users/msr-users'),

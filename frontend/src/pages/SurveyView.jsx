@@ -226,7 +226,6 @@ const SurveyView = () => {
         currentTimeAsAnswer: false,
         currentDateTimeAsAnswer: false,
         disallowManualEntry: false,
-        disallowManualEntry: false,
         preventDuplicateLocationCapture: false,
         page: currentPage
       };

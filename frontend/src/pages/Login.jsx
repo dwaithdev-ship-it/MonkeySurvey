@@ -70,8 +70,9 @@ const Login = () => {
       console.error("Login error:", err);
 
       // Handle specific error codes
-      const errorCode = err.response?.data?.error?.code;
-      const errorMessage = err.response?.data?.error?.message;
+      const errorData = err.error || err;
+      const errorCode = errorData.code;
+      const errorMessage = errorData.message;
 
       if (errorCode === 'ALREADY_LOGGED_IN') {
         setError('You are already logged in on another device. Please logout from that device first or contact admin.');
