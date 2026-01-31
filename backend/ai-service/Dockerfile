@@ -1,20 +1,22 @@
 FROM node:18-alpine
 
 WORKDIR /app
+ENV NODE_ENV=production
 
 # 1. Install shared dependencies
 COPY shared/package*.json ./shared/
-RUN cd shared && npm ci --omit=dev
+RUN cd shared && npm ci
 
 # 2. Install service dependencies
 COPY ai-service/package*.json ./ai-service/
-RUN cd ai-service && npm ci --omit=dev
+RUN cd ai-service && npm ci
 
 # 3. Copy source code
 COPY shared ./shared
 COPY ai-service ./ai-service
 
 WORKDIR /app/ai-service
+ENV NODE_ENV=production
 
 # Expose port
 EXPOSE 3006

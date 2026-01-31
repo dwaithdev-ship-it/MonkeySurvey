@@ -1,12 +1,13 @@
 FROM node:18-alpine
 
 WORKDIR /app
+ENV NODE_ENV=production
 
 # Copy package files
 COPY api-gateway/package*.json ./
 
 # Install dependencies
-RUN npm ci --omit=dev
+RUN npm ci
 
 # Copy source code
 COPY api-gateway/. .

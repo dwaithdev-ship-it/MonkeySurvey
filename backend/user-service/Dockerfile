@@ -1,20 +1,22 @@
 FROM node:18-alpine
 
 WORKDIR /app
+ENV NODE_ENV=production
 
 # 1. Install shared dependencies
 COPY shared/package*.json ./shared/
-RUN cd shared && npm ci --omit=dev
+RUN cd shared && npm ci
 
 # 2. Install service dependencies
 COPY user-service/package*.json ./user-service/
-RUN cd user-service && npm ci --omit=dev
+RUN cd user-service && npm ci
 
 # 3. Copy source code
 COPY shared ./shared
 COPY user-service ./user-service
 
 WORKDIR /app/user-service
+ENV NODE_ENV=production
 
 # Expose port
 EXPOSE 3001
