@@ -15,22 +15,87 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
+// Helper for offline queue
+const addToOfflineQueue = (config) => {
+  const queue = JSON.parse(localStorage.getItem('offline_queue') || '[]');
+  queue.push({
+    id: Date.now(),
+    url: config.url,
+    method: config.method,
+    data: config.data,
+    params: config.params,
+    timestamp: new Date().toISOString()
+  });
+  localStorage.setItem('offline_queue', JSON.stringify(queue));
+};
+
+// Request interceptor
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    if (!navigator.onLine) {
+      // Offline handling
+      if (config.method.toLowerCase() === 'get') {
+        const cacheKey = `API_CACHE_${config.url}_${JSON.stringify(config.params || {})}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          // Return cached response via adapter
+          config.adapter = () => {
+            return Promise.resolve({
+              data: JSON.parse(cached),
+              status: 200,
+              statusText: 'OK',
+              headers: {},
+              config: config,
+              request: {}
+            });
+          };
+        }
+      } else {
+        // Queue write operations
+        addToOfflineQueue(config);
+        // Return fake success
+        config.adapter = () => {
+          return Promise.resolve({
+            data: { success: true, message: 'Saved offline', _offline: true },
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config: config,
+            request: {}
+          });
+        };
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle errors
+// Response interceptor
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    // Cache GET requests
+    if (response.config.method.toLowerCase() === 'get') {
+      try {
+        const cacheKey = `API_CACHE_${response.config.url}_${JSON.stringify(response.config.params || {})}`;
+        localStorage.setItem(cacheKey, JSON.stringify(response.data));
+      } catch (e) {
+        console.warn('Cache failed', e);
+      }
+    }
+    return response.data;
+  },
   (error) => {
+    // If network error (offline), maybe we should queue if it was a write?
+    // But request interceptor should have caught it if navigator.onLine was false.
+    // Sometimes navigator.onLine is true but requests fail.
+
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       window.location.href = '/login';
@@ -38,6 +103,50 @@ api.interceptors.response.use(
     return Promise.reject(error.response?.data || error.message);
   }
 );
+
+// Sync Logic
+export const syncOfflineQueue = async () => {
+  if (!navigator.onLine) return;
+
+  const queue = JSON.parse(localStorage.getItem('offline_queue') || '[]');
+  if (queue.length === 0) return;
+
+  console.log(`Syncing ${queue.length} items...`);
+  const newQueue = [];
+
+  for (const item of queue) {
+    try {
+      // Use a clean axios instance to bypass interceptors (or just make sure we don't double queue)
+      // Actually, if we use 'api', the interceptor checks navigator.onLine. If true, it proceeds.
+      await api.request({
+        method: item.method,
+        url: item.url,
+        data: item.data,
+        params: item.params
+      });
+      console.log(`Synced ${item.url}`);
+    } catch (e) {
+      console.error(`Sync failed for ${item.url}`, e);
+      // Keep in queue if it's a network error? 
+      // For now, removing to prevent block, or implement retry count.
+      // Let's keep it if network error, remove if 4xx.
+      if (!e.response) { // Network error likely
+        newQueue.push(item);
+      }
+    }
+  }
+
+  localStorage.setItem('offline_queue', JSON.stringify(newQueue));
+  if (queue.length > 0 && newQueue.length === 0) {
+    // All synced
+    // Optionally trigger a UI refresh or alert?
+    console.log('Sync Complete');
+  }
+};
+
+// Listen for online
+window.addEventListener('online', syncOfflineQueue);
+
 
 // User Service APIs
 export const userAPI = {

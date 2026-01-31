@@ -467,9 +467,14 @@ export default function TakeSurvey() {
               </div>
               <div className="setup-field">
                 <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px', fontSize: '12px' }}>Holding Limit</label>
-                <select className="answer-select" style={{ padding: '0.5rem', fontSize: '13px' }} value={wardBatch?.limit} onChange={(e) => setWardBatch(prev => ({ ...prev, limit: parseInt(e.target.value) }))}>
-                  {[1, 2, 3, 5, 10, 15, 20, 50, 100].map(n => <option key={n} value={n}>{n} Surveys</option>)}
-                </select>
+                <input
+                  type="number"
+                  className="answer-input"
+                  style={{ padding: '0.5rem', fontSize: '13px' }}
+                  placeholder="e.g. 20"
+                  value={wardBatch?.limit}
+                  onChange={(e) => setWardBatch(prev => ({ ...prev, limit: parseInt(e.target.value) || 0 }))}
+                />
               </div>
             </div>
             <button type="button" className="btn-primary" style={{ width: '100%', padding: '0.75rem', fontSize: '14px' }} onClick={startBatch}>Confirm & Start Surveying</button>
@@ -484,9 +489,12 @@ export default function TakeSurvey() {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: '6px' }}>
                   <span style={{ fontSize: '10px', color: '#92400e', fontWeight: '700' }}>Limit:</span>
-                  <select style={{ border: '1px solid #fbbf24', borderRadius: '4px', fontSize: '10px', padding: '0 2px', background: 'white', cursor: 'pointer' }} value={wardBatch?.limit} onChange={(e) => updateBatchLimit(parseInt(e.target.value))}>
-                    {[1, 2, 3, 5, 10, 15, 20, 50, 100].map(n => <option key={n} value={n}>{n} Q</option>)}
-                  </select>
+                  <input
+                    type="number"
+                    style={{ border: '1px solid #fbbf24', borderRadius: '4px', fontSize: '12px', padding: '0 4px', background: 'white', width: '40px', textAlign: 'center' }}
+                    value={wardBatch?.limit}
+                    onChange={(e) => updateBatchLimit(parseInt(e.target.value) || 0)}
+                  />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ background: '#fbbf24', color: '#92400e', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold', fontSize: '11px' }}>{wardBatch?.count} / {wardBatch?.limit}</span>
