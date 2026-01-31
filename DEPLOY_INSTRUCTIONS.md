@@ -1,4 +1,4 @@
-# Deploying MonkeySurvey to AWS EC2
+# Deploying BodhaSurvey to AWS EC2
 
 Follow these steps to deploy your application to an AWS EC2 instance.
 
@@ -6,7 +6,7 @@ Follow these steps to deploy your application to an AWS EC2 instance.
 
 1.  Log in to AWS Console.
 2.  Go to **EC2** > **Launch Instance**.
-3.  **Name**: MonkeySurvey-Server
+3.  **Name**: BodhaSurvey-Server
 4.  **OS Image**: Ubuntu Server 22.04 LTS (HVM).
 5.  **Instance Type**: t3.medium or larger (need at least 4GB RAM for all containers).
 6.  **Key Pair**: Create new or select existing (save the `.pem` file).
@@ -43,8 +43,8 @@ sudo apt-get update
 sudo apt-get install -y git
 
 # Clone repository (replace with your repo URL)
-git clone https://github.com/dwaithdev-ship-it/MonkeySurvey.git
-cd MonkeySurvey
+git clone https://github.com/dwaithdev-ship-it/BodhaSurvey.git
+cd BodhaSurvey
 ```
 
 *Note: If your repo is private, you may need to use a Personal Access Token or SSH key.*

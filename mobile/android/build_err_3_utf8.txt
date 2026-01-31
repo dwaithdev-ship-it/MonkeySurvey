@@ -1,0 +1,100 @@
+﻿nCommandExecution.java:104
+)
+	at org.gradle.launcher.da
+emon.server.exec.StartBuil
+dOrRespondWithBusy$1.run(S
+tartBuildOrRespondWithBusy
+.java:52)
+	at org.gradle.launcher.da
+emon.server.DaemonStateCoo
+rdinator$1.run(DaemonState
+Coordinator.java:297)
+	at org.gradle.internal.co
+ncurrent.ExecutorPolicy$Ca
+tchAndRecordFailures.onExe
+cute(ExecutorPolicy.java:6
+4)
+	at org.gradle.internal.co
+ncurrent.AbstractManagedEx
+ecutor$1.run(AbstractManag
+edExecutor.java:47)
+Caused by: java.lang.Illeg
+alArgumentException: 
+Unknown Kotlin JVM 
+target: 21
+	at org.jetbrains.kotlin.g
+radle.dsl.JvmTarget$Compan
+ion.fromTarget(JvmTarget.k
+t:27)
+	at org.jetbrains.kotlin.g
+radle.tasks.DefaultKotlinJ
+avaToolchain$Companion$wir
+eJvmTargetToJvm$1.invoke(D
+efaultKotlinJavaToolchain.
+kt:195)
+	at org.jetbrains.kotlin.g
+radle.tasks.DefaultKotlinJ
+avaToolchain$Companion$wir
+eJvmTargetToJvm$1.invoke(D
+efaultKotlinJavaToolchain.
+kt:187)
+	at org.jetbrains.kotlin.g
+radle.tasks.DefaultKotlinJ
+avaToolchain$sam$org_gradl
+e_api_Transformer$0.transf
+orm(DefaultKotlinJavaToolc
+hain.kt)
+	at org.gradle.api.interna
+l.provider.ValueSupplier$P
+resent.transform(ValueSupp
+lier.java:541)
+	at org.gradle.api.interna
+l.provider.TransformBacked
+Provider.mapValue(Transfor
+mBackedProvider.java:91)
+	at org.gradle.api.interna
+l.provider.TransformBacked
+Provider.calculateExecutio
+nTimeValue(TransformBacked
+Provider.java:76)
+	at org.gradle.api.interna
+l.provider.OrElseValueProd
+ucer.isMissing(OrElseValue
+Producer.java:65)
+	at org.gradle.api.interna
+l.provider.OrElseValueProd
+ucer.visitProducerTasks(Or
+ElseValueProducer.java:53)
+	at org.gradle.api.interna
+l.provider.AbstractMinimal
+Provider.visitDependencies
+(AbstractMinimalProvider.j
+ava:142)
+	at org.gradle.api.interna
+l.tasks.CachingTaskDepende
+ncyResolveContext$TaskGrap
+hImpl.getNodeValues(Cachin
+gTaskDependencyResolveCont
+ext.java:103)
+	at org.gradle.internal.gr
+aph.CachingDirectedGraphWa
+lker$GraphWithEmptyEdges.g
+etNodeValues(CachingDirect
+edGraphWalker.java:213)
+	at org.gradle.internal.gr
+aph.CachingDirectedGraphWa
+lker.doSearch(CachingDirec
+tedGraphWalker.java:121)
+	at org.gradle.internal.gr
+aph.CachingDirectedGraphWa
+lker.findValues(CachingDir
+ectedGraphWalker.java:73)
+	at org.gradle.api.interna
+l.tasks.CachingTaskDepende
+ncyResolveContext.getDepen
+dencies(CachingTaskDepende
+ncyResolveContext.java:66)
+	... 143 more
+
+
+BUILD FAILED in 20s

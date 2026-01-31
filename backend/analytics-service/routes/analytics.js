@@ -82,7 +82,7 @@ router.get('/questions/:questionId', authMiddleware, async (req, res) => {
 router.post('/reports/custom', authMiddleware, async (req, res) => {
   try {
     const { surveyId, queryName, filters, fields } = req.body;
-    
+
     res.json({
       success: true,
       data: {
@@ -106,11 +106,11 @@ router.post('/reports/custom', authMiddleware, async (req, res) => {
 router.post('/export', authMiddleware, async (req, res) => {
   try {
     const { surveyId, format, includeMetadata, filters } = req.body;
-    
+
     res.json({
       success: true,
       data: {
-        downloadUrl: `https://exports.monkeysurvey.com/files/export-${Date.now()}.${format}`,
+        downloadUrl: `https://exports.bodhasurvey.duckdns.org/files/export-${Date.now()}.${format}`,
         expiresAt: new Date(Date.now() + 3600000).toISOString(),
         fileSize: 245678
       }

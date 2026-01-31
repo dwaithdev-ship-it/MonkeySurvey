@@ -1,4 +1,4 @@
-# ✅ MonkeySurvey - Working Demo
+# ✅ BodhaSurvey - Working Demo
 
 ## Services Status: ALL WORKING ✓
 
@@ -71,7 +71,7 @@ Response: {
 
 ### Step 1: Start Frontend (if not running)
 ```powershell
-cd C:\Users\PC\MonkeySurvey\frontend
+cd C:\Users\PC\BodhaSurvey\frontend
 npm run dev
 ```
 
@@ -160,10 +160,10 @@ docker logs monkeysurvey-user-service --tail 20
 
 ## Success! 🎉
 
-Your MonkeySurvey application is now fully functional. You can:
+Your BodhaSurvey application is now fully functional. You can:
 - Register and login users
 - Create surveys with multiple question types
 - Add questions with options (for multiple choice, etc.)
 - View your created surveys in the dashboard
 
-Enjoy using MonkeySurvey!
+Enjoy using BodhaSurvey!

@@ -53,7 +53,7 @@ app.get('/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    service: 'MonkeySurvey API Gateway',
+    service: 'BodhaSurvey API Gateway',
     version: '1.0.0',
     endpoints: {
       users: '/users/*',

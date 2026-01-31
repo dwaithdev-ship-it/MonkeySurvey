@@ -1,4 +1,4 @@
-# MonkeySurvey - Deployment Guide
+# BodhaSurvey - Deployment Guide
 
 ## Prerequisites
 
@@ -191,7 +191,7 @@ psql -U postgres -d monkeysurvey_analytics < database/postgres-schema.sql
 2. **Build for Release**
    ```bash
    # Open Xcode
-   open ios/MonkeySurveyMobile.xcworkspace
+   open ios/BodhaSurveyMobile.xcworkspace
    
    # In Xcode:
    # - Select Generic iOS Device
@@ -281,7 +281,7 @@ scrape_configs:
 
 1. Access Grafana: http://localhost:3000
 2. Add Prometheus data source
-3. Import MonkeySurvey dashboard
+3. Import BodhaSurvey dashboard
 
 ### ELK Stack
 
@@ -378,7 +378,7 @@ Configured in each service with `express-rate-limit`:
 Configure allowed origins in each service:
 ```javascript
 app.use(cors({
-  origin: ['https://app.monkeysurvey.com', 'https://monkeysurvey.com'],
+  origin: ['https://app.bodhasurvey.com', 'https://bodhasurvey.com'],
   credentials: true
 }));
 ```
@@ -426,6 +426,6 @@ cd android
 ## Support
 
 For issues or questions:
-- Documentation: https://docs.monkeysurvey.com
-- Email: support@monkeysurvey.com
-- GitHub Issues: https://github.com/your-org/MonkeySurvey/issues
+- Documentation: https://docs.bodhasurvey.com
+- Email: support@bodhasurvey.com
+- GitHub Issues: https://github.com/your-org/BodhaSurvey/issues

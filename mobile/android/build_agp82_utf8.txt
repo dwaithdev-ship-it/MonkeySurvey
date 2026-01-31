@@ -1,0 +1,100 @@
+﻿ndExecution.java:104)
+	at org.gradle.launch
+er.daemon.server.exec
+.RequestStopIfSingleU
+sedDaemon.execute(Req
+uestStopIfSingleUsedD
+aemon.java:35)
+	at org.gradle.launch
+er.daemon.server.api.
+DaemonCommandExecutio
+n.proceed(DaemonComma
+ndExecution.java:104)
+	at org.gradle.launch
+er.daemon.server.exec
+.ForwardClientInput$2
+.create(ForwardClient
+Input.java:78)
+	at org.gradle.launch
+er.daemon.server.exec
+.ForwardClientInput$2
+.create(ForwardClient
+Input.java:75)
+	at org.gradle.util.i
+nternal.Swapper.swap(
+Swapper.java:38)
+	at org.gradle.launch
+er.daemon.server.exec
+.ForwardClientInput.e
+xecute(ForwardClientI
+nput.java:75)
+	at org.gradle.launch
+er.daemon.server.api.
+DaemonCommandExecutio
+n.proceed(DaemonComma
+ndExecution.java:104)
+	at org.gradle.launch
+er.daemon.server.exec
+.LogAndCheckHealth.ex
+ecute(LogAndCheckHeal
+th.java:53)
+	at org.gradle.launch
+er.daemon.server.api.
+DaemonCommandExecutio
+n.proceed(DaemonComma
+ndExecution.java:104)
+	at org.gradle.launch
+er.daemon.server.exec
+.LogToClient.doBuild(
+LogToClient.java:63)
+	at org.gradle.launch
+er.daemon.server.exec
+.BuildCommandOnly.exe
+cute(BuildCommandOnly
+.java:37)
+	at org.gradle.launch
+er.daemon.server.api.
+DaemonCommandExecutio
+n.proceed(DaemonComma
+ndExecution.java:104)
+	at org.gradle.launch
+er.daemon.server.exec
+.EstablishBuildEnviro
+nment.doBuild(Establi
+shBuildEnvironment.ja
+va:84)
+	at org.gradle.launch
+er.daemon.server.exec
+.BuildCommandOnly.exe
+cute(BuildCommandOnly
+.java:37)
+	at org.gradle.launch
+er.daemon.server.api.
+DaemonCommandExecutio
+n.proceed(DaemonComma
+ndExecution.java:104)
+	at org.gradle.launch
+er.daemon.server.exec
+.StartBuildOrRespondW
+ithBusy$1.run(StartBu
+ildOrRespondWithBusy.
+java:52)
+	at org.gradle.launch
+er.daemon.server.Daem
+onStateCoordinator$1.
+run(DaemonStateCoordi
+nator.java:297)
+	at org.gradle.intern
+al.concurrent.Executo
+rPolicy$CatchAndRecor
+dFailures.onExecute(E
+xecutorPolicy.java:64
+)
+	at org.gradle.intern
+al.concurrent.Abstrac
+tManagedExecutor$1.ru
+n(AbstractManagedExec
+utor.java:47)
+
+
+BUILD FAILED in 36s

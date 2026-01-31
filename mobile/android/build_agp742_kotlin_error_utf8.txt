@@ -1,0 +1,100 @@
+﻿  cified: (e: file   
+ :///D:/M...aseRe    
+actPackage:Strin    
+g) [], RemoteExc    
+eption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+e: file:///D:/MonkeyS
+urvey/mobile/node_mod
+ules/react-native-scr
+eens/android/src/main
+/java/com/swmansion/r
+nscreens/RNScreensPac
+kage.kt:19:26 
+Unresolved 
+reference: 
+BaseReactPackage
+e: file:///D:/MonkeyS
+urvey/mobile/node_mod
+ules/react-native-scr
+eens/android/src/main
+/java/com/swmansion/r
+nscreens/RNScreensPac
+kage.kt:24:5 
+'createViewManagers' 
+overrides nothing
+e: file:///D:/MonkeyS
+urvey/mobile/node_mod
+ules/react-native-scr
+eens/android/src/main
+/java/com/swmansion/r
+nscreens/RNScreensPac
+kage.kt:45:5 
+'getModule' 
+overrides nothing
+e: file:///D:/MonkeyS
+urvey/mobile/node_mod
+ules/react-native-scr
+eens/android/src/main
+/java/com/swmansion/r
+nscreens/RNScreensPac
+kage.kt:55:5 'getReac
+tModuleInfoProvider' 
+overrides nothing
+
+> Task :react-native-screens:compileDebugKotlin FAILED
+
+FAILURE: Build 
+completed with 2 
+failures.
+
+1: Task failed with 
+an exception.
+-----------
+* What went wrong:
+Execution failed for 
+task ':react-native-a
+sync-storage_async-st
+orage:compileDebugJav
+aWithJavac'.
+> Could not resolve 
+all files for 
+configuration ':react
+-native-async-storage
+_async-storage:androi
+dJdkImage'.
+   > Failed to 
+transform core-for-sy
+stem-modules.jar to 
+match attributes {art
+ifactType=_internal_a
+ndroid_jdk_image, org
+.gradle.libraryelemen
+ts=jar, org.gradle.us
+age=java-runtime}.
+      > Execution 
+failed for 
+JdkImageTransform: C:
+\Users\srava\AppData\
+Local\Android\Sdk\pla
+tforms\android-34\cor
+e-for-system-modules.
+jar.
+         > Error 
+while executing 
+process C:\Program Fi
+les\Java\jdk-21\bin\j
+link.exe with 
+arguments 
+{--module-path C:\Use
+rs\srava\.gradle\cach
+es\transforms-3\7f021
+5de8bdf79ffee76524134
+1fac22\transformed\ou
+tput\temp\jmod 
+--add-modules 
+java.base --output C:
+\Users\srava\.gradle\

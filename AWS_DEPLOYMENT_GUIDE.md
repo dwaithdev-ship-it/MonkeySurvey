@@ -1,4 +1,4 @@
-# AWS Deployment Guide - MonkeySurvey
+# AWS Deployment Guide - BodhaSurvey
 
 ## Current Situation
 - ✅ Code pushed to GitHub successfully
@@ -19,7 +19,7 @@
 7. **Run these commands one by one:**
 
 ```bash
-cd MonkeySurvey
+cd BodhaSurvey
 git pull origin main
 sudo docker compose down
 sudo docker compose up -d --build
@@ -75,7 +75,7 @@ ssh -i monkeysurvey.pem ubuntu@13.49.231.22
 
 If this works, you can run:
 ```powershell
-ssh -i monkeysurvey.pem ubuntu@13.49.231.22 "cd MonkeySurvey && git pull origin main && sudo docker compose down && sudo docker compose up -d --build"
+ssh -i monkeysurvey.pem ubuntu@13.49.231.22 "cd BodhaSurvey && git pull origin main && sudo docker compose down && sudo docker compose up -d --build"
 ```
 
 ## What's Been Deployed

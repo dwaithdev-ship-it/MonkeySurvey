@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# MonkeySurvey AWS Deployment Script
+# BodhaSurvey AWS Deployment Script
 # Run this script on your Ubuntu EC2 instance
 
 echo "Starting deployment..."

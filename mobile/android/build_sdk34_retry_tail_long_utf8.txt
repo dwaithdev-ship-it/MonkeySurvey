@@ -1,0 +1,500 @@
+﻿ionStep.execute(Captu
+reStateAfterExecution
+Step.java:72)
+	at org.gradle.intern
+al.execution.steps.Ca
+ptureStateAfterExecut
+ionStep.execute(Captu
+reStateAfterExecution
+Step.java:50)
+	at org.gradle.intern
+al.execution.steps.Re
+solveInputChangesStep
+.execute(ResolveInput
+ChangesStep.java:40)
+	at org.gradle.intern
+al.execution.steps.Re
+solveInputChangesStep
+.execute(ResolveInput
+ChangesStep.java:29)
+	at org.gradle.intern
+al.execution.steps.Bu
+ildCacheStep.executeW
+ithoutCache(BuildCach
+eStep.java:179)
+	at org.gradle.intern
+al.execution.steps.Bu
+ildCacheStep.lambda$e
+xecute$1(BuildCacheSt
+ep.java:70)
+	at org.gradle.intern
+al.Either$Right.fold(
+Either.java:175)
+	at org.gradle.intern
+al.execution.caching.
+CachingState.fold(Cac
+hingState.java:59)
+	at org.gradle.intern
+al.execution.steps.Bu
+ildCacheStep.execute(
+BuildCacheStep.java:6
+8)
+	at org.gradle.intern
+al.execution.steps.Bu
+ildCacheStep.execute(
+BuildCacheStep.java:4
+6)
+	at org.gradle.intern
+al.execution.steps.St
+oreExecutionStateStep
+.execute(StoreExecuti
+onStateStep.java:36)
+	at org.gradle.intern
+al.execution.steps.St
+oreExecutionStateStep
+.execute(StoreExecuti
+onStateStep.java:25)
+	at org.gradle.intern
+al.execution.steps.Re
+cordOutputsStep.execu
+te(RecordOutputsStep.
+java:36)
+	at org.gradle.intern
+al.execution.steps.Re
+cordOutputsStep.execu
+te(RecordOutputsStep.
+java:22)
+	at org.gradle.intern
+al.execution.steps.Sk
+ipUpToDateStep.execut
+eBecause(SkipUpToDate
+Step.java:91)
+	at org.gradle.intern
+al.execution.steps.Sk
+ipUpToDateStep.lambda
+$execute$2(SkipUpToDa
+teStep.java:55)
+	at org.gradle.intern
+al.execution.steps.Sk
+ipUpToDateStep.execut
+e(SkipUpToDateStep.ja
+va:55)
+	at org.gradle.intern
+al.execution.steps.Sk
+ipUpToDateStep.execut
+e(SkipUpToDateStep.ja
+va:37)
+	at org.gradle.intern
+al.execution.steps.Re
+solveChangesStep.exec
+ute(ResolveChangesSte
+p.java:65)
+	at org.gradle.intern
+al.execution.steps.Re
+solveChangesStep.exec
+ute(ResolveChangesSte
+p.java:36)
+	at org.gradle.intern
+al.execution.steps.le
+gacy.MarkSnapshotting
+InputsFinishedStep.ex
+ecute(MarkSnapshottin
+gInputsFinishedStep.j
+ava:37)
+	at org.gradle.intern
+al.execution.steps.le
+gacy.MarkSnapshotting
+InputsFinishedStep.ex
+ecute(MarkSnapshottin
+gInputsFinishedStep.j
+ava:27)
+	at org.gradle.intern
+al.execution.steps.Re
+solveCachingStateStep
+.execute(ResolveCachi
+ngStateStep.java:76)
+	at org.gradle.intern
+al.execution.steps.Re
+solveCachingStateStep
+.execute(ResolveCachi
+ngStateStep.java:37)
+	at org.gradle.intern
+al.execution.steps.Va
+lidateStep.execute(Va
+lidateStep.java:108)
+	at org.gradle.intern
+al.execution.steps.Va
+lidateStep.execute(Va
+lidateStep.java:55)
+	at org.gradle.intern
+al.execution.steps.Ca
+ptureStateBeforeExecu
+tionStep.execute(Capt
+ureStateBeforeExecuti
+onStep.java:71)
+	at org.gradle.intern
+al.execution.steps.Ca
+ptureStateBeforeExecu
+tionStep.execute(Capt
+ureStateBeforeExecuti
+onStep.java:45)
+	at org.gradle.intern
+al.execution.steps.Sk
+ipEmptyWorkStep.execu
+teWithNonEmptySources
+(SkipEmptyWorkStep.ja
+va:177)
+	at org.gradle.intern
+al.execution.steps.Sk
+ipEmptyWorkStep.execu
+te(SkipEmptyWorkStep.
+java:81)
+	at org.gradle.intern
+al.execution.steps.Sk
+ipEmptyWorkStep.execu
+te(SkipEmptyWorkStep.
+java:53)
+	at org.gradle.intern
+al.execution.steps.Re
+moveUntrackedExecutio
+nStateStep.execute(Re
+moveUntrackedExecutio
+nStateStep.java:32)
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.5/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+79 actionable tasks: 32 executed, 47 up-to-date
+	at org.gradle.intern
+al.execution.steps.Re
+moveUntrackedExecutio
+nStateStep.execute(Re
+moveUntrackedExecutio
+nStateStep.java:21)
+	at org.gradle.intern
+al.execution.steps.le
+gacy.MarkSnapshotting
+InputsStartedStep.exe
+cute(MarkSnapshotting
+InputsStartedStep.jav
+a:38)
+	at org.gradle.intern
+al.execution.steps.Lo
+adPreviousExecutionSt
+ateStep.execute(LoadP
+reviousExecutionState
+Step.java:36)
+	at org.gradle.intern
+al.execution.steps.Lo
+adPreviousExecutionSt
+ateStep.execute(LoadP
+reviousExecutionState
+Step.java:23)
+	at org.gradle.intern
+al.execution.steps.Cl
+eanupStaleOutputsStep
+.execute(CleanupStale
+OutputsStep.java:75)
+	at org.gradle.intern
+al.execution.steps.Cl
+eanupStaleOutputsStep
+.execute(CleanupStale
+OutputsStep.java:41)
+	at org.gradle.intern
+al.execution.steps.Ex
+ecuteWorkBuildOperati
+onFiringStep.lambda$e
+xecute$0(ExecuteWorkB
+uildOperationFiringSt
+ep.java:52)
+	at org.gradle.intern
+al.execution.steps.Bu
+ildOperationStep$1.ca
+ll(BuildOperationStep
+.java:37)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+CallableBuildOperatio
+nWorker.execute(Defau
+ltBuildOperationRunne
+r.java:204)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+CallableBuildOperatio
+nWorker.execute(Defau
+ltBuildOperationRunne
+r.java:199)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+2.execute(DefaultBuil
+dOperationRunner.java
+:66)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+2.execute(DefaultBuil
+dOperationRunner.java
+:59)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner.
+execute(DefaultBuildO
+perationRunner.java:1
+57)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner.
+execute(DefaultBuildO
+perationRunner.java:5
+9)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner.
+call(DefaultBuildOper
+ationRunner.java:53)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationExecuto
+r.call(DefaultBuildOp
+erationExecutor.java:
+73)
+	at org.gradle.intern
+al.execution.steps.Bu
+ildOperationStep.oper
+ation(BuildOperationS
+tep.java:34)
+	at org.gradle.intern
+al.execution.steps.Ex
+ecuteWorkBuildOperati
+onFiringStep.lambda$e
+xecute$1(ExecuteWorkB
+uildOperationFiringSt
+ep.java:50)
+	at org.gradle.intern
+al.execution.steps.Ex
+ecuteWorkBuildOperati
+onFiringStep.execute(
+ExecuteWorkBuildOpera
+tionFiringStep.java:5
+0)
+	at org.gradle.intern
+al.execution.steps.Ex
+ecuteWorkBuildOperati
+onFiringStep.execute(
+ExecuteWorkBuildOpera
+tionFiringStep.java:3
+8)
+	at org.gradle.intern
+al.execution.steps.As
+signWorkspaceStep.lam
+bda$execute$0(AssignW
+orkspaceStep.java:32)
+	at org.gradle.intern
+al.execution.workspac
+e.impl.DefaultImmutab
+leWorkspaceProvider.l
+ambda$withWorkspace$3
+(DefaultImmutableWork
+spaceProvider.java:14
+0)
+	at org.gradle.cache.
+internal.LockOnDemand
+CrossProcessCacheAcce
+ss.withFileLock(LockO
+nDemandCrossProcessCa
+cheAccess.java:90)
+	at org.gradle.cache.
+internal.DefaultCache
+Coordinator.withFileL
+ock(DefaultCacheCoord
+inator.java:219)
+	at org.gradle.cache.
+internal.DefaultPersi
+stentDirectoryStore.w
+ithFileLock(DefaultPe
+rsistentDirectoryStor
+e.java:179)
+	at org.gradle.cache.
+internal.DefaultCache
+Factory$ReferenceTrac
+kingCache.withFileLoc
+k(DefaultCacheFactory
+.java:214)
+	at org.gradle.intern
+al.execution.workspac
+e.impl.DefaultImmutab
+leWorkspaceProvider.w
+ithWorkspace(DefaultI
+mmutableWorkspaceProv
+ider.java:137)
+	at org.gradle.intern
+al.execution.steps.As
+signWorkspaceStep.exe
+cute(AssignWorkspaceS
+tep.java:30)
+	at org.gradle.intern
+al.execution.steps.As
+signWorkspaceStep.exe
+cute(AssignWorkspaceS
+tep.java:21)
+	at org.gradle.intern
+al.execution.steps.Id
+entityCacheStep.execu
+te(IdentityCacheStep.
+java:37)
+	at org.gradle.intern
+al.execution.steps.Id
+entityCacheStep.lambd
+a$executeDeferred$0(I
+dentityCacheStep.java
+:49)
+	at org.gradle.cache.
+Cache.lambda$get$0(Ca
+che.java:31)
+	at org.gradle.cache.
+ManualEvictionInMemor
+yCache.get(ManualEvic
+tionInMemoryCache.jav
+a:30)
+	at org.gradle.cache.
+internal.DefaultCross
+BuildInMemoryCacheFac
+tory$CrossBuildCacheR
+etainingDataFromPrevi
+ousBuild.get(DefaultC
+rossBuildInMemoryCach
+eFactory.java:255)
+	at org.gradle.cache.
+Cache.get(Cache.java:
+31)
+	at org.gradle.intern
+al.execution.steps.Id
+entityCacheStep.lambd
+a$executeDeferred$1(I
+dentityCacheStep.java
+:47)
+	at org.gradle.intern
+al.Deferrable$3.compl
+eteAndGet(Deferrable.
+java:117)
+	... 133 more
+Caused by: com.androi
+d.ide.common.process.
+ProcessException: 
+Error while 
+executing process 
+C:\Program Files\Java
+\jdk-21\bin\jlink.exe
+ with arguments 
+{--module-path C:\Use
+rs\srava\.gradle\cach
+es\transforms-3\9359a
+b1ed36c2ad7167d1ec7dd
+8e2090\transformed\ou
+tput\temp\jmod 
+--add-modules 
+java.base --output C:
+\Users\srava\.gradle\
+caches\transforms-3\9
+359ab1ed36c2ad7167d1e
+c7dd8e2090\transforme
+d\output\jdkImage 
+--disable-plugin 
+system-modules}
+	at com.android.build
+.gradle.internal.proc
+ess.GradleProcessResu
+lt.buildProcessExcept
+ion(GradleProcessResu
+lt.java:73)
+	at com.android.build
+.gradle.internal.proc
+ess.GradleProcessResu
+lt.assertNormalExitVa
+lue(GradleProcessResu
+lt.java:48)
+	at com.android.build
+.gradle.internal.depe
+ndency.JdkTools.linkJ
+modsIntoJdkImage(JdkI
+mageTransformDelegate
+.kt:254)
+	at com.android.build
+.gradle.internal.depe
+ndency.JdkImageTransf
+ormDelegate.run(JdkIm
+ageTransformDelegate.
+kt:62)
+	at com.android.build
+.gradle.internal.depe
+ndency.JdkImageTransf
+orm.transform(JdkImag
+eTransform.kt:81)
+	at org.gradle.api.in
+ternal.artifacts.tran
+sform.DefaultTransfor
+m.transform(DefaultTr
+ansform.java:279)
+	at org.gradle.api.in
+ternal.artifacts.tran
+sform.AbstractTransfo
+rmExecution$2.call(Ab
+stractTransformExecut
+ion.java:138)
+	at org.gradle.api.in
+ternal.artifacts.tran
+sform.AbstractTransfo
+rmExecution$2.call(Ab
+stractTransformExecut
+ion.java:132)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+CallableBuildOperatio
+nWorker.execute(Defau
+ltBuildOperationRunne
+r.java:204)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+CallableBuildOperatio
+nWorker.execute(Defau
+ltBuildOperationRunne
+r.java:199)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+2.execute(DefaultBuil
+dOperationRunner.java
+:66)
+	... 231 more
+Caused by: org.gradle
+.process.internal.Exe
+cException: Process 
+'command 'C:\Program 
+Files\Java\jdk-21\bin
+\jlink.exe'' 
+finished with 
+non-zero exit value 1
+	at org.gradle.proces
+s.internal.DefaultExe
+cHandle$ExecResultImp
+l.assertNormalExitVal
+ue(DefaultExecHandle.
+java:431)
+	at com.android.build
+.gradle.internal.proc
+ess.GradleProcessResu
+lt.assertNormalExitVa
+lue(GradleProcessResu
+lt.java:46)
+	... 240 more
+
+
+BUILD FAILED in 1m 
+37s

@@ -40,14 +40,26 @@ const Login = () => {
       const response = await userAPI.login(loginData);
 
       if (response.success) {
-        localStorage.setItem("token", response.data.token);
-        if (response.data.user) {
-          localStorage.setItem("user", JSON.stringify(response.data.user));
-          if (response.data.user.role === 'admin') {
-            navigate("/dashboard");
-          } else {
-            navigate("/take-survey/1");
-          }
+        const authData = {
+          token: response.data.token,
+          user: response.data.user
+        };
+
+        localStorage.setItem("token", authData.token);
+        if (authData.user) {
+          localStorage.setItem("user", JSON.stringify(authData.user));
+        }
+
+        // Notify Mobile App if running in WebView
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'AUTH_SUCCESS',
+            payload: authData
+          }));
+        }
+
+        if (response.data.user?.role === 'admin') {
+          navigate("/dashboard");
         } else {
           navigate("/take-survey/1");
         }

@@ -39,7 +39,7 @@ function Login() {
     <div className="container" style={{ maxWidth: '400px', paddingTop: '100px' }}>
       <div className="card">
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <img src={require('../assets/logo.png')} alt="MonkeySurvey" style={{ maxWidth: '100%', height: 'auto', maxHeight: '100px' }} />
+          <img src={require('../assets/logo.png')} alt="BodhaSurvey" style={{ maxWidth: '100%', height: 'auto', maxHeight: '100px' }} />
         </div>
         <h3 style={{ marginBottom: '24px', textAlign: 'center', color: '#6b7280' }}>Login</h3>
 

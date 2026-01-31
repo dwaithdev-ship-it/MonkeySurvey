@@ -1,4 +1,4 @@
-# Android App - MonkeySurvey
+# Android App - BodhaSurvey
 
 ## Technology Stack
 - **Language**: Kotlin

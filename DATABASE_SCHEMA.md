@@ -1,4 +1,4 @@
-# MonkeySurvey - Database Schema
+# BodhaSurvey - Database Schema
 
 ## MongoDB Schema
 

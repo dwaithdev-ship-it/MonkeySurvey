@@ -1,0 +1,100 @@
+﻿reference: 
+BaseReactPackage
+e: file:///D:/MonkeyS
+urvey/mobile/node_mod
+ules/react-native-scr
+eens/android/src/main
+/java/com/swmansion/r
+nscreens/RNScreensPac
+kage.kt:24:5 
+'createViewManagers' 
+overrides nothing
+e: file:///D:/MonkeyS
+urvey/mobile/node_mod
+ules/react-native-scr
+eens/android/src/main
+/java/com/swmansion/r
+nscreens/RNScreensPac
+kage.kt:45:5 
+'getModule' 
+overrides nothing
+e: file:///D:/MonkeyS
+urvey/mobile/node_mod
+ules/react-native-scr
+eens/android/src/main
+/java/com/swmansion/r
+nscreens/RNScreensPac
+kage.kt:55:5 'getReac
+tModuleInfoProvider' 
+overrides nothing
+
+> Task :react-native-screens:compileDebugKotlin FAILED
+> Task :react-native-safe-area-context:compileDebugJavaWithJavac
+
+> Task :react-native-gesture-handler:compileDebugKotlin
+e: Supertypes of the 
+following classes 
+cannot be resolved. 
+Please make sure you 
+have the required 
+dependencies in the 
+classpath:
+    class com.faceboo
+k.react.viewmanagers.
+RNGestureHandlerButto
+nManagerInterface, 
+unresolved 
+supertypes: ViewManag
+erWithGeneratedInterf
+ace
+    class com.faceboo
+k.react.viewmanagers.
+RNGestureHandlerRootV
+iewManagerInterface, 
+unresolved 
+supertypes: ViewManag
+erWithGeneratedInterf
+ace
+Adding -Xextended-com
+piler-checks 
+argument might 
+provide additional 
+information.
+
+e: file:///D:/MonkeyS
+urvey/mobile/node_mod
+ules/react-native-ges
+ture-handler/android/
+src/main/java/com/swm
+ansion/gesturehandler
+/RNGestureHandlerPack
+age.kt:3:27 
+Unresolved 
+reference: 
+BaseReactPackage
+e: file:///D:/MonkeyS
+urvey/mobile/node_mod
+ules/react-native-ges
+ture-handler/android/
+src/main/java/com/swm
+ansion/gesturehandler
+/RNGestureHandlerPack
+age.kt:23:3 
+Unresolved 
+reference: 
+BaseReactPackage
+e: file:///D:/MonkeyS
+urvey/mobile/node_mod
+ules/react-native-ges
+ture-handler/android/
+src/main/java/com/swm
+ansion/gesturehandler
+/RNGestureHandlerPack
+age.kt:36:3 
+'createViewManagers' 
+overrides nothing
+e: file:///D:/MonkeyS
+urvey/mobile/node_mod
+ules/react-native-ges
+ture-handler/android/
+src/main/java/com/swm

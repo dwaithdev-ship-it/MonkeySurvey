@@ -27,8 +27,8 @@ echo ================================================
 echo   All services are starting...
 echo ================================================
 echo.
-echo Backend API: http://localhost:4000
-echo Frontend:    http://localhost:5173
+echo Backend API: http://localhost:3000
+echo Frontend:    http://localhost:4000
 echo.
 echo IMPORTANT NOTES:
 echo - Use phone number to login (10 digits)

@@ -1,7 +1,7 @@
-# MonkeySurvey - Project Summary
+# BodhaSurvey - Project Summary
 
 ## Overview
-MonkeySurvey is a complete mobile survey application with microservices backend, designed for mobile app developers to create, distribute, and analyze surveys with advanced reporting capabilities.
+BodhaSurvey is a complete mobile survey application with microservices backend, designed for mobile app developers to create, distribute, and analyze surveys with advanced reporting capabilities.
 
 ## What Has Been Delivered
 
@@ -200,7 +200,7 @@ The analytics service includes a powerful report dashboard with:
 ## File Structure
 
 ```
-MonkeySurvey/
+BodhaSurvey/
 ├── README.md                      # Main documentation
 ├── ARCHITECTURE.md                # Architecture overview
 ├── DATABASE_SCHEMA.md             # Database design
@@ -291,7 +291,7 @@ The project is now ready for:
 
 ## Conclusion
 
-The MonkeySurvey project foundation is complete with:
+The BodhaSurvey project foundation is complete with:
 - ✅ Beautiful, comprehensive UI design
 - ✅ Robust database schema
 - ✅ Complete microservices architecture

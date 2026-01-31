@@ -1,0 +1,200 @@
+﻿
+      Also, the 
+maximum recommended 
+compile SDK version 
+for Android Gradle
+      plugin 7.4.2 
+is 33.
+
+      Recommended 
+action: Update this 
+project's version of 
+the Android Gradle
+      plugin to one 
+that supports 34, 
+then update this 
+project to use
+      
+compileSdkVerion of 
+at least 34.
+
+      Note that 
+updating a library 
+or application's 
+compileSdkVersion 
+(which
+      allows newer 
+APIs to be used) can 
+be done separately 
+from updating
+      
+targetSdkVersion 
+(which opts the app 
+in to new runtime 
+behavior) and
+      minSdkVersion 
+(which determines 
+which devices the 
+app can be installed
+      on).
+	at com.android.build
+.gradle.internal.task
+s.CheckAarMetadataWor
+kAction.execute(Check
+AarMetadataTask.kt:20
+4)
+	at org.gradle.worker
+s.internal.DefaultWor
+kerServer.execute(Def
+aultWorkerServer.java
+:63)
+	at org.gradle.worker
+s.internal.NoIsolatio
+nWorkerFactory$1$1.cr
+eate(NoIsolationWorke
+rFactory.java:66)
+	at org.gradle.worker
+s.internal.NoIsolatio
+nWorkerFactory$1$1.cr
+eate(NoIsolationWorke
+rFactory.java:62)
+	at org.gradle.intern
+al.classloader.ClassL
+oaderUtils.executeInC
+lassloader(ClassLoade
+rUtils.java:100)
+	at org.gradle.worker
+s.internal.NoIsolatio
+nWorkerFactory$1.lamb
+da$execute$0(NoIsolat
+ionWorkerFactory.java
+:62)
+	at org.gradle.worker
+s.internal.AbstractWo
+rker$1.call(AbstractW
+orker.java:44)
+	at org.gradle.worker
+s.internal.AbstractWo
+rker$1.call(AbstractW
+orker.java:41)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+CallableBuildOperatio
+nWorker.execute(Defau
+ltBuildOperationRunne
+r.java:204)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+CallableBuildOperatio
+nWorker.execute(Defau
+ltBuildOperationRunne
+r.java:199)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+2.execute(DefaultBuil
+dOperationRunner.java
+:66)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+2.execute(DefaultBuil
+dOperationRunner.java
+:59)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner.
+execute(DefaultBuildO
+perationRunner.java:1
+57)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner.
+execute(DefaultBuildO
+perationRunner.java:5
+9)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner.
+call(DefaultBuildOper
+ationRunner.java:53)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationExecuto
+r.call(DefaultBuildOp
+erationExecutor.java:
+73)
+	at org.gradle.worker
+s.internal.AbstractWo
+rker.executeWrappedIn
+BuildOperation(Abstra
+ctWorker.java:41)
+	at org.gradle.worker
+s.internal.NoIsolatio
+nWorkerFactory$1.exec
+ute(NoIsolationWorker
+Factory.java:59)
+	at org.gradle.worker
+s.internal.DefaultWor
+kerExecutor.lambda$su
+bmitWork$0(DefaultWor
+kerExecutor.java:170)
+	at org.gradle.intern
+al.work.DefaultCondit
+ionalExecutionQueue$E
+xecutionRunner.runExe
+cution(DefaultConditi
+onalExecutionQueue.ja
+va:187)
+	at org.gradle.intern
+al.work.DefaultCondit
+ionalExecutionQueue$E
+xecutionRunner.access
+$700(DefaultCondition
+alExecutionQueue.java
+:120)
+	at org.gradle.intern
+al.work.DefaultCondit
+ionalExecutionQueue$E
+xecutionRunner$1.run(
+DefaultConditionalExe
+cutionQueue.java:162)
+	at org.gradle.intern
+al.Factories$1.create
+(Factories.java:31)
+	at org.gradle.intern
+al.work.DefaultWorker
+LeaseService.withLock
+s(DefaultWorkerLeaseS
+ervice.java:264)
+	at org.gradle.intern
+al.work.DefaultWorker
+LeaseService.runAsWor
+kerThread(DefaultWork
+erLeaseService.java:1
+28)
+	at org.gradle.intern
+al.work.DefaultWorker
+LeaseService.runAsWor
+kerThread(DefaultWork
+erLeaseService.java:1
+33)
+	at org.gradle.intern
+al.work.DefaultCondit
+ionalExecutionQueue$E
+xecutionRunner.runBat
+ch(DefaultConditional
+ExecutionQueue.java:1
+57)
+	at org.gradle.intern
+al.work.DefaultCondit
+ionalExecutionQueue$E
+xecutionRunner.run(De
+faultConditionalExecu
+tionQueue.java:126)
+	... 2 more
+
+
+BUILD FAILED in 51s

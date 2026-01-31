@@ -1,0 +1,60 @@
+﻿> Task :react-native-screens:processDebugJavaRes NO-SOURCE
+> Task :react-native-svg:processDebugJavaRes NO-SOURCE
+> Task :react-native-svg:bundleLibResDebug NO-SOURCE
+> Task :react-native-vector-icons:processDebugJavaRes NO-SOURCE
+> Task :react-native-vector-icons:bundleLibResDebug NO-SOURCE
+> Task :react-native-safe-area-context:bundleLibResDebug
+> Task :app:checkDebugDuplicateClasses
+> Task :app:desugarDebugFileDependencies
+> Task :app:processDebugResources
+> Task :app:mergeExtDexDebug
+
+> Task :react-native-screens:compileDebugKotlin
+./gradlew : e: file:///D:/Mo
+nkeySurvey/mobile/node_modul
+es/react-native-screens/andr
+oid/src/main/java/com/swmans
+ion/rnscreens/RNScreensPacka
+ge.kt:3:27 Unresolved 
+reference: BaseReactPackage
+At line:1 char:120
++ ...  $env:PATH; ./gradlew 
+assembleDebug --stacktrace 
+--no-daemon 2>&1 | T ...
++                 ~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
+    + CategoryInfo          
+    : NotSpecified: (e: fi  
+  le:///D:/M...aseReactPa   
+ ckage:String) [], Remot    
+eException
+    + FullyQualifiedErrorId 
+    : NativeCommandError
+ 
+e: file:///D:/MonkeySurvey/m
+obile/node_modules/react-nat
+ive-screens/android/src/main
+/java/com/swmansion/rnscreen
+s/RNScreensPackage.kt:19:26 
+Unresolved reference: 
+BaseReactPackage
+e: file:///D:/MonkeySurvey/m
+obile/node_modules/react-nat
+ive-screens/android/src/main
+/java/com/swmansion/rnscreen
+s/RNScreensPackage.kt:24:5 
+'createViewManagers' 
+overrides nothing
+e: file:///D:/MonkeySurvey/m
+obile/node_modules/react-nat
+ive-screens/android/src/main
+/java/com/swmansion/rnscreen
+s/RNScreensPackage.kt:45:5 
+'getModule' overrides 
+nothing
+e: file:///D:/MonkeySurvey/m
+obile/node_modules/react-nat
+ive-screens/android/src/main
+/java/com/swmansion/rnscreen
+s/RNScreensPackage.kt:55:5 '

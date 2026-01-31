@@ -1,13 +1,17 @@
 {
-  "name": "@monkeysurvey/shared",
+  "name": "@bodhasurvey/shared",
   "version": "1.0.0",
-  "description": "Shared utilities and types for MonkeySurvey microservices",
+  "description": "Shared utilities and types for BodhaSurvey microservices",
   "main": "index.js",
   "scripts": {
     "test": "jest"
   },
-  "keywords": ["survey", "shared", "utilities"],
-  "author": "MonkeySurvey Team",
+  "keywords": [
+    "survey",
+    "shared",
+    "utilities"
+  ],
+  "author": "BodhaSurvey Team",
   "license": "MIT",
   "dependencies": {
     "jsonwebtoken": "^9.0.2",

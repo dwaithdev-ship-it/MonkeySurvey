@@ -1,7 +1,7 @@
-# MonkeySurvey - Architecture Overview
+# BodhaSurvey - Architecture Overview
 
 ## Project Overview
-MonkeySurvey is a comprehensive mobile survey application that allows users to create, distribute, and analyze surveys with advanced reporting capabilities.
+BodhaSurvey is a comprehensive mobile survey application that allows users to create, distribute, and analyze surveys with advanced reporting capabilities.
 
 ## Technology Stack
 

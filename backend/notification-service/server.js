@@ -76,7 +76,7 @@ mongoose.connect(MONGODB_URI)
     initReportJob();
 
     app.listen(PORT, () => {
-      console.log(`✓ Notification Service running on port ${PORT}`);
+      console.log(`✓ BodhaSurvey Notification Service running on port ${PORT}`);
     });
   })
   .catch((err) => {

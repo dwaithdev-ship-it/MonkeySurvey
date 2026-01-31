@@ -18,7 +18,7 @@ export default function SurveyAnalytics() {
   const fetchData = async () => {
     try {
       console.log('Fetching analytics for survey:', surveyId);
-      
+
       const [surveyRes, responsesRes] = await Promise.all([
         surveyAPI.getById(surveyId),
         responseAPI.getAll({ surveyId })
@@ -30,7 +30,7 @@ export default function SurveyAnalytics() {
       if (surveyRes.success) {
         setSurvey(surveyRes.data);
       }
-      
+
       if (responsesRes.success) {
         console.log('Setting responses:', responsesRes.data.responses);
         setResponses(responsesRes.data.responses || []);
@@ -77,12 +77,12 @@ export default function SurveyAnalytics() {
             <h3>Q{index + 1}: {question.question}</h3>
             <span className="response-count">{totalAnswers} responses</span>
           </div>
-          
+
           <div className="analytics-chart">
             {question.options?.map(option => {
               const count = stats[option.value] || 0;
               const percentage = totalAnswers > 0 ? (count / totalAnswers * 100).toFixed(1) : 0;
-              
+
               return (
                 <div key={option._id} className="chart-bar-container">
                   <div className="chart-label">
@@ -90,8 +90,8 @@ export default function SurveyAnalytics() {
                     <span className="chart-value">{count} ({percentage}%)</span>
                   </div>
                   <div className="chart-bar-wrapper">
-                    <div 
-                      className="chart-bar" 
+                    <div
+                      className="chart-bar"
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
@@ -112,7 +112,7 @@ export default function SurveyAnalytics() {
             <h3>Q{index + 1}: {question.question}</h3>
             <span className="response-count">{textAnswers.length} responses</span>
           </div>
-          
+
           <div className="text-responses">
             {textAnswers.length > 0 ? (
               textAnswers.map((answer, idx) => (
@@ -128,7 +128,7 @@ export default function SurveyAnalytics() {
       );
     } else if (question.type === 'rating') {
       const ratings = Object.keys(stats).map(Number).sort((a, b) => a - b);
-      const avgRating = ratings.length > 0 
+      const avgRating = ratings.length > 0
         ? (ratings.reduce((sum, rating) => sum + (rating * stats[rating]), 0) / totalAnswers).toFixed(1)
         : 0;
 
@@ -138,22 +138,22 @@ export default function SurveyAnalytics() {
             <h3>Q{index + 1}: {question.question}</h3>
             <span className="response-count">{totalAnswers} responses</span>
           </div>
-          
+
           <div className="rating-summary">
             <div className="avg-rating">
               <span className="rating-value">{avgRating}</span>
               <span className="rating-label">Average Rating</span>
             </div>
-            
+
             <div className="rating-distribution">
               {[1, 2, 3, 4, 5].map(star => (
                 <div key={star} className="rating-bar-container">
                   <span>{star} ⭐</span>
                   <div className="chart-bar-wrapper">
-                    <div 
-                      className="chart-bar" 
-                      style={{ 
-                        width: `${totalAnswers > 0 ? ((stats[star] || 0) / totalAnswers * 100) : 0}%` 
+                    <div
+                      className="chart-bar"
+                      style={{
+                        width: `${totalAnswers > 0 ? ((stats[star] || 0) / totalAnswers * 100) : 0}%`
                       }}
                     />
                   </div>
@@ -174,7 +174,7 @@ export default function SurveyAnalytics() {
       <div className="dashboard">
         <nav className="navbar">
           <div className="nav-brand">
-            <h2>MonkeySurvey</h2>
+            <h2>BodhaSurvey</h2>
           </div>
         </nav>
         <div className="dashboard-content">
@@ -189,7 +189,7 @@ export default function SurveyAnalytics() {
       <div className="dashboard">
         <nav className="navbar">
           <div className="nav-brand">
-            <h2>MonkeySurvey</h2>
+            <h2>BodhaSurvey</h2>
           </div>
         </nav>
         <div className="dashboard-content">
@@ -209,7 +209,7 @@ export default function SurveyAnalytics() {
     <div className="dashboard">
       <nav className="navbar">
         <div className="nav-brand">
-          <h2>MonkeySurvey</h2>
+          <h2>BodhaSurvey</h2>
         </div>
         <div className="nav-actions">
           <button onClick={() => navigate('/dashboard')} className="btn-secondary">
@@ -251,7 +251,7 @@ export default function SurveyAnalytics() {
           <div className="analytics-questions">
             <h2>Question Results</h2>
             {survey.questions && survey.questions.length > 0 ? (
-              survey.questions.map((question, index) => 
+              survey.questions.map((question, index) =>
                 renderQuestionAnalytics(question, index)
               )
             ) : (
@@ -275,13 +275,13 @@ export default function SurveyAnalytics() {
                       {response.answers?.map((answer, qIdx) => {
                         const question = survey.questions.find(q => q._id === answer.questionId);
                         if (!question) return null;
-                        
+
                         return (
                           <div key={qIdx} className="response-answer">
                             <div className="answer-question">{question.question}</div>
                             <div className="answer-value">
-                              {Array.isArray(answer.value) 
-                                ? answer.value.join(', ') 
+                              {Array.isArray(answer.value)
+                                ? answer.value.join(', ')
                                 : answer.value}
                             </div>
                           </div>

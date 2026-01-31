@@ -1,0 +1,70 @@
+﻿failed with an 
+exception.
+
+* What went wrong:
+A problem occurred 
+configuring project 
+':app'.
+> defaultConfig 
+contains custom 
+BuildConfig fields, 
+but the feature is 
+disabled.
+  To enable the 
+feature, add the 
+following to your 
+module-level 
+build.gradle:
+  `android.buildFeatu
+res.buildConfig true`
+
+* Try:
+> Run with --info or 
+--debug option to 
+get more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at ht
+tps://help.gradle.org
+.
+
+* Exception is:
+org.gradle.api.Projec
+tConfigurationExcepti
+on: A problem 
+occurred configuring 
+project ':app'.
+	at org.gradle.config
+uration.project.Lifec
+ycleProjectEvaluator.
+wrapException(Lifecyc
+leProjectEvaluator.ja
+va:84)
+	at org.gradle.config
+uration.project.Lifec
+ycleProjectEvaluator.
+addConfigurationFailu
+re(LifecycleProjectEv
+aluator.java:77)
+	at org.gradle.config
+uration.project.Lifec
+ycleProjectEvaluator.
+access$500(LifecycleP
+rojectEvaluator.java:
+55)
+	at org.gradle.config
+uration.project.Lifec
+ycleProjectEvaluator$
+NotifyAfterEvaluate.r
+un(LifecycleProjectEv
+aluator.java:255)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+1.execute(DefaultBuil
+dOperationRunner.java
+:29)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+1.execute(DefaultBuil

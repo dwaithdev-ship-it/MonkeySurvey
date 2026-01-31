@@ -52,7 +52,7 @@ app.use('/analytics', require('./routes/analytics'));
 app.get('/health', (req, res) => {
   res.json({
     success: true,
-    service: 'analytics-service',
+    service: 'BodhaSurvey Analytics Service',
     status: 'healthy',
     timestamp: new Date().toISOString()
   });

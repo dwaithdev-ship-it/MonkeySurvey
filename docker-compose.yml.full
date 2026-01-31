@@ -4,7 +4,7 @@ services:
   # Databases
   mongodb:
     image: mongo:6
-    container_name: monkeysurvey-mongodb
+    container_name: bodhasurvey-mongodb
     restart: always
     ports:
       - "27017:27017"
@@ -13,11 +13,11 @@ services:
     volumes:
       - mongodb-data:/data/db
     networks:
-      - monkeysurvey-network
+      - bodhasurvey-network
 
   postgres:
     image: postgres:14
-    container_name: monkeysurvey-postgres
+    container_name: bodhasurvey-postgres
     restart: always
     ports:
       - "5432:5432"
@@ -28,25 +28,25 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
-      - monkeysurvey-network
+      - bodhasurvey-network
 
   redis:
     image: redis:7-alpine
-    container_name: monkeysurvey-redis
+    container_name: bodhasurvey-redis
     restart: always
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
     networks:
-      - monkeysurvey-network
+      - bodhasurvey-network
 
   # API Gateway
   api-gateway:
     build:
       context: ./backend/api-gateway
       dockerfile: Dockerfile
-    container_name: monkeysurvey-api-gateway
+    container_name: bodhasurvey-api-gateway
     restart: always
     ports:
       - "3000:3000"
@@ -64,14 +64,14 @@ services:
       - analytics-service
       - notification-service
     networks:
-      - monkeysurvey-network
+      - bodhasurvey-network
 
   # User Service
   user-service:
     build:
       context: ./backend/user-service
       dockerfile: Dockerfile
-    container_name: monkeysurvey-user-service
+    container_name: bodhasurvey-user-service
     restart: always
     ports:
       - "3001:3001"
@@ -83,14 +83,14 @@ services:
     depends_on:
       - mongodb
     networks:
-      - monkeysurvey-network
+      - bodhasurvey-network
 
   # Survey Service
   survey-service:
     build:
       context: ./backend/survey-service
       dockerfile: Dockerfile
-    container_name: monkeysurvey-survey-service
+    container_name: bodhasurvey-survey-service
     restart: always
     ports:
       - "3002:3002"
@@ -101,14 +101,14 @@ services:
     depends_on:
       - mongodb
     networks:
-      - monkeysurvey-network
+      - bodhasurvey-network
 
   # Response Service
   response-service:
     build:
       context: ./backend/response-service
       dockerfile: Dockerfile
-    container_name: monkeysurvey-response-service
+    container_name: bodhasurvey-response-service
     restart: always
     ports:
       - "3003:3003"
@@ -119,14 +119,14 @@ services:
     depends_on:
       - mongodb
     networks:
-      - monkeysurvey-network
+      - bodhasurvey-network
 
   # Analytics Service
   analytics-service:
     build:
       context: ./backend/analytics-service
       dockerfile: Dockerfile
-    container_name: monkeysurvey-analytics-service
+    container_name: bodhasurvey-analytics-service
     restart: always
     ports:
       - "3004:3004"
@@ -141,14 +141,14 @@ services:
       - postgres
       - redis
     networks:
-      - monkeysurvey-network
+      - bodhasurvey-network
 
   # Notification Service
   notification-service:
     build:
       context: ./backend/notification-service
       dockerfile: Dockerfile
-    container_name: monkeysurvey-notification-service
+    container_name: bodhasurvey-notification-service
     restart: always
     ports:
       - "3005:3005"
@@ -159,7 +159,7 @@ services:
     depends_on:
       - mongodb
     networks:
-      - monkeysurvey-network
+      - bodhasurvey-network
 
 volumes:
   mongodb-data:
@@ -167,5 +167,5 @@ volumes:
   redis-data:
 
 networks:
-  monkeysurvey-network:
+  bodhasurvey-network:
     driver: bridge

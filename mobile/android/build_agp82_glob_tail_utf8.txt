@@ -1,0 +1,300 @@
+﻿al.operations.Default
+BuildOperationRunner.
+execute(DefaultBuildO
+perationRunner.java:5
+9)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner.
+call(DefaultBuildOper
+ationRunner.java:53)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationExecuto
+r.call(DefaultBuildOp
+erationExecutor.java:
+73)
+	at org.gradle.api.in
+ternal.tasks.executio
+n.EventFiringTaskExec
+uter.execute(EventFir
+ingTaskExecuter.java:
+52)
+	at org.gradle.execut
+ion.plan.LocalTaskNod
+eExecutor.execute(Loc
+alTaskNodeExecutor.ja
+va:42)
+	at org.gradle.execut
+ion.taskgraph.Default
+TaskExecutionGraph$In
+vokeNodeExecutorsActi
+on.execute(DefaultTas
+kExecutionGraph.java:
+331)
+	at org.gradle.execut
+ion.taskgraph.Default
+TaskExecutionGraph$In
+vokeNodeExecutorsActi
+on.execute(DefaultTas
+kExecutionGraph.java:
+318)
+	at org.gradle.execut
+ion.taskgraph.Default
+TaskExecutionGraph$Bu
+ildOperationAwareExec
+utionAction.lambda$ex
+ecute$0(DefaultTaskEx
+ecutionGraph.java:314
+)
+	at org.gradle.intern
+al.operations.Current
+BuildOperationRef.wit
+h(CurrentBuildOperati
+onRef.java:80)
+	at org.gradle.execut
+ion.taskgraph.Default
+TaskExecutionGraph$Bu
+ildOperationAwareExec
+utionAction.execute(D
+efaultTaskExecutionGr
+aph.java:314)
+	at org.gradle.execut
+ion.taskgraph.Default
+TaskExecutionGraph$Bu
+ildOperationAwareExec
+utionAction.execute(D
+efaultTaskExecutionGr
+aph.java:303)
+	at org.gradle.execut
+ion.plan.DefaultPlanE
+xecutor$ExecutorWorke
+r.execute(DefaultPlan
+Executor.java:463)
+	at org.gradle.execut
+ion.plan.DefaultPlanE
+xecutor$ExecutorWorke
+r.run(DefaultPlanExec
+utor.java:380)
+	at org.gradle.intern
+al.concurrent.Executo
+rPolicy$CatchAndRecor
+dFailures.onExecute(E
+xecutorPolicy.java:64
+)
+	at org.gradle.intern
+al.concurrent.Abstrac
+tManagedExecutor$1.ru
+n(AbstractManagedExec
+utor.java:47)
+	at java.base/java.ut
+il.concurrent.ThreadP
+oolExecutor.runWorker
+(ThreadPoolExecutor.j
+ava:1144)
+	at java.base/java.ut
+il.concurrent.ThreadP
+oolExecutor$Worker.ru
+n(ThreadPoolExecutor.
+java:642)
+	at java.base/java.la
+ng.Thread.run(Thread.
+java:1583)
+Caused by: org.jetbra
+ins.kotlin.gradle.tas
+ks.CompilationErrorEx
+ception: Compilation 
+error. See log for 
+more details
+	at org.jetbrains.kot
+lin.gradle.tasks.Task
+sUtilsKt.throwExcepti
+onIfCompilationFailed
+(tasksUtils.kt:22)
+	at org.jetbrains.kot
+lin.compilerRunner.Gr
+adleKotlinCompilerWor
+k.run(GradleKotlinCom
+pilerWork.kt:144)
+	at org.jetbrains.kot
+lin.compilerRunner.Gr
+adleCompilerRunnerWit
+hWorkers$GradleKotlin
+CompilerWorkAction.ex
+ecute(GradleCompilerR
+unnerWithWorkers.kt:7
+6)
+	at org.gradle.worker
+s.internal.DefaultWor
+kerServer.execute(Def
+aultWorkerServer.java
+:63)
+	at org.gradle.worker
+s.internal.NoIsolatio
+nWorkerFactory$1$1.cr
+eate(NoIsolationWorke
+rFactory.java:66)
+	at org.gradle.worker
+s.internal.NoIsolatio
+nWorkerFactory$1$1.cr
+eate(NoIsolationWorke
+rFactory.java:62)
+	at org.gradle.intern
+al.classloader.ClassL
+oaderUtils.executeInC
+lassloader(ClassLoade
+rUtils.java:100)
+	at org.gradle.worker
+s.internal.NoIsolatio
+nWorkerFactory$1.lamb
+da$execute$0(NoIsolat
+ionWorkerFactory.java
+:62)
+	at org.gradle.worker
+s.internal.AbstractWo
+rker$1.call(AbstractW
+orker.java:44)
+	at org.gradle.worker
+s.internal.AbstractWo
+rker$1.call(AbstractW
+orker.java:41)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+CallableBuildOperatio
+nWorker.execute(Defau
+ltBuildOperationRunne
+r.java:204)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+CallableBuildOperatio
+nWorker.execute(Defau
+ltBuildOperationRunne
+r.java:199)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+2.execute(DefaultBuil
+dOperationRunner.java
+:66)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+2.execute(DefaultBuil
+dOperationRunner.java
+:59)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner.
+execute(DefaultBuildO
+perationRunner.java:1
+57)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner.
+execute(DefaultBuildO
+perationRunner.java:5
+9)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner.
+call(DefaultBuildOper
+ationRunner.java:53)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationExecuto
+r.call(DefaultBuildOp
+erationExecutor.java:
+73)
+	at org.gradle.worker
+s.internal.AbstractWo
+rker.executeWrappedIn
+BuildOperation(Abstra
+ctWorker.java:41)
+	at org.gradle.worker
+s.internal.NoIsolatio
+nWorkerFactory$1.exec
+ute(NoIsolationWorker
+Factory.java:59)
+	at org.gradle.worker
+s.internal.DefaultWor
+kerExecutor.lambda$su
+bmitWork$0(DefaultWor
+kerExecutor.java:170)
+	at java.base/java.ut
+il.concurrent.FutureT
+ask.run(FutureTask.ja
+va:317)
+	at org.gradle.intern
+al.work.DefaultCondit
+ionalExecutionQueue$E
+xecutionRunner.runExe
+cution(DefaultConditi
+onalExecutionQueue.ja
+va:187)
+	at org.gradle.intern
+al.work.DefaultCondit
+ionalExecutionQueue$E
+xecutionRunner.access
+$700(DefaultCondition
+alExecutionQueue.java
+:120)
+	at org.gradle.intern
+al.work.DefaultCondit
+ionalExecutionQueue$E
+xecutionRunner$1.run(
+DefaultConditionalExe
+cutionQueue.java:162)
+	at org.gradle.intern
+al.Factories$1.create
+(Factories.java:31)
+	at org.gradle.intern
+al.work.DefaultWorker
+LeaseService.withLock
+s(DefaultWorkerLeaseS
+ervice.java:264)
+	at org.gradle.intern
+al.work.DefaultWorker
+LeaseService.runAsWor
+kerThread(DefaultWork
+erLeaseService.java:1
+28)
+	at org.gradle.intern
+al.work.DefaultWorker
+LeaseService.runAsWor
+kerThread(DefaultWork
+erLeaseService.java:1
+33)
+	at org.gradle.intern
+al.work.DefaultCondit
+ionalExecutionQueue$E
+xecutionRunner.runBat
+ch(DefaultConditional
+ExecutionQueue.java:1
+57)
+	at org.gradle.intern
+al.work.DefaultCondit
+ionalExecutionQueue$E
+xecutionRunner.run(De
+faultConditionalExecu
+tionQueue.java:126)
+	at java.base/java.ut
+il.concurrent.Executo
+rs$RunnableAdapter.ca
+ll(Executors.java:572
+)
+	at java.base/java.ut
+il.concurrent.FutureT
+ask.run(FutureTask.ja
+va:317)
+	... 5 more
+
+=====================
+=====================
+=====================
+===============
+
+BUILD FAILED in 4m 
+28s
+105 actionable tasks: 101 executed, 4 up-to-date

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'https://api.monkeysurvey.com/v1';
+const API_BASE_URL = 'https://api.bodhasurvey.duckdns.org/v1';
 
 // Create axios instance
 const api = axios.create({

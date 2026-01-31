@@ -1,6 +1,6 @@
-# MonkeySurvey - Quick Start Guide
+# BodhaSurvey - Quick Start Guide
 
-Get MonkeySurvey running in 5 minutes!
+Get BodhaSurvey running in 5 minutes!
 
 ## Prerequisites
 

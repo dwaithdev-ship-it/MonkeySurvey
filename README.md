@@ -1,4 +1,4 @@
-# MonkeySurvey 📊
+# BodhaSurvey 📊
 
 A comprehensive mobile survey application with beautiful UI design, robust microservices architecture, and powerful analytics dashboard.
 
@@ -122,7 +122,7 @@ A comprehensive mobile survey application with beautiful UI design, robust micro
 
 5. **Access the Application**
    - Open http://localhost:3000
-   - Login with: admin@monkeysurvey.com / admin123
+   - Login with: admin@bodhasurvey.com / admin123
 
 For detailed instructions including mobile app setup, see:
 - [Quick Start Guide](QUICK_START.md) - 5-minute setup
@@ -229,10 +229,10 @@ This project is licensed under the MIT License.
 
 ## 👥 Team
 
-MonkeySurvey Team
+BodhaSurvey Team
 
 ## 📧 Support
 
-- Email: support@monkeysurvey.com
-- Documentation: https://docs.monkeysurvey.com
-- Issues: https://github.com/dwaithdev-ship-it/MonkeySurvey/issues
+- Email: support@bodhasurvey.com
+- Documentation: https://docs.bodhasurvey.com
+- Issues: https://github.com/dwaithdev-ship-it/BodhaSurvey/issues

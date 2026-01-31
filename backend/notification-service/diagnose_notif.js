@@ -50,7 +50,7 @@ async function diagnose() {
         await transporter.sendMail({
             from: process.env.SENDER_EMAIL,
             to: 'dwaith.dev@mail.com',
-            subject: 'MonkeySurvey Notification System Diagnostic',
+            subject: 'BodhaSurvey Notification System Diagnostic',
             text: 'This is a test email from the notification system diagnostic script. If you receive this, SMTP is working correctly.'
         });
         console.log('✅ Test email sent to dwaith.dev@mail.com');

@@ -1,0 +1,100 @@
+﻿> Task :gradle-plugin:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:compileJava NO-SOURCE
+> Task :gradle-plugin:pluginDescriptors UP-TO-DATE
+> Task :gradle-plugin:processResources UP-TO-DATE
+> Task :gradle-plugin:classes UP-TO-DATE
+> Task :gradle-plugin:jar UP-TO-DATE
+./gradlew : 
+At line:1 char:1
++ ./gradlew 
+assembleDebug 
+--stacktrace > 
+build_err_2.txt 
+2>&1Check-Path ...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (:String   
+ ) [], RemoteExce    
+ption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+FAILURE: Build 
+failed with an 
+exception.
+
+* What went wrong:
+Task 'Check-Path' 
+not found in root 
+project 'MonkeyApp' 
+and its subprojects.
+
+* Try:
+> Run gradlew tasks 
+to get a list of 
+available tasks.
+> For more on name 
+expansion, please 
+refer to https://docs
+.gradle.org/8.5/userg
+uide/command_line_int
+erface.html#sec:name_
+abbreviation in the 
+Gradle documentation.
+> Run with --info or 
+--debug option to 
+get more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at ht
+tps://help.gradle.org
+.
+
+* Exception is:
+org.gradle.execution.
+TaskSelectionExceptio
+n: Task 'Check-Path' 
+not found in root 
+project 'MonkeyApp' 
+and its subprojects.
+	at org.gradle.execut
+ion.DefaultTaskSelect
+or.throwTaskSelection
+Exception(DefaultTask
+Selector.java:96)
+	at org.gradle.execut
+ion.DefaultTaskSelect
+or.getSelection(Defau
+ltTaskSelector.java:8
+6)
+	at org.gradle.execut
+ion.selection.Default
+BuildTaskSelector.res
+olveTaskName(DefaultB
+uildTaskSelector.java
+:98)
+	at org.gradle.execut
+ion.commandline.Comma
+ndLineTaskParser.pars
+eTasks(CommandLineTas
+kParser.java:49)
+	at org.gradle.execut
+ion.TaskNameResolving
+BuildTaskScheduler.sc
+heduleRequestedTasks(
+TaskNameResolvingBuil
+dTaskScheduler.java:5
+1)
+	at org.gradle.execut
+ion.DefaultTasksBuild
+TaskScheduler.schedul
+eRequestedTasks(Defau
+ltTasksBuildTaskSched
+uler.java:72)
+	at org.gradle.initia
+lization.DefaultTaskE

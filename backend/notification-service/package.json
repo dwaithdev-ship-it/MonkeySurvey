@@ -1,7 +1,7 @@
 {
   "name": "notification-service",
   "version": "1.0.0",
-  "description": "Email and push notification microservice for MonkeySurvey",
+  "description": "Email and push notification microservice for BodhaSurvey",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -12,10 +12,10 @@
     "notification",
     "microservice"
   ],
-  "author": "MonkeySurvey Team",
+  "author": "BodhaSurvey Team",
   "license": "MIT",
   "dependencies": {
-    "@monkeysurvey/shared": "file:../shared",
+    "@bodhasurvey/shared": "file:../shared",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",

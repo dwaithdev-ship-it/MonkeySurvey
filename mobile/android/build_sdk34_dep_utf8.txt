@@ -1,0 +1,20 @@
+﻿Dependency 'androidx.
+core:core:1.16.0' 
+requires libraries 
+and applications that
+           depend on 
+it to compile 
+against version 35 
+or later of the
+           Android 
+APIs.
+     
+           :app is 
+currently compiled 
+against android-34.
+     
+           Also, the 
+maximum recommended 
+compile SDK version 
+for Android Gradle
+           plugin 

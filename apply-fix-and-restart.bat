@@ -1,6 +1,6 @@
 @echo off
 echo ===================================================
-echo   Restarting MonkeySurvey Services to Apply Fixes
+echo   Restarting BodhaSurvey Services to Apply Fixes
 echo ===================================================
 echo.
 

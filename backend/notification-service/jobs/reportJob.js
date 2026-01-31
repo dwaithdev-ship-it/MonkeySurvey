@@ -116,7 +116,7 @@ async function sendReportToAdmin(admin) {
         }
 
         const mailOptions = {
-            from: process.env.SENDER_EMAIL || '"MonkeySurvey Reports" <reports@monkeysurvey.com>',
+            from: process.env.SENDER_EMAIL || '"BodhaSurvey Reports" <reports@bodhasurvey.duckdns.org>',
             to: admin.email,
             subject: `📊 Cumulative Survey Response Report - ${new Date().toLocaleString()}`,
             text: mailContent,

@@ -1,6 +1,6 @@
-# MonkeySurvey - Setup Guide
+# BodhaSurvey - Setup Guide
 
-This guide will help you set up and run the complete MonkeySurvey application.
+This guide will help you set up and run the complete BodhaSurvey application.
 
 ## Prerequisites
 
@@ -135,7 +135,7 @@ This will start:
 
 After database setup, use these credentials to login:
 
-- **Email**: admin@monkeysurvey.com
+- **Email**: admin@bodhasurvey.com
 - **Password**: admin123
 
 **Important**: Change the default password immediately after first login!
@@ -251,7 +251,7 @@ npm start
 ### Code Structure
 
 ```
-MonkeySurvey/
+BodhaSurvey/
 ├── backend/           # Backend microservices
 │   ├── shared/       # Shared utilities (auth, validation)
 │   ├── user-service/ # User management
@@ -277,8 +277,8 @@ MonkeySurvey/
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/dwaithdev-ship-it/MonkeySurvey/issues
-- Email: support@monkeysurvey.com
+- GitHub Issues: https://github.com/dwaithdev-ship-it/BodhaSurvey/issues
+- Email: support@bodhasurvey.com
 - Documentation: See README.md and other docs
 
 ## Production Deployment

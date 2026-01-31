@@ -1,14 +1,14 @@
 #!/bin/bash
-# MonkeySurvey Deployment Script
+# BodhaSurvey Deployment Script
 # Run this on your AWS server
 
 echo "=================================="
-echo "MonkeySurvey Deployment Starting"
+echo "BodhaSurvey Deployment Starting"
 echo "=================================="
 echo ""
 
 # Navigate to project directory
-cd /home/ubuntu/MonkeySurvey || cd ~/MonkeySurvey || { echo "Error: MonkeySurvey directory not found"; exit 1; }
+cd /home/ubuntu/BodhaSurvey || cd ~/BodhaSurvey || { echo "Error: BodhaSurvey directory not found"; exit 1; }
 
 echo "✓ Current directory: $(pwd)"
 echo ""

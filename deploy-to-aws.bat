@@ -3,7 +3,7 @@ echo Deploying to AWS Server...
 echo.
 
 REM Connect to AWS and run deployment commands
-ssh -i monkeysurvey.pem ubuntu@13.49.231.22 "cd MonkeySurvey && git pull origin main && sudo docker compose down && sudo docker compose up -d --build"
+ssh -i monkeysurvey.pem ubuntu@13.49.231.22 "cd BodhaSurvey && git pull origin main && sudo docker compose down && sudo docker compose up -d --build"
 
 if %errorlevel% neq 0 (
     echo.
@@ -18,7 +18,7 @@ if %errorlevel% neq 0 (
     echo    - Select your instance
     echo    - Click "Connect" ^> "EC2 Instance Connect"
     echo    - Run these commands:
-    echo      cd MonkeySurvey
+    echo      cd BodhaSurvey
     echo      git pull origin main
     echo      sudo docker compose down
     echo      sudo docker compose up -d --build

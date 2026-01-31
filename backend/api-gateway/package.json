@@ -1,7 +1,7 @@
 {
   "name": "api-gateway",
   "version": "1.0.0",
-  "description": "API Gateway for MonkeySurvey microservices",
+  "description": "API Gateway for BodhaSurvey microservices",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -13,7 +13,7 @@
     "api",
     "microservice"
   ],
-  "author": "MonkeySurvey Team",
+  "author": "BodhaSurvey Team",
   "license": "MIT",
   "dependencies": {
     "cors": "^2.8.5",

@@ -1,0 +1,59 @@
+﻿> Task :gradle-plugin:compileKotlin FAILED
+./gradlew : 
+At line:1 char:1
++ ./gradlew :gradle-p
+lugin:compileKotlin 
+> build_log_3.txt 
+2>&1Check-Pa ...
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (:String   
+ ) [], RemoteExce    
+ption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+FAILURE: Build 
+failed with an 
+exception.
+
+* What went wrong:
+Execution failed for 
+task ':gradle-plugin:
+compileKotlin'.
+> 'compileJava' task 
+(current target is 
+11) and 
+'compileKotlin' task 
+(current target is 
+17) jvm target 
+compatibility should 
+be set to the same 
+Java version.
+  Consider using JVM 
+toolchain: https://ko
+tl.in/gradle/jvm/tool
+chain
+
+
+* Try:
+> Run with 
+--stacktrace option 
+to get the stack 
+trace.
+> Run with --info or 
+--debug option to 
+get more log output.
+> Run with --scan to 
+get full insights.
+> Get more help at ht
+tps://help.gradle.org
+.
+
+BUILD FAILED in 12s
+1 actionable task: 1 executed

@@ -1,0 +1,40 @@
+﻿FAILURE: Build 
+failed with an 
+exception.
+
+* What went wrong:
+Execution failed for 
+task ':app:checkDebug
+AarMetadata'.
+> A failure occurred 
+while executing com.a
+ndroid.build.gradle.i
+nternal.tasks.CheckAa
+rMetadataWorkAction
+   > 8 issues were 
+found when checking 
+AAR metadata:
+     
+       1.  
+Dependency 'androidx.
+appcompat:appcompat-r
+esources:1.7.0' 
+requires libraries 
+and applications that
+           depend on 
+it to compile 
+against version 34 
+or later of the
+           Android 
+APIs.
+     
+           :app is 
+currently compiled 
+against android-33.
+     
+           Also, the 
+maximum recommended 
+compile SDK version 
+for Android Gradle
+           plugin 
+7.4.2 is 33.

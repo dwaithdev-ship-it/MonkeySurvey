@@ -1,5 +1,5 @@
 
-# iOS App - MonkeySurvey
+# iOS App - BodhaSurvey
 
 ## Technology Stack
 - **Language**: Swift
@@ -12,11 +12,11 @@
 ## Project Structure
 ```
 ios/
-├── MonkeySurvey/
-│   ├── MonkeySurvey.xcodeproj
-│   ├── MonkeySurvey/
+├── BodhaSurvey/
+│   ├── BodhaSurvey.xcodeproj
+│   ├── BodhaSurvey/
 │   │   ├── App/
-│   │   │   ├── MonkeySurveyApp.swift
+│   │   │   ├── BodhaSurveyApp.swift
 │   │   │   └── ContentView.swift
 │   │   ├── Models/
 │   │   │   ├── Survey.swift
@@ -33,7 +33,7 @@ ios/
 │   │   │   └── Components/
 │   │   │       └── QuestionView.swift
 │   │   └── CoreData/
-│   │       └── MonkeySurvey.xcdatamodeld
+│   │       └── BodhaSurvey.xcdatamodeld
 │   └── Info.plist
 └── Podfile (if using CocoaPods)
 ```
@@ -71,7 +71,7 @@ ios/
    platform :ios, '16.0'
    use_frameworks!
    
-   target 'MonkeySurvey' do
+   target 'BodhaSurvey' do
      pod 'Alamofire', '~> 5.8'
    end
    ```

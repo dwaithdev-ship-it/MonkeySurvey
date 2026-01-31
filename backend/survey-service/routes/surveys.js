@@ -22,13 +22,17 @@ router.post('/', authMiddleware, async (req, res) => {
 
     console.log('Survey created successfully:', survey._id);
 
+    const frontendUrl = process.env.NODE_ENV === 'production'
+      ? 'https://bodhasurvey.duckdns.org'
+      : 'http://localhost:4000';
+
     res.status(201).json({
       success: true,
       data: {
         surveyId: survey._id,
         title: survey.title,
         status: survey.status,
-        shareUrl: `https://survey.monkeysurvey.com/s/${survey._id}`
+        shareUrl: `${frontendUrl}/s/${survey._id}`
       }
     });
   } catch (error) {

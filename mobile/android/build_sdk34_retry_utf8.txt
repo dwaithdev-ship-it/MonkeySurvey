@@ -1,0 +1,100 @@
+﻿java.base --output C:
+\Users\srava\.gradle\
+caches\transforms-3\9
+359ab1ed36c2ad7167d1e
+c7dd8e2090\transforme
+d\output\jdkImage 
+--disable-plugin 
+system-modules}
+	at com.android.build
+.gradle.internal.proc
+ess.GradleProcessResu
+lt.buildProcessExcept
+ion(GradleProcessResu
+lt.java:73)
+	at com.android.build
+.gradle.internal.proc
+ess.GradleProcessResu
+lt.assertNormalExitVa
+lue(GradleProcessResu
+lt.java:48)
+	at com.android.build
+.gradle.internal.depe
+ndency.JdkTools.linkJ
+modsIntoJdkImage(JdkI
+mageTransformDelegate
+.kt:254)
+	at com.android.build
+.gradle.internal.depe
+ndency.JdkImageTransf
+ormDelegate.run(JdkIm
+ageTransformDelegate.
+kt:62)
+	at com.android.build
+.gradle.internal.depe
+ndency.JdkImageTransf
+orm.transform(JdkImag
+eTransform.kt:81)
+	at org.gradle.api.in
+ternal.artifacts.tran
+sform.DefaultTransfor
+m.transform(DefaultTr
+ansform.java:279)
+	at org.gradle.api.in
+ternal.artifacts.tran
+sform.AbstractTransfo
+rmExecution$2.call(Ab
+stractTransformExecut
+ion.java:138)
+	at org.gradle.api.in
+ternal.artifacts.tran
+sform.AbstractTransfo
+rmExecution$2.call(Ab
+stractTransformExecut
+ion.java:132)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+CallableBuildOperatio
+nWorker.execute(Defau
+ltBuildOperationRunne
+r.java:204)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+CallableBuildOperatio
+nWorker.execute(Defau
+ltBuildOperationRunne
+r.java:199)
+	at org.gradle.intern
+al.operations.Default
+BuildOperationRunner$
+2.execute(DefaultBuil
+dOperationRunner.java
+:66)
+	... 231 more
+Caused by: org.gradle
+.process.internal.Exe
+cException: Process 
+'command 'C:\Program 
+Files\Java\jdk-21\bin
+\jlink.exe'' 
+finished with 
+non-zero exit value 1
+	at org.gradle.proces
+s.internal.DefaultExe
+cHandle$ExecResultImp
+l.assertNormalExitVal
+ue(DefaultExecHandle.
+java:431)
+	at com.android.build
+.gradle.internal.proc
+ess.GradleProcessResu
+lt.assertNormalExitVa
+lue(GradleProcessResu
+lt.java:46)
+	... 240 more
+
+
+BUILD FAILED in 1m 
+37s

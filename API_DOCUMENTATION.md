@@ -1,4 +1,4 @@
-# MonkeySurvey - API Documentation
+# BodhaSurvey - API Documentation
 
 Base URL: `https://api.monkeysurvey.com/v1`
 
