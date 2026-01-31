@@ -632,4 +632,97 @@ router.patch('/msr-users/:id/password', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * PUT /users/profile/:id
+ * Update any user profile by ID (admin only)
+ */
+router.put('/profile/:id', authMiddleware, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Only admins can update other users profiles'
+        }
+      });
+    }
+
+    const { firstName, lastName, profileImage, settings } = req.body;
+    const updateData = {};
+    if (firstName) updateData.firstName = firstName;
+    if (lastName) updateData.lastName = lastName;
+    if (profileImage) updateData.profileImage = profileImage;
+    if (settings) updateData.settings = settings;
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: 'NOT_FOUND',
+          message: 'User not found'
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    console.error('Update profile by ID error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'Failed to update user profile'
+      }
+    });
+  }
+});
+
+/**
+ * GET /users/:id
+ * Get any user profile by ID (admin only)
+ */
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Access denied'
+        }
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'User not found' }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    console.error('Get user by ID error:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Failed to get user' }
+    });
+  }
+});
+
 module.exports = router;

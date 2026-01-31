@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { surveyAPI, responseAPI } from "../services/api";
+import { surveyAPI, responseAPI, userAPI } from "../services/api";
 import Layout from "./layout";
 import "./SurveyData.css";
 
@@ -15,15 +15,101 @@ const SurveyData = () => {
     const [responses, setResponses] = useState([]);
     const [loadingResponses, setLoadingResponses] = useState(false);
     const [filteredSurveys, setFilteredSurveys] = useState([]);
-
+    const [admins, setAdmins] = useState([]);
+    const [selectedAdmin, setSelectedAdmin] = useState(null);
     const [emailScheduleEnabled, setEmailScheduleEnabled] = useState(false);
     const [emailFrequency, setEmailFrequency] = useState("24h");
 
     useEffect(() => {
         const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
         setUser(storedUser);
+        setSelectedAdmin(storedUser);
+        if (storedUser.settings) {
+            setEmailScheduleEnabled(storedUser.settings.emailScheduleEnabled || false);
+            setEmailFrequency(storedUser.settings.reportFrequency || "24h");
+        }
         fetchSurveysWithCounts();
+        fetchAdmins();
     }, []);
+
+    const fetchAdmins = async () => {
+        try {
+            const res = await userAPI.getUsers();
+            if (res.success) {
+                const adminList = res.data.filter(u => u.role === 'admin');
+                setAdmins(adminList);
+            }
+        } catch (err) {
+            console.error("Failed to fetch admins:", err);
+        }
+    };
+
+    const handleAdminChange = async (adminId) => {
+        try {
+            const res = await userAPI.getUserById(adminId);
+            if (res.success) {
+                const adminData = res.data;
+                setSelectedAdmin(adminData);
+                setEmailScheduleEnabled(adminData.settings?.emailScheduleEnabled || false);
+                setEmailFrequency(adminData.settings?.reportFrequency || "24h");
+            }
+        } catch (err) {
+            console.error("Failed to fetch admin details:", err);
+        }
+    };
+
+    // Also poll for selected admin updates to show status changes
+    useEffect(() => {
+        let interval;
+        if (emailScheduleEnabled && selectedAdmin) {
+            interval = setInterval(async () => {
+                try {
+                    const res = await userAPI.getUserById(selectedAdmin._id || selectedAdmin.id);
+                    if (res.success) {
+                        setSelectedAdmin(res.data);
+                        // If selected admin is the current user, update local user state too
+                        if ((res.data._id || res.data.id) === (user._id || user.id)) {
+                            setUser(res.data);
+                            localStorage.setItem('user', JSON.stringify(res.data));
+                        }
+                    }
+                } catch (err) {
+                    console.warn("Status poll failed:", err);
+                }
+            }, 30000); // 30 seconds
+        }
+        return () => clearInterval(interval);
+    }, [emailScheduleEnabled, selectedAdmin, user]);
+
+    const updateEmailSchedule = async (enabled, frequency) => {
+        if (!selectedAdmin) return;
+        try {
+            const updatedSettings = {
+                ...selectedAdmin.settings,
+                emailScheduleEnabled: enabled,
+                reportFrequency: frequency
+            };
+
+            const adminId = selectedAdmin._id || selectedAdmin.id;
+            await userAPI.updateProfileById(adminId, { settings: updatedSettings });
+
+            // Update local state
+            const updatedAdmin = { ...selectedAdmin, settings: updatedSettings };
+            setSelectedAdmin(updatedAdmin);
+
+            // If updating current user, update storage
+            if (adminId === (user._id || user.id)) {
+                setUser(updatedAdmin);
+                localStorage.setItem('user', JSON.stringify(updatedAdmin));
+            }
+
+            setEmailScheduleEnabled(enabled);
+            setEmailFrequency(frequency);
+        } catch (error) {
+            console.error("Failed to update email schedule:", error);
+            alert("Failed to update email schedule settings.");
+        }
+    };
 
     useEffect(() => {
         if (searchTerm.trim() === "") {
@@ -221,37 +307,54 @@ const SurveyData = () => {
                                 <h2>Survey Data</h2>
                                 <div className="email-schedule-wrapper">
                                     <div className="toggle-container">
+                                        <select
+                                            className="admin-select"
+                                            value={selectedAdmin?._id || selectedAdmin?.id || ""}
+                                            onChange={(e) => handleAdminChange(e.target.value)}
+                                        >
+                                            {admins.map(admin => (
+                                                <option key={admin._id || admin.id} value={admin._id || admin.id}>
+                                                    {admin.email}
+                                                </option>
+                                            ))}
+                                        </select>
                                         <label className="switch">
                                             <input
                                                 type="checkbox"
                                                 checked={emailScheduleEnabled}
-                                                onChange={(e) => setEmailScheduleEnabled(e.target.checked)}
+                                                onChange={(e) => updateEmailSchedule(e.target.checked, emailFrequency)}
                                             />
                                             <span className="slider round"></span>
                                         </label>
                                         <span className="toggle-label">
-                                            {emailScheduleEnabled ? "Disable" : "Enable"} Email Schedule
+                                            {emailScheduleEnabled ? "Disable" : "Enable"}
                                         </span>
                                     </div>
 
-                                    {emailScheduleEnabled && (
-                                        <select
-                                            className="email-freq-select"
-                                            value={emailFrequency}
-                                            onChange={(e) => setEmailFrequency(e.target.value)}
-                                        >
-                                            <option value="1m">Every 1 Minute</option>
-                                            <option value="1h">Every 1 Hour</option>
-                                            <option value="24h">Every 24 Hours</option>
-                                        </select>
-                                    )}
+                                    <select
+                                        className="email-freq-select"
+                                        value={emailFrequency}
+                                        onChange={(e) => updateEmailSchedule(emailScheduleEnabled, e.target.value)}
+                                        disabled={!emailScheduleEnabled}
+                                        style={{ opacity: emailScheduleEnabled ? 1 : 0.6 }}
+                                    >
+                                        <option value="1m">1 min</option>
+                                        <option value="1h">1 hour</option>
+                                        <option value="24h">24 hours</option>
+                                    </select>
 
                                     <div className="tooltip-icon-wrapper">
-                                        <span className="info-icon">ℹ️</span>
+                                        <span className="info-icon-box">ℹ️</span>
                                         <div className="tooltip-text">
                                             Email Schedule allows you to automatically receive survey response updates by email without revisiting the dashboard. When enabled, you can choose to receive updates every 1 minute, every 1 hour, or every 24 hours, including response counts, key insights, and summary information for the selected survey. Emails will be sent to your registered email address ({user.email || 'Admin'}), and you can disable this option at any time to stop receiving updates.
                                         </div>
                                     </div>
+
+                                    {selectedAdmin?.settings?.lastReportStatus && (
+                                        <div className={`email-status-tag ${selectedAdmin.settings.lastReportStatus.toLowerCase()}`}>
+                                            Email Status: <span>{selectedAdmin.settings.lastReportStatus}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <button className="upload-summary-btn">Upload Summary</button>

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { userAPI } from "../services/api";
+import { offlineSync } from "../utils/offlineSync";
 import "./Login.css";
 import logo from "../assets/logo.png";
 
@@ -48,18 +49,24 @@ const Login = () => {
         localStorage.setItem("token", authData.token);
         if (authData.user) {
           localStorage.setItem("user", JSON.stringify(authData.user));
-        }
+          
+          // Cache for offline login
+          offlineSync.cacheLogin(cleanIdentifier, password, authData.user);
 
-        // Notify Mobile App if running in WebView
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'AUTH_SUCCESS',
-            payload: authData
-          }));
-        }
+          // Notify Mobile App if running in WebView
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'AUTH_SUCCESS',
+              payload: authData
+            }));
+          }
 
-        if (response.data.user?.role === 'admin') {
-          navigate("/dashboard");
+          if (authData.user.role === 'admin') {
+            navigate("/dashboard");
+          } else {
+            navigate("/take-survey/1");
+          }
+        }
         } else {
           navigate("/take-survey/1");
         }
@@ -67,12 +74,57 @@ const Login = () => {
         setError(response.error?.message || "Login failed");
       }
     } catch (err) {
-      console.error("Login error:", err);
+      console.error("Login attempt failed:", err);
 
-      // Handle specific error codes
-      const errorData = err.error || err;
+      // --- OFFLINE FALLBACK LOGIC ---
+      // We try the offline cache if:
+      // 1. There is no network (navigator.onLine is false)
+      // 2. The error looks like a network failure (timeout, failed to fetch, etc)
+      // 3. The server is unreachable (no response)
+      const cleanIdentifier = identifier.trim().toLowerCase();
+      const isNetworkError =
+        !navigator.onLine ||
+        err === 'Network Error' ||
+        err?.message === 'Network Error' ||
+        err?.code === 'ERR_NETWORK' ||
+        (!err.response && (err.message?.includes('Network Error') || err.message?.includes('timeout') || err.message?.includes('Failed to fetch') || err.message?.includes('Load failed')));
+
+      if (isNetworkError) {
+        console.log("Network error detected, attempting offline login for:", cleanIdentifier);
+        const offlineResult = offlineSync.verifyOffline(cleanIdentifier, password);
+
+        if (offlineResult.success) {
+          localStorage.setItem("token", offlineResult.data.token);
+          localStorage.setItem("user", JSON.stringify(offlineResult.data.user));
+
+          if (offlineResult.data.user.role === 'admin') {
+            navigate("/dashboard");
+          } else {
+            navigate("/take-survey/1");
+          }
+          return;
+        } else {
+          setError("Internet connection lost. No offline login data found for this account. Please log in once while online.");
+          return;
+        }
+      }
+
+      // If we reach here, the server responded but with an error (e.g., 401 or 404)
+      const errorData = err.response?.data?.error || err.response?.data || (typeof err === 'object' ? err : { message: String(err) });
       const errorCode = errorData.code;
-      const errorMessage = errorData.message;
+      const errorMessage = errorData.message || (typeof errorData === 'string' ? errorData : "");
+
+      // FINAL CHECK: If the server returned an error but we have matching offline credentials, 
+      // it might be a server-side bug or DNS issue. Let's allow login anyway if we have a valid cache.
+      const secondaryOfflineCheck = offlineSync.verifyOffline(cleanIdentifier, password);
+      if (secondaryOfflineCheck.success) {
+        console.log("Server error but offline cache matched. Logging in via cache.");
+        localStorage.setItem("token", secondaryOfflineCheck.data.token);
+        localStorage.setItem("user", JSON.stringify(secondaryOfflineCheck.data.user));
+        if (secondaryOfflineCheck.data.user.role === 'admin') navigate("/dashboard");
+        else navigate("/take-survey/1");
+        return;
+      }
 
       if (errorCode === 'ALREADY_LOGGED_IN') {
         setError('You are already logged in on another device. Please logout from that device first or contact admin.');
@@ -82,10 +134,10 @@ const Login = () => {
         setError('This device is already registered to another user. You cannot use this device with this account.');
       } else if (errorCode === 'ACCOUNT_DISABLED') {
         setError('Your account has been disabled. Please contact admin.');
-      } else if (errorCode === 'INVALID_CREDENTIALS') {
-        setError('Invalid phone number or password. Please try again.');
+      } else if (errorCode === 'INVALID_CREDENTIALS' || errorMessage.toLowerCase().includes('password') || errorMessage.toLowerCase().includes('credential')) {
+        setError('Invalid identifier or password. Please try again.');
       } else {
-        setError(errorMessage || "Invalid credentials. Please try again.");
+        setError(errorMessage || "Login failed. Please check your connection and try again.");
       }
     } finally {
       setLoading(false);

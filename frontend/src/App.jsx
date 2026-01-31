@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { responseAPI } from './services/api';
+import { offlineSync } from './utils/offlineSync';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -29,48 +30,25 @@ function AdminRoute({ children }) {
 
 function App() {
   useEffect(() => {
-    const syncOfflineResponses = async () => {
+    const runSync = async () => {
       if (navigator.onLine) {
-        const offlineResponses = JSON.parse(localStorage.getItem('offline_responses') || '[]');
-        if (offlineResponses.length > 0) {
-          console.log('Found offline responses, syncing...');
-          const remaining = [];
-          for (const item of offlineResponses) {
-            try {
-              const res = await responseAPI.submit(item.payload);
-              if (res.success) {
-                console.log(`Synced response ${item.id}`);
-              } else {
-                remaining.push(item);
-              }
-            } catch (err) {
-              console.error(`Failed to sync response ${item.id}`, err);
-              remaining.push(item);
-            }
-          }
-
-          // Update storage with remaining items (failed ones)
-          if (remaining.length !== offlineResponses.length) {
-            if (remaining.length === 0) {
-              localStorage.removeItem('offline_responses');
-              alert('Offline responses have been successfully synced to the server.');
-            } else {
-              localStorage.setItem('offline_responses', JSON.stringify(remaining));
-            }
-          } else if (remaining.length === 0 && offlineResponses.length > 0) {
-            // Handle case where loop finished and all succeeded but logic skipped 'if' above? 
-            // actually the logic covers it. if remaining.length (0) != offlineResponses.length (N) -> remove all.
-            localStorage.removeItem('offline_responses');
-            alert('Offline responses have been successfully synced to the server.');
-          }
+        const result = await offlineSync.syncQueue(responseAPI.submit);
+        if (result.synced > 0) {
+          alert(`Success: ${result.synced} offline surveys have been synced to the server.`);
         }
       }
     };
 
-    window.addEventListener('online', syncOfflineResponses);
-    syncOfflineResponses(); // Check on load/mount
+    window.addEventListener('online', runSync);
+    runSync(); // Check on load/mount
 
-    return () => window.removeEventListener('online', syncOfflineResponses);
+    // Periodic check every 5 minutes in case 'online' event is missed
+    const interval = setInterval(runSync, 5 * 60 * 1000);
+
+    return () => {
+      window.removeEventListener('online', runSync);
+      clearInterval(interval);
+    };
   }, []);
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');

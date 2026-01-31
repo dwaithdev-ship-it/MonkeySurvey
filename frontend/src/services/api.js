@@ -83,7 +83,7 @@ api.interceptors.response.use(
     // Cache GET requests
     if (response.config.method.toLowerCase() === 'get') {
       try {
-        const cacheKey = `API_CACHE_${response.config.url}_${JSON.stringify(response.config.params || {})}`;
+        const cacheKey = `api_cache_${response.config.url}_${JSON.stringify(response.config.params || {})}`;
         localStorage.setItem(cacheKey, JSON.stringify(response.data));
       } catch (e) {
         console.warn('Cache failed', e);
@@ -92,9 +92,27 @@ api.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    // If network error (offline), maybe we should queue if it was a write?
-    // But request interceptor should have caught it if navigator.onLine was false.
-    // Sometimes navigator.onLine is true but requests fail.
+    const originalRequest = error.config;
+
+    // Check for offline/network error on a GET request
+    const isNetworkError = !navigator.onLine || error.message === 'Network Error' || error.code === 'ERR_NETWORK';
+    if (isNetworkError && originalRequest?.method?.toLowerCase() === 'get') {
+      const cacheKey = `api_cache_${originalRequest.url}_${JSON.stringify(originalRequest.params || {})}`;
+      const cachedData = localStorage.getItem(cacheKey);
+      if (cachedData) {
+        console.warn(`[API Cache] Returning cached data for: ${originalRequest.url}`);
+        return JSON.parse(cachedData);
+      }
+    }
+
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error.response?.data || error.message);
+  }
+);
+
 
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
@@ -155,7 +173,10 @@ export const userAPI = {
   // Login through API Gateway
   login: (data) => api.post('/users/login', data),
   getProfile: () => api.get('/users/profile'),
+  getUserById: (id) => api.get(`/users/${id}`),
   updateProfile: (data) => api.put('/users/profile', data),
+  updateProfileById: (id, data) => api.put(`/users/profile/${id}`, data),
+  getUsers: () => api.get('/users'),
   getMSRUsers: () => api.get('/users/msr-users'),
   createMSRUser: (data) => api.post('/users/msr-users', data),
   updateMSRUser: (id, data) => api.put(`/users/msr-users/${id}`, data),

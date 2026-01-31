@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { surveyAPI, responseAPI, parlConsAPI } from '../services/api';
+import { offlineSync } from '../utils/offlineSync';
 import logo from '../assets/logo.png';
 import './TakeSurvey.css';
 
@@ -69,6 +70,7 @@ export default function TakeSurvey() {
       const res = await parlConsAPI.getParliaments();
       if (res.success) {
         setParliaments(res.data);
+        localStorage.setItem('cached_parliaments', JSON.stringify(res.data));
         const newOptions = res.data.map(p => ({ label: p, value: p }));
         setSurvey(prev => {
           if (!prev) return prev;
@@ -81,6 +83,20 @@ export default function TakeSurvey() {
       }
     } catch (err) {
       console.error("Failed to fetch parliaments");
+      const cached = localStorage.getItem('cached_parliaments');
+      if (cached) {
+        const data = JSON.parse(cached);
+        setParliaments(data);
+        const newOptions = data.map(p => ({ label: p, value: p }));
+        setSurvey(prev => {
+          if (!prev) return prev;
+          const updatedQs = [...prev.questions];
+          if (updatedQs.length >= 1) {
+            updatedQs[0] = { ...updatedQs[0], options: newOptions };
+          }
+          return { ...prev, questions: updatedQs };
+        });
+      }
     }
   };
 
@@ -89,6 +105,7 @@ export default function TakeSurvey() {
       const res = await parlConsAPI.getMunicipalities(parl);
       if (res.success) {
         setMunicipalities(res.data);
+        localStorage.setItem(`cached_munis_${parl}`, JSON.stringify(res.data));
         const newMuniOptions = res.data.map(m => ({ label: m, value: m }));
         setSurvey(prev => {
           if (!prev) return prev;
@@ -102,6 +119,21 @@ export default function TakeSurvey() {
       }
     } catch (err) {
       console.error("Failed to fetch municipalities");
+      const cached = localStorage.getItem(`cached_munis_${parl}`);
+      if (cached) {
+        const data = JSON.parse(cached);
+        setMunicipalities(data);
+        const newMuniOptions = data.map(m => ({ label: m, value: m }));
+        setSurvey(prev => {
+          if (!prev) return prev;
+          const updatedQs = [...prev.questions];
+          if (updatedQs.length >= 2) {
+            updatedQs[1] = { ...updatedQs[1], options: newMuniOptions };
+          }
+          return { ...prev, questions: updatedQs };
+        });
+        return data;
+      }
     }
     return [];
   };
@@ -129,6 +161,16 @@ export default function TakeSurvey() {
           }
         } catch (cErr) {
           console.warn('Failed to fetch response count:', cErr);
+        }
+
+        // Cache the successful response for offline use
+        if (response.data) {
+          const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
+          const index = localSurveys.findIndex(s => (s._id || s.id) == surveyId);
+          const surveyToCache = { ...response.data, id: surveyId };
+          if (index > -1) localSurveys[index] = surveyToCache;
+          else localSurveys.push(surveyToCache);
+          localStorage.setItem('local_surveys', JSON.stringify(localSurveys));
         }
       } else {
         throw new Error('Survey not found');
@@ -346,6 +388,83 @@ export default function TakeSurvey() {
         window.scrollTo(0, 0);
       }
     } catch (err) {
+      console.warn('Submission failed, checking for offline mode:', err);
+
+      // If network error OR offline, queue it
+      const isNetworkError =
+        !navigator.onLine ||
+        err === 'Network Error' ||
+        err?.message === 'Network Error' ||
+        (typeof err === 'string' && err.includes('Network Error')) ||
+        err?.code === 'ERR_NETWORK';
+
+      if (isNetworkError) {
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const userName = storedUser.name || storedUser.firstName || 'Anonymous';
+        const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
+        const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
+        const q3Id = survey?.questions?.[2]?._id || survey?.questions?.[2]?.id;
+
+        const targetQuestionText = "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?";
+        const wardCouncilorQuestion = survey?.questions?.find(q => q.question === targetQuestionText) || survey?.questions?.[3];
+        const wardCouncilorId = wardCouncilorQuestion?._id || wardCouncilorQuestion?.id;
+        let question1Value = currentAnswers[wardCouncilorId] || '';
+        if (Array.isArray(question1Value)) question1Value = question1Value.join(', ');
+
+        const payload = {
+          surveyId: survey?._id || surveyId,
+          userName,
+          parliament: currentAnswers[q1Id] || '',
+          municipality: currentAnswers[q2Id] || '',
+          ward_num: currentAnswers[q3Id] || '',
+          Question_1_title: targetQuestionText,
+          Question_1_answer: question1Value,
+          Question_1: question1Value,
+          location,
+          answers: Object.entries(currentAnswers).map(([qId, val]) => ({ questionId: qId, value: val }))
+        };
+
+        offlineSync.queueResponse(payload);
+
+        // Proceed with local batch logic as if it succeeded
+        const currentBatch = JSON.parse(localStorage.getItem(`ward_batch_${surveyId}`) || 'null');
+        if (currentBatch) {
+          const newCount = (currentBatch.count || 0) + 1;
+          if (newCount > currentBatch.limit) {
+            localStorage.removeItem(`ward_batch_${surveyId}`);
+            setIsHeaderLocked(false);
+          } else {
+            const updatedBatch = { ...currentBatch, count: newCount };
+            localStorage.setItem(`ward_batch_${surveyId}`, JSON.stringify(updatedBatch));
+            setWardBatch(updatedBatch);
+          }
+        }
+
+        setResponseCount(prev => prev + 1);
+        alert('Survey saved locally (Offline). It will be synced when internet is restored.');
+
+        // RE-INITIALIZE with locked values
+        const freshAnswers = initializeAnswers(survey);
+        const activeBatch = localStorage.getItem(`ward_batch_${surveyId}`);
+        if (activeBatch) {
+          const batch = JSON.parse(activeBatch);
+          const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
+          const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
+          const q3Id = survey?.questions?.[2]?._id || survey?.questions?.[2]?.id;
+          setAnswers({
+            ...freshAnswers,
+            [q1Id]: batch.parliament,
+            [q2Id]: batch.municipality,
+            [q3Id]: batch.ward_num
+          });
+        } else {
+          setAnswers(freshAnswers);
+          setupBatchAndAnswers(survey, freshAnswers);
+        }
+        window.scrollTo(0, 0);
+        return;
+      }
+
       setError('Submission failed. Please try again.');
     } finally {
       setSubmitting(false);

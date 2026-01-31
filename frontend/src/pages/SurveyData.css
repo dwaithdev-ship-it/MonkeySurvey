@@ -408,7 +408,8 @@ input:checked+.slider:before {
     font-weight: 500;
 }
 
-.email-freq-select {
+.email-freq-select,
+.admin-select {
     padding: 4px 8px;
     border: 1px solid #cbd5e1;
     border-radius: 4px;
@@ -418,7 +419,8 @@ input:checked+.slider:before {
     cursor: pointer;
 }
 
-.email-freq-select:focus {
+.email-freq-select:focus,
+.admin-select:focus {
     outline: none;
     border-color: #5399e1;
 }
@@ -431,15 +433,23 @@ input:checked+.slider:before {
     cursor: help;
 }
 
-.info-icon {
-    font-size: 16px;
+.info-icon-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background-color: #5399e1;
+    color: white;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
     line-height: 1;
-    opacity: 0.7;
-    transition: opacity 0.2s;
+    transition: background 0.2s;
 }
 
-.tooltip-icon-wrapper:hover .info-icon {
-    opacity: 1;
+.tooltip-icon-wrapper:hover .info-icon-box {
+    background-color: #3b82f6;
 }
 
 .tooltip-text {
@@ -477,4 +487,26 @@ input:checked+.slider:before {
 .tooltip-icon-wrapper:hover .tooltip-text {
     visibility: visible;
     opacity: 1;
+}
+
+.email-status-tag {
+    font-size: 12px;
+    font-weight: 500;
+    color: #64748b;
+    padding-left: 10px;
+    border-left: 1px solid #e2e8f0;
+    margin-left: 5px;
+    white-space: nowrap;
+}
+
+.email-status-tag span {
+    font-weight: 700;
+}
+
+.email-status-tag.success span {
+    color: #10b981;
+}
+
+.email-status-tag.failed span {
+    color: #ef4444;
 }

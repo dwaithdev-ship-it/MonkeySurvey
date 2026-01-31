@@ -71,7 +71,7 @@ async function sendReportToAdmin(admin) {
         // 1. Format email body
         let mailContent = `Survey Response Report (Cumulative)\n`;
         mailContent += `====================================\n\n`;
-        mailContent += `Admin Panel: http://localhost:5137\n\n`; // Updated port
+        mailContent += `Admin Panel: http://localhost:5173\n\n`; // Updated port
 
         const groupedResponses = {};
         responses.forEach(r => {
@@ -94,29 +94,23 @@ async function sendReportToAdmin(admin) {
                 const respondent = res.userName || 'Anonymous';
                 const date = (res.createdAt || res.submittedAt || new Date()).toLocaleString();
 
-                mailContent += `${idx + 1}. User: ${respondent}\n`;
-                mailContent += `   Submitted: ${date}\n`;
-
-                // Extract all answers for CSV and body
+                // Extract all answers for CSV (Removed from body per user request)
                 let answersString = "";
                 Object.keys(res.toObject ? res.toObject() : res).forEach(key => {
                     if (key.startsWith('Question_')) {
                         const val = res[key];
-                        mailContent += `   ${key.replace('_', ' ')}: ${val}\n`;
                         answersString += `${key}:${val}; `;
                     }
                 });
 
                 // Add to CSV
                 csvContent += `"${surveyTitle.replace(/"/g, '""')}","${respondent.replace(/"/g, '""')}","${date}","${answersString.replace(/"/g, '""')}"\n`;
-
-                mailContent += `\n`;
             });
-            mailContent += `\n`;
+            mailContent += `(Details included in the attached CSV file)\n\n`;
         }
 
         const mailOptions = {
-            from: process.env.SENDER_EMAIL || '"BodhaSurvey Reports" <reports@bodhasurvey.duckdns.org>',
+
             to: admin.email,
             subject: `📊 Cumulative Survey Response Report - ${new Date().toLocaleString()}`,
             text: mailContent,
@@ -132,15 +126,29 @@ async function sendReportToAdmin(admin) {
         await transporter.sendMail(mailOptions);
         console.log(`[ReportJob] ✅ Report sent successfully to ${admin.email}`);
 
-        // Update lastReportSentAt
+        // Update lastReportSentAt and status
         console.log(`[ReportJob] Updating lastReportSentAt for admin...`);
         await User.findByIdAndUpdate(admin._id, {
-            $set: { 'settings.lastReportSentAt': new Date() }
+            $set: {
+                'settings.lastReportSentAt': new Date(),
+                'settings.lastReportStatus': 'Success'
+            }
         });
         console.log(`[ReportJob] ✅ Database updated.`);
 
     } catch (err) {
         console.error(`[ReportJob] Failed to send report to ${admin.email}:`, err);
+        // Update status for admin even on failure
+        try {
+            await User.findByIdAndUpdate(admin._id, {
+                $set: {
+                    'settings.lastReportStatus': 'Failed',
+                    'settings.lastReportAttemptAt': new Date()
+                }
+            });
+        } catch (dbErr) {
+            console.error('[ReportJob] Failed to update error status in DB:', dbErr);
+        }
     }
 }
 
@@ -151,15 +159,24 @@ function initReportJob() {
         try {
             console.log('[ReportJob] Running scheduled check at:', new Date().toLocaleString());
 
-            // Find only the specific admin
-            const admins = await User.find({ email: 'dwaith.dev@mail.com', role: 'admin' });
-            console.log(`[ReportJob] Found ${admins.length} target admin user.`);
+            // Find all admins who have enabled email reports
+            const admins = await User.find({
+                role: 'admin',
+                'settings.emailScheduleEnabled': true
+            });
+            console.log(`[ReportJob] Found ${admins.length} admins with email schedule enabled.`);
 
             const now = new Date();
 
             for (const admin of admins) {
                 console.log(`[ReportJob] Processing admin: ${admin.email}`);
-                // Default to 1m frequency as requested
+
+                // Double check enabled status (redundant but safe)
+                if (!admin.settings?.emailScheduleEnabled) {
+                    console.log(`[ReportJob]   Skipping: Schedule disabled for ${admin.email}`);
+                    continue;
+                }
+
                 const frequency = admin.settings?.reportFrequency || '1m';
                 const lastSent = admin.settings?.lastReportSentAt ? new Date(admin.settings.lastReportSentAt) : null;
 
@@ -167,16 +184,17 @@ function initReportJob() {
                 console.log(`[ReportJob]   Last sent: ${lastSent ? lastSent.toLocaleString() : 'Never'}`);
 
                 let shouldSend = false;
+                let diffMin = 0;
 
                 if (!lastSent) {
-                    console.log(`[ReportJob]   Triggering: First time report.`);
+                    console.log(`[ReportJob]   Triggering: First time report for ${admin.email}.`);
                     shouldSend = true;
                 } else {
                     const diffMs = now - lastSent;
-                    const diffMin = diffMs / (1000 * 60);
+                    diffMin = diffMs / (1000 * 60);
                     console.log(`[ReportJob]   Minutes since last report: ${diffMin.toFixed(2)}`);
 
-                    // Ensure it respects the frequency (especially 1m as requested)
+                    // Ensure it respects the frequency
                     if (frequency === '1m' && diffMin >= 1) shouldSend = true;
                     else if (frequency === '1h' && diffMin >= 60) shouldSend = true;
                     else if (frequency === '24h' && diffMin >= 1440) shouldSend = true;
@@ -186,7 +204,8 @@ function initReportJob() {
                     console.log(`[ReportJob]   Action: Proceeding to send report.`);
                     await sendReportToAdmin(admin);
                 } else {
-                    console.log(`[ReportJob]   Action: Skipping (next report due in ${Math.max(0, 1 - diffMin).toFixed(2)} mins).`);
+                    const nextDue = frequency === '1m' ? 1 : (frequency === '1h' ? 60 : 1440);
+                    console.log(`[ReportJob]   Action: Skipping (next report due in ${Math.max(0, nextDue - diffMin).toFixed(2)} mins).`);
                 }
             }
         } catch (error) {

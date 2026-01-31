@@ -1,0 +1,17 @@
+{
+    "short_name": "Bodha Survey",
+    "name": "Bodha Survey - Offline Ready",
+    "icons": [
+        {
+            "src": "bodhasurvey.svg",
+            "type": "image/svg+xml",
+            "sizes": "any"
+        }
+    ],
+    "start_url": ".",
+    "display": "standalone",
+    "orientation": "portrait",
+    "theme_color": "#6366f1",
+    "background_color": "#ffffff",
+    "description": "Offline Survey & Data Collection Tool"
+}
