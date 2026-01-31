@@ -49,7 +49,7 @@ const Login = () => {
         localStorage.setItem("token", authData.token);
         if (authData.user) {
           localStorage.setItem("user", JSON.stringify(authData.user));
-          
+
           // Cache for offline login
           offlineSync.cacheLogin(cleanIdentifier, password, authData.user);
 
@@ -66,7 +66,6 @@ const Login = () => {
           } else {
             navigate("/take-survey/1");
           }
-        }
         } else {
           navigate("/take-survey/1");
         }

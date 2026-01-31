@@ -113,15 +113,6 @@ api.interceptors.response.use(
   }
 );
 
-
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error.response?.data || error.message);
-  }
-);
-
 // Sync Logic
 export const syncOfflineQueue = async () => {
   if (!navigator.onLine) return;
