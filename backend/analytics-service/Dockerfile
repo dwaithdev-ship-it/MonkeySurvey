@@ -5,11 +5,11 @@ ENV NODE_ENV=production
 
 # 1. Install shared dependencies
 COPY shared/package*.json ./shared/
-RUN cd shared && npm ci
+RUN cd shared && npm install --production --no-audit --no-fund
 
 # 2. Install service dependencies
 COPY analytics-service/package*.json ./analytics-service/
-RUN cd analytics-service && npm ci
+RUN cd analytics-service && npm install --production --no-audit --no-fund
 
 # 3. Copy source code
 COPY shared ./shared

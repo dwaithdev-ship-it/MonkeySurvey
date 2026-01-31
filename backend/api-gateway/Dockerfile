@@ -7,7 +7,7 @@ ENV NODE_ENV=production
 COPY api-gateway/package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install --production --no-audit --no-fund
 
 # Copy source code
 COPY api-gateway/. .

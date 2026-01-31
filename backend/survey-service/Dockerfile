@@ -5,11 +5,11 @@ ENV NODE_ENV=production
 
 # 1. Install shared dependencies
 COPY shared/package*.json ./shared/
-RUN cd shared && npm ci
+RUN cd shared && npm install --production --no-audit --no-fund
 
 # 2. Install service dependencies
 COPY survey-service/package*.json ./survey-service/
-RUN cd survey-service && npm ci
+RUN cd survey-service && npm install --production --no-audit --no-fund
 
 # 3. Copy source code
 COPY shared ./shared

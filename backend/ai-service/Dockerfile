@@ -5,11 +5,11 @@ ENV NODE_ENV=production
 
 # 1. Install shared dependencies
 COPY shared/package*.json ./shared/
-RUN cd shared && npm ci
+RUN cd shared && npm install --production --no-audit --no-fund
 
 # 2. Install service dependencies
 COPY ai-service/package*.json ./ai-service/
-RUN cd ai-service && npm ci
+RUN cd ai-service && npm install --production --no-audit --no-fund
 
 # 3. Copy source code
 COPY shared ./shared
