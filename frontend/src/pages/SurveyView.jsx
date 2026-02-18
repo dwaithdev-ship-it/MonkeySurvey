@@ -26,6 +26,7 @@ const SurveyView = () => {
   const [pages, setPages] = useState([1]);
   const [currentPage, setCurrentPage] = useState(1);
   const [showPageOptions, setShowPageOptions] = useState(false);
+  const [showMediaSelector, setShowMediaSelector] = useState(null);
 
   const welcomeImgRef = useRef(null);
   const thankYouImgRef = useRef(null);
@@ -156,9 +157,24 @@ const SurveyView = () => {
           thankYouImageName: survey.thankYouImageName || ''
         });
         setShowDetailedCreate(true);
+        setCurrentSurvey(survey);
+        setShowQuestionnaire(true);
       }
     }
   }, [surveyId, surveys]);
+
+  // Sync questions and pages when currentSurvey changes
+  useEffect(() => {
+    if (currentSurvey) {
+      setQuestions(currentSurvey.questions || []);
+      setPages(currentSurvey.pages || [1]);
+      setCurrentPage(1);
+    } else {
+      setQuestions([]);
+      setPages([1]);
+      setCurrentPage(1);
+    }
+  }, [currentSurvey]);
 
   const toggleCategory = (name) => {
     setExpandedCategories(prev => ({
@@ -200,7 +216,7 @@ const SurveyView = () => {
         validationMessage: '',
         includeInPdf: false,
         includeInCrossTab: false,
-        precision: q.label === 'Decimal Input' ? '2' : '',
+        precision: (q.label === 'Decimal Input' || q.label === 'Decimal Grid') ? '2' : '',
         codeValues: Array(10).fill({ code: '', from: '', to: '' }),
         options: '',
         hiddenOptions: '',
@@ -227,7 +243,45 @@ const SurveyView = () => {
         currentDateTimeAsAnswer: false,
         disallowManualEntry: false,
         preventDuplicateLocationCapture: false,
-        page: currentPage
+        page: currentPage,
+        layout: 'Horizontal',
+        randomizeRowOptions: false,
+        randomizeColumnOptions: false,
+        minQuestionsRequired: '',
+        rowOptions: '',
+        columnOptions: '',
+        hiddenColumnOptions: '',
+        rowOptionWidth: '',
+        forwardRowFrom: '',
+        forwardRowType: '',
+        forwardRowAlwaysShow: '',
+        forwardColumnFrom: '',
+        forwardColumnType: '',
+        forwardColumnAlwaysShow: '',
+        forwardQuestionFrom: '',
+        forwardQuestionType: '',
+        forwardQuestionAlwaysShow: '',
+        uniqueOptions: '',
+        displayAsGridTablet: false,
+        exportRawData: false,
+        nsecHouseholdTitle: '',
+        nsecAgricultureTitle: '',
+        nsecEducationTitle: '',
+        nsecGradeTitle: '',
+        secOccupationTitle: '',
+        secEducationTitle: '',
+        secGradeTitle: '',
+        secEduVariableName: '',
+        ruralWallTitle: '',
+        ruralRoofTitle: '',
+        ruralHouseTypeTitle: '',
+        ruralEducationTitle: '',
+        ruralGradeTitle: '',
+        ruralWallOptions: '',
+        ruralRoofOptions: '',
+        cascadeDataSource: '',
+        cascadeQuestionType: 'Dropdown',
+        cascadeAllRequired: true
       };
 
       if (q.label === 'Phone Number') {
@@ -235,7 +289,7 @@ const SurveyView = () => {
         newQuestion.limitTo = '9999999999';
       }
 
-      setQuestions([...questions, newQuestion]);
+      setQuestions(prev => [...prev, newQuestion]);
     }
   };
 
@@ -288,14 +342,17 @@ const SurveyView = () => {
   };
 
   const handleSaveQuestionnaire = () => {
-    const updatedSurveys = surveys.map(s =>
-      s.id === currentSurvey.id
-        ? { ...s, questions, pages }
-        : s
-    );
-    setSurveys(updatedSurveys);
-    localStorage.setItem('local_surveys', JSON.stringify(updatedSurveys));
-    setShowQuestionnaire(false);
+    setSurveys(prevSurveys => {
+      const updatedSurveys = prevSurveys.map(s =>
+        s.id === currentSurvey.id
+          ? { ...s, questions, pages }
+          : s
+      );
+      localStorage.setItem('local_surveys', JSON.stringify(updatedSurveys));
+      return updatedSurveys;
+    });
+
+    closeQuestionnaire();
     setShowSuccessPopup(true);
     setTimeout(() => setShowSuccessPopup(false), 2000);
   };
@@ -304,8 +361,29 @@ const SurveyView = () => {
     setQuestions(questions.filter(q => q.id !== id));
   };
 
+  const duplicateQuestion = (id) => {
+    const index = questions.findIndex(q => q.id === id);
+    if (index !== -1) {
+      const q = questions[index];
+      const newQ = { ...q, id: Date.now(), title: q.title ? `${q.title} (Copy)` : '' };
+      const newQuestions = [...questions];
+      newQuestions.splice(index + 1, 0, newQ);
+      setQuestions(newQuestions);
+    }
+  };
+
+  const toggleHideQuestion = (id) => {
+    const q = questions.find(q => q.id === id);
+    if (q) {
+      // Toggle displayInSurvey
+      updateQuestion(id, 'displayInSurvey', !q.displayInSurvey);
+    }
+  };
+
   const updateQuestion = (id, field, value) => {
-    setQuestions(questions.map(q => q.id === id ? { ...q, [field]: value } : q));
+    setQuestions(prevQuestions =>
+      prevQuestions.map(q => q.id === id ? { ...q, [field]: value } : q)
+    );
   };
 
   const renderOptionMediaSelector = (q) => {
@@ -449,52 +527,57 @@ const SurveyView = () => {
     const formattedDate = `${today.getDate()}-${today.toLocaleString('en-US', { month: 'short' })}-${today.getFullYear()}`;
 
     if (isEditMode && editingSurveyId) {
-      // Update existing survey
-      const updatedSurveys = surveys.map(s =>
-        s.id === editingSurveyId
-          ? {
-            ...s,
-            name: surveyForm.name || s.name,
-            type: surveyForm.surveyType,
-            headerText: surveyForm.headerText,
-            theme: surveyForm.theme,
-            layoutType: surveyForm.layoutType,
-            accessPin: surveyForm.accessPin,
-            loopSurvey: surveyForm.loopSurvey,
-            pdfShowAnswered: surveyForm.pdfShowAnswered,
-            backgroundLocation: surveyForm.backgroundLocation,
-            isLocationMandatory: surveyForm.isLocationMandatory,
-            thankYouDuration: surveyForm.thankYouDuration,
-            welcomeImageName: surveyForm.welcomeImageName,
-            thankYouImageName: surveyForm.thankYouImageName
-          }
-          : s
-      );
-      setSurveys(updatedSurveys);
-      localStorage.setItem('local_surveys', JSON.stringify(updatedSurveys));
+      setSurveys(prevSurveys => {
+        const updatedSurveys = prevSurveys.map(s =>
+          s.id === editingSurveyId
+            ? {
+              ...s,
+              name: surveyForm.name || s.name,
+              type: surveyForm.surveyType,
+              headerText: surveyForm.headerText,
+              theme: surveyForm.theme,
+              layoutType: surveyForm.layoutType,
+              accessPin: surveyForm.accessPin,
+              loopSurvey: surveyForm.loopSurvey,
+              pdfShowAnswered: surveyForm.pdfShowAnswered,
+              backgroundLocation: surveyForm.backgroundLocation,
+              isLocationMandatory: surveyForm.isLocationMandatory,
+              thankYouDuration: surveyForm.thankYouDuration,
+              welcomeImageName: surveyForm.welcomeImageName,
+              thankYouImageName: surveyForm.thankYouImageName
+            }
+            : s
+        );
+        localStorage.setItem('local_surveys', JSON.stringify(updatedSurveys));
+        return updatedSurveys;
+      });
     } else {
-      // Create new survey
-      const newSurvey = {
-        id: surveys.length + 1,
-        name: surveyForm.name || "Untitled Survey",
-        date: formattedDate,
-        type: surveyForm.surveyType,
-        responses: 0,
-        status: 'UnPublished',
-        headerText: surveyForm.headerText,
-        theme: surveyForm.theme,
-        layoutType: surveyForm.layoutType,
-        accessPin: surveyForm.accessPin,
-        loopSurvey: surveyForm.loopSurvey,
-        pdfShowAnswered: surveyForm.pdfShowAnswered,
-        backgroundLocation: surveyForm.backgroundLocation,
-        isLocationMandatory: surveyForm.isLocationMandatory,
-        thankYouDuration: surveyForm.thankYouDuration,
-        welcomeImageName: surveyForm.welcomeImageName,
-        thankYouImageName: surveyForm.thankYouImageName
-      };
-      setSurveys([newSurvey, ...surveys]);
-      localStorage.setItem('local_surveys', JSON.stringify([newSurvey, ...surveys]));
+      setSurveys(prevSurveys => {
+        const newSurvey = {
+          id: prevSurveys.length + 1,
+          name: surveyForm.name || "Untitled Survey",
+          date: formattedDate,
+          type: surveyForm.surveyType,
+          responses: 0,
+          status: 'UnPublished',
+          headerText: surveyForm.headerText,
+          theme: surveyForm.theme,
+          layoutType: surveyForm.layoutType,
+          accessPin: surveyForm.accessPin,
+          loopSurvey: surveyForm.loopSurvey,
+          pdfShowAnswered: surveyForm.pdfShowAnswered,
+          backgroundLocation: surveyForm.backgroundLocation,
+          isImageMandatory: surveyForm.isLocationMandatory,
+          thankYouDuration: surveyForm.thankYouDuration,
+          welcomeImageName: surveyForm.welcomeImageName,
+          thankYouImageName: surveyForm.thankYouImageName,
+          questions: [],
+          pages: [1]
+        };
+        const newList = [newSurvey, ...prevSurveys];
+        localStorage.setItem('local_surveys', JSON.stringify(newList));
+        return newList;
+      });
     }
 
     setShowDetailedCreate(false);
@@ -527,9 +610,11 @@ const SurveyView = () => {
     });
     setShowDetailedCreate(true);
 
-    // Update URL to include survey name
+    // Update URL to include survey name and open questionnaire
     const urlSlug = survey.name.toLowerCase().replace(/\s+/g, '-');
     navigate(`/surveys/${urlSlug}`);
+    setCurrentSurvey(survey);
+    setShowQuestionnaire(true);
   };
 
   const toggleStatus = (id, currentStatus) => {
@@ -549,13 +634,29 @@ const SurveyView = () => {
     setShowConfirmPopup(false);
   };
 
+  const deleteSurvey = (id) => {
+    if (window.confirm("Are you sure you want to delete this survey?")) {
+      const updatedSurveys = surveys.filter(s => s.id !== id);
+      setSurveys(updatedSurveys);
+      localStorage.setItem('local_surveys', JSON.stringify(updatedSurveys));
+    }
+  };
+
+  const closeQuestionnaire = () => {
+    setShowQuestionnaire(false);
+    setCurrentSurvey(null);
+  };
+
   // QUESTIONNAIRE VIEW
   if (showQuestionnaire) {
     return (
       <Layout user={user}>
         <div className="questionnaire-container">
           <div className="questionnaire-header">
-            <h2>Questionnaire : {currentSurvey?.name || 'c'}</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <button className="back-btn-circle" onClick={closeQuestionnaire} title="Back to Surveys">←</button>
+              <h2>Questionnaire : {currentSurvey?.name || ''}</h2>
+            </div>
             <div className="header-toolbar">
               <button className="toolbar-btn teal">Questionnaire</button>
               <button className="toolbar-btn">ReSequence</button>
@@ -645,1650 +746,3295 @@ const SurveyView = () => {
                             )}
                           </div>
                           <div className="header-right">
-                            <span className="action-btn">˄</span>
-                            <span className="action-btn">👁️</span>
-                            <span className="action-btn">📄</span>
+                            <span
+                              className="action-btn"
+                              onClick={() => updateQuestion(q.id, 'collapsed', !q.collapsed)}
+                              style={{ transform: q.collapsed ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s' }}
+                              title={q.collapsed ? "Expand" : "Collapse"}
+                            >
+                              ˄
+                            </span>
+                            <span
+                              className="action-btn"
+                              title={q.displayInSurvey ? "Hide Question" : "Show Question"}
+                              onClick={() => toggleHideQuestion(q.id)}
+                              style={{ opacity: q.displayInSurvey ? 1 : 0.5 }}
+                            >
+                              {q.displayInSurvey ? '👁️' : '🚫'}
+                            </span>
+                            <span
+                              className="action-btn"
+                              title="Duplicate Question"
+                              onClick={() => duplicateQuestion(q.id)}
+                            >
+                              📄
+                            </span>
                             <span className="action-btn delete" onClick={() => removeQuestion(q.id)}>🗑️</span>
                           </div>
                         </div>
 
-                        <div className="q-card-body">
-                          {q.type === 'Text Block' && (
-                            <div className="text-block-editor">
-                              <div className="editor-toolbar">
-                                <button className="tool-btn" onClick={() => execCommand('bold')}><b>B</b></button>
-                                <button className="tool-btn" onClick={() => execCommand('italic')}><i>I</i></button>
-                                <button className="tool-btn" onClick={() => execCommand('underline')}><u>U</u></button>
-                                <div className="color-picker-box" onClick={() => document.getElementById(`color-input-${q.id}`).click()}>
-                                  <div className="color-indicator" style={{ backgroundColor: q.textColor || '#444' }}></div>
-                                  <span className="arrow-down">▴A</span>
+                        {!q.collapsed && (
+                          <div className="q-card-body">
+                            {q.type === 'Text Block' && (
+                              <div className="text-block-editor">
+                                <div className="editor-toolbar">
+                                  <button className="tool-btn" onClick={() => execCommand('bold')}><b>B</b></button>
+                                  <button className="tool-btn" onClick={() => execCommand('italic')}><i>I</i></button>
+                                  <button className="tool-btn" onClick={() => execCommand('underline')}><u>U</u></button>
+                                  <div className="color-picker-box" onClick={() => document.getElementById(`color-input-${q.id}`).click()}>
+                                    <div className="color-indicator" style={{ backgroundColor: q.textColor || '#444' }}></div>
+                                    <span className="arrow-down">▴A</span>
+                                    <input
+                                      type="color"
+                                      id={`color-input-${q.id}`}
+                                      style={{ display: 'none' }}
+                                      onChange={(e) => {
+                                        execCommand('foreColor', e.target.value);
+                                        updateQuestion(q.id, 'textColor', e.target.value);
+                                      }}
+                                    />
+                                  </div>
+                                  <button className="tool-btn" onClick={() => execCommand('insertUnorderedList')}>T↕</button>
+                                  <button className="tool-btn" onClick={() => execCommand('justifyLeft')}>≣</button>
+                                  <button className="tool-btn" onClick={() => {
+                                    const size = prompt('Enter font size (1-7):', '3');
+                                    if (size) execCommand('fontSize', size);
+                                  }}>⩓</button>
+                                  <button className="tool-btn" onClick={() => {
+                                    const url = prompt('Enter URL:');
+                                    if (url) execCommand('createLink', url);
+                                  }}>🔗</button>
+                                  <button className="tool-btn" onClick={() => {
+                                    const url = prompt('Enter Image URL:');
+                                    if (url) execCommand('insertImage', url);
+                                  }}>🖼️</button>
+                                </div>
+                                <div
+                                  className="editor-contenteditable"
+                                  contentEditable
+                                  dangerouslySetInnerHTML={{ __html: q.description }}
+                                  onBlur={(e) => updateQuestion(q.id, 'description', e.target.innerHTML)}
+                                  placeholder="Type your text here..."
+                                ></div>
+                                <div className="pdf-export-row">
+                                  <span>Include in PDF Export</span>
                                   <input
-                                    type="color"
-                                    id={`color-input-${q.id}`}
-                                    style={{ display: 'none' }}
-                                    onChange={(e) => {
-                                      execCommand('foreColor', e.target.value);
-                                      updateQuestion(q.id, 'textColor', e.target.value);
-                                    }}
+                                    type="checkbox"
+                                    checked={q.includeInPdf}
+                                    onChange={(e) => updateQuestion(q.id, 'includeInPdf', e.target.checked)}
                                   />
                                 </div>
-                                <button className="tool-btn" onClick={() => execCommand('insertUnorderedList')}>T↕</button>
-                                <button className="tool-btn" onClick={() => execCommand('justifyLeft')}>≣</button>
-                                <button className="tool-btn" onClick={() => {
-                                  const size = prompt('Enter font size (1-7):', '3');
-                                  if (size) execCommand('fontSize', size);
-                                }}>⩓</button>
-                                <button className="tool-btn" onClick={() => {
-                                  const url = prompt('Enter URL:');
-                                  if (url) execCommand('createLink', url);
-                                }}>🔗</button>
-                                <button className="tool-btn" onClick={() => {
-                                  const url = prompt('Enter Image URL:');
-                                  if (url) execCommand('insertImage', url);
-                                }}>🖼️</button>
                               </div>
-                              <div
-                                className="editor-contenteditable"
-                                contentEditable
-                                dangerouslySetInnerHTML={{ __html: q.description }}
-                                onBlur={(e) => updateQuestion(q.id, 'description', e.target.innerHTML)}
-                                placeholder="Type your text here..."
-                              ></div>
-                              <div className="pdf-export-row">
-                                <span>Include in PDF Export</span>
-                                <input
-                                  type="checkbox"
-                                  checked={q.includeInPdf}
-                                  onChange={(e) => updateQuestion(q.id, 'includeInPdf', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {(q.type === 'Number Input' || q.type === 'Number with Auto Code' || q.type === 'Decimal Input') && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Description</label>
-                                <input
-                                  type="text"
-                                  placeholder="Type help information for question here...."
-                                  value={q.description}
-                                  onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Default Value</label>
-                                <input
-                                  type="text"
-                                  placeholder="Set default value"
-                                  value={q.defaultValue}
-                                  onChange={(e) => updateQuestion(q.id, 'defaultValue', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row">
-                                <label>Suffix</label>
-                                <input
-                                  type="text"
-                                  value={q.suffix}
-                                  onChange={(e) => updateQuestion(q.id, 'suffix', e.target.value)}
-                                />
-                              </div>
-                              {q.type === 'Decimal Input' && (
+                            {(q.type === 'Number Input' || q.type === 'Number with Auto Code' || q.type === 'Decimal Input') && (
+                              <div className="question-form">
                                 <div className="form-row">
-                                  <label>Precision</label>
+                                  <label>Description</label>
                                   <input
                                     type="text"
-                                    value={q.precision}
-                                    onChange={(e) => updateQuestion(q.id, 'precision', e.target.value)}
+                                    placeholder="Type help information for question here...."
+                                    value={q.description}
+                                    onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
                                   />
                                 </div>
-                              )}
-                              <div className="form-row">
-                                <label>Limit Value between</label>
-                                <div className="limit-inputs">
+                                <div className="form-row">
+                                  <label>Display Title</label>
                                   <input
                                     type="text"
-                                    value={q.limitFrom}
-                                    placeholder=""
-                                    onChange={(e) => updateQuestion(q.id, 'limitFrom', e.target.value)}
-                                  />
-                                  <span>-</span>
-                                  <input
-                                    type="text"
-                                    value={q.limitTo}
-                                    placeholder=""
-                                    onChange={(e) => updateQuestion(q.id, 'limitTo', e.target.value)}
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
                                   />
                                 </div>
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Validation Pattern</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define validation pattern"
-                                  value={q.validationPattern}
-                                  onChange={(e) => updateQuestion(q.id, 'validationPattern', e.target.value)}
-                                />
-                              </div>
-                              <div className="validation-help">
-                                This field should contain the Regular Expression to validate the answer of this question.
-                                For more details, refer: <a href="https://en.wikipedia.org/wiki/Regular_expression" target="_blank">https://en.wikipedia.org/wiki/Regular_expression</a>
-                              </div>
-                              <div className="form-row">
-                                <label>Validation Message</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define validation message"
-                                  value={q.validationMessage}
-                                  onChange={(e) => updateQuestion(q.id, 'validationMessage', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Include In CrossTab</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.includeInCrossTab}
-                                  onChange={(e) => updateQuestion(q.id, 'includeInCrossTab', e.target.checked)}
-                                />
-                              </div>
-
-                              {q.type === 'Number with Auto Code' && (
-                                <div className="form-row align-start">
-                                  <label>Code Values</label>
-                                  <div className="code-values-table-container">
-                                    <table className="code-values-table">
-                                      <thead>
-                                        <tr>
-                                          <th>Code</th>
-                                          <th>From</th>
-                                          <th>To</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {q.codeValues.map((row, rIdx) => (
-                                          <tr key={rIdx}>
-                                            <td><input type="text" placeholder="Code" value={row.code} onChange={(e) => {
-                                              const newCodes = [...q.codeValues];
-                                              newCodes[rIdx] = { ...row, code: e.target.value };
-                                              updateQuestion(q.id, 'codeValues', newCodes);
-                                            }} /></td>
-                                            <td><input type="text" value={row.from} onChange={(e) => {
-                                              const newCodes = [...q.codeValues];
-                                              newCodes[rIdx] = { ...row, from: e.target.value };
-                                              updateQuestion(q.id, 'codeValues', newCodes);
-                                            }} /></td>
-                                            <td><input type="text" value={row.to} onChange={(e) => {
-                                              const newCodes = [...q.codeValues];
-                                              newCodes[rIdx] = { ...row, to: e.target.value };
-                                              updateQuestion(q.id, 'codeValues', newCodes);
-                                            }} /></td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Default Value</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Set default value"
+                                    value={q.defaultValue}
+                                    onChange={(e) => updateQuestion(q.id, 'defaultValue', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row">
+                                  <label>Suffix</label>
+                                  <input
+                                    type="text"
+                                    value={q.suffix}
+                                    onChange={(e) => updateQuestion(q.id, 'suffix', e.target.value)}
+                                  />
+                                </div>
+                                {q.type === 'Decimal Input' && (
+                                  <div className="form-row">
+                                    <label>Precision</label>
+                                    <input
+                                      type="text"
+                                      value={q.precision}
+                                      onChange={(e) => updateQuestion(q.id, 'precision', e.target.value)}
+                                    />
+                                  </div>
+                                )}
+                                <div className="form-row">
+                                  <label>Limit Value between</label>
+                                  <div className="limit-inputs">
+                                    <input
+                                      type="text"
+                                      value={q.limitFrom}
+                                      placeholder=""
+                                      onChange={(e) => updateQuestion(q.id, 'limitFrom', e.target.value)}
+                                    />
+                                    <span>-</span>
+                                    <input
+                                      type="text"
+                                      value={q.limitTo}
+                                      placeholder=""
+                                      onChange={(e) => updateQuestion(q.id, 'limitTo', e.target.value)}
+                                    />
                                   </div>
                                 </div>
-                              )}
-                            </div>
-                          )}
-
-                          {q.type === 'Number Point' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row">
-                                <label>Limit Value between</label>
-                                <div className="range-inputs">
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
                                   <input
-                                    type="text"
-                                    value={q.limitFrom}
-                                    onChange={(e) => updateQuestion(q.id, 'limitFrom', e.target.value)}
-                                  />
-                                  <span>-</span>
-                                  <input
-                                    type="text"
-                                    value={q.limitTo}
-                                    onChange={(e) => updateQuestion(q.id, 'limitTo', e.target.value)}
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
                                   />
                                 </div>
+                                <div className="form-row">
+                                  <label>Validation Pattern</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define validation pattern"
+                                    value={q.validationPattern}
+                                    onChange={(e) => updateQuestion(q.id, 'validationPattern', e.target.value)}
+                                  />
+                                </div>
+                                <div className="validation-help">
+                                  This field should contain the Regular Expression to validate the answer of this question.
+                                  For more details, refer: <a href="https://en.wikipedia.org/wiki/Regular_expression" target="_blank">https://en.wikipedia.org/wiki/Regular_expression</a>
+                                </div>
+                                <div className="form-row">
+                                  <label>Validation Message</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define validation message"
+                                    value={q.validationMessage}
+                                    onChange={(e) => updateQuestion(q.id, 'validationMessage', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Include In CrossTab</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.includeInCrossTab}
+                                    onChange={(e) => updateQuestion(q.id, 'includeInCrossTab', e.target.checked)}
+                                  />
+                                </div>
+
+                                {q.type === 'Number with Auto Code' && (
+                                  <div className="form-row align-start">
+                                    <label>Code Values</label>
+                                    <div className="code-values-table-container">
+                                      <table className="code-values-table">
+                                        <thead>
+                                          <tr>
+                                            <th>Code</th>
+                                            <th>From</th>
+                                            <th>To</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {q.codeValues.map((row, rIdx) => (
+                                            <tr key={rIdx}>
+                                              <td><input type="text" placeholder="Code" value={row.code} onChange={(e) => {
+                                                const newCodes = [...q.codeValues];
+                                                newCodes[rIdx] = { ...row, code: e.target.value };
+                                                updateQuestion(q.id, 'codeValues', newCodes);
+                                              }} /></td>
+                                              <td><input type="text" value={row.from} onChange={(e) => {
+                                                const newCodes = [...q.codeValues];
+                                                newCodes[rIdx] = { ...row, from: e.target.value };
+                                                updateQuestion(q.id, 'codeValues', newCodes);
+                                              }} /></td>
+                                              <td><input type="text" value={row.to} onChange={(e) => {
+                                                const newCodes = [...q.codeValues];
+                                                newCodes[rIdx] = { ...row, to: e.target.value };
+                                                updateQuestion(q.id, 'codeValues', newCodes);
+                                              }} /></td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                              <div className="form-row">
-                                <label>Start Value Label</label>
-                                <input
-                                  type="text"
-                                  value={q.startLabel}
-                                  onChange={(e) => updateQuestion(q.id, 'startLabel', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Mid Value Label</label>
-                                <input
-                                  type="text"
-                                  value={q.midLabel}
-                                  onChange={(e) => updateQuestion(q.id, 'midLabel', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>End Value Label</label>
-                                <input
-                                  type="text"
-                                  value={q.endLabel}
-                                  onChange={(e) => updateQuestion(q.id, 'endLabel', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Display As</label>
-                                <div className="radio-group-horizontal">
-                                  <label>
+                            )}
+
+                            {q.type === 'Number Point' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row">
+                                  <label>Limit Value between</label>
+                                  <div className="range-inputs">
                                     <input
-                                      type="radio"
-                                      name={`displayAs-${q.id}`}
-                                      checked={q.displayAs === 'Numbers'}
-                                      onChange={() => updateQuestion(q.id, 'displayAs', 'Numbers')}
+                                      type="text"
+                                      value={q.limitFrom}
+                                      onChange={(e) => updateQuestion(q.id, 'limitFrom', e.target.value)}
                                     />
-                                    Numbers
-                                  </label>
-                                  <label>
+                                    <span>-</span>
                                     <input
-                                      type="radio"
-                                      name={`displayAs-${q.id}`}
-                                      checked={q.displayAs === 'Slider'}
-                                      onChange={() => updateQuestion(q.id, 'displayAs', 'Slider')}
+                                      type="text"
+                                      value={q.limitTo}
+                                      onChange={(e) => updateQuestion(q.id, 'limitTo', e.target.value)}
                                     />
-                                    Slider
-                                  </label>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {q.type === 'Rating' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row">
-                                <label>Number of ratings</label>
-                                <input
-                                  type="text"
-                                  className="compact-input"
-                                  value={q.numRatings}
-                                  onChange={(e) => updateQuestion(q.id, 'numRatings', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {q.type === 'Date and Time' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Description</label>
-                                <input
-                                  type="text"
-                                  placeholder="Type help information for question here...."
-                                  value={q.description}
-                                  onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Current DateTime as answer</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.currentDateTimeAsAnswer}
-                                  onChange={(e) => updateQuestion(q.id, 'currentDateTimeAsAnswer', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {q.type === 'Time' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Description</label>
-                                <input
-                                  type="text"
-                                  placeholder="Type help information for question here...."
-                                  value={q.description}
-                                  onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row">
-                                <label>Minimum Time</label>
-                                <div className="time-input-group">
-                                  <select value={q.minTimeHH} onChange={(e) => updateQuestion(q.id, 'minTimeHH', e.target.value)}>
-                                    <option>HH</option>
-                                    {[...Array(24)].map((_, i) => (
-                                      <option key={i} value={i.toString().padStart(2, '0')}>{i.toString().padStart(2, '0')}</option>
-                                    ))}
-                                  </select>
-                                  <span>:</span>
-                                  <select value={q.minTimeMM} onChange={(e) => updateQuestion(q.id, 'minTimeMM', e.target.value)}>
-                                    <option>MM</option>
-                                    {[...Array(60)].map((_, i) => (
-                                      <option key={i} value={i.toString().padStart(2, '0')}>{i.toString().padStart(2, '0')}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </div>
-                              <div className="form-row">
-                                <label>Maximum Time</label>
-                                <div className="time-input-group">
-                                  <select value={q.maxTimeHH} onChange={(e) => updateQuestion(q.id, 'maxTimeHH', e.target.value)}>
-                                    <option>HH</option>
-                                    {[...Array(24)].map((_, i) => (
-                                      <option key={i} value={i.toString().padStart(2, '0')}>{i.toString().padStart(2, '0')}</option>
-                                    ))}
-                                  </select>
-                                  <span>:</span>
-                                  <select value={q.maxTimeMM} onChange={(e) => updateQuestion(q.id, 'maxTimeMM', e.target.value)}>
-                                    <option>MM</option>
-                                    {[...Array(60)].map((_, i) => (
-                                      <option key={i} value={i.toString().padStart(2, '0')}>{i.toString().padStart(2, '0')}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Current Time as answer</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.currentTimeAsAnswer}
-                                  onChange={(e) => updateQuestion(q.id, 'currentTimeAsAnswer', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Display In Survey</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.displayInSurvey}
-                                  onChange={(e) => updateQuestion(q.id, 'displayInSurvey', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {q.type === 'Date' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Description</label>
-                                <input
-                                  type="text"
-                                  placeholder="Type help information for question here...."
-                                  value={q.description}
-                                  onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row">
-                                <label>Minimum Date</label>
-                                <div className="input-with-icon">
+                                <div className="form-row">
+                                  <label>Start Value Label</label>
                                   <input
                                     type="text"
-                                    value={q.minDate}
-                                    onChange={(e) => updateQuestion(q.id, 'minDate', e.target.value)}
+                                    value={q.startLabel}
+                                    onChange={(e) => updateQuestion(q.id, 'startLabel', e.target.value)}
                                   />
-                                  <button className="icon-btn">📅</button>
                                 </div>
-                              </div>
-                              <div className="form-row">
-                                <label>Maximum Date</label>
-                                <div className="input-with-icon">
+                                <div className="form-row">
+                                  <label>Mid Value Label</label>
                                   <input
                                     type="text"
-                                    value={q.maxDate}
-                                    onChange={(e) => updateQuestion(q.id, 'maxDate', e.target.value)}
+                                    value={q.midLabel}
+                                    onChange={(e) => updateQuestion(q.id, 'midLabel', e.target.value)}
                                   />
-                                  <button className="icon-btn">📅</button>
+                                </div>
+                                <div className="form-row">
+                                  <label>End Value Label</label>
+                                  <input
+                                    type="text"
+                                    value={q.endLabel}
+                                    onChange={(e) => updateQuestion(q.id, 'endLabel', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Display As</label>
+                                  <div className="radio-group-horizontal">
+                                    <label>
+                                      <input
+                                        type="radio"
+                                        name={`displayAs-${q.id}`}
+                                        checked={q.displayAs === 'Numbers'}
+                                        onChange={() => updateQuestion(q.id, 'displayAs', 'Numbers')}
+                                      />
+                                      Numbers
+                                    </label>
+                                    <label>
+                                      <input
+                                        type="radio"
+                                        name={`displayAs-${q.id}`}
+                                        checked={q.displayAs === 'Slider'}
+                                        onChange={() => updateQuestion(q.id, 'displayAs', 'Slider')}
+                                      />
+                                      Slider
+                                    </label>
+                                  </div>
                                 </div>
                               </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Current Date as answer</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.currentDateAsAnswer}
-                                  onChange={(e) => updateQuestion(q.id, 'currentDateAsAnswer', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {q.type === 'Net Promoter Score' && (
-                            <div className="question-form">
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
+                            {q.type === 'Rating' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row">
+                                  <label>Number of ratings</label>
+                                  <input
+                                    type="text"
+                                    className="compact-input"
+                                    value={q.numRatings}
+                                    onChange={(e) => updateQuestion(q.id, 'numRatings', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
                               </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Start Value Label</label>
-                                <input
-                                  type="text"
-                                  value={q.startLabel}
-                                  onChange={(e) => updateQuestion(q.id, 'startLabel', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Mid Value Label</label>
-                                <input
-                                  type="text"
-                                  value={q.midLabel}
-                                  onChange={(e) => updateQuestion(q.id, 'midLabel', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>End Value Label</label>
-                                <input
-                                  type="text"
-                                  value={q.endLabel}
-                                  onChange={(e) => updateQuestion(q.id, 'endLabel', e.target.value)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {q.type === 'Barcode Scanner' && (
-                            <div className="question-form">
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
+                            {q.type === 'Date and Time' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Description</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Type help information for question here...."
+                                    value={q.description}
+                                    onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Current DateTime as answer</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.currentDateTimeAsAnswer}
+                                    onChange={(e) => updateQuestion(q.id, 'currentDateTimeAsAnswer', e.target.checked)}
+                                  />
+                                </div>
                               </div>
-                              <div className="form-row-compact">
-                                <label>Disallow Manual Entry</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.disallowManualEntry}
-                                  onChange={(e) => updateQuestion(q.id, 'disallowManualEntry', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {q.type === 'Map Coordinates (GPS)' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
+                            {q.type === 'Time' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Description</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Type help information for question here...."
+                                    value={q.description}
+                                    onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row">
+                                  <label>Minimum Time</label>
+                                  <div className="time-input-group">
+                                    <select value={q.minTimeHH} onChange={(e) => updateQuestion(q.id, 'minTimeHH', e.target.value)}>
+                                      <option>HH</option>
+                                      {[...Array(24)].map((_, i) => (
+                                        <option key={i} value={i.toString().padStart(2, '0')}>{i.toString().padStart(2, '0')}</option>
+                                      ))}
+                                    </select>
+                                    <span>:</span>
+                                    <select value={q.minTimeMM} onChange={(e) => updateQuestion(q.id, 'minTimeMM', e.target.value)}>
+                                      <option>MM</option>
+                                      {[...Array(60)].map((_, i) => (
+                                        <option key={i} value={i.toString().padStart(2, '0')}>{i.toString().padStart(2, '0')}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Maximum Time</label>
+                                  <div className="time-input-group">
+                                    <select value={q.maxTimeHH} onChange={(e) => updateQuestion(q.id, 'maxTimeHH', e.target.value)}>
+                                      <option>HH</option>
+                                      {[...Array(24)].map((_, i) => (
+                                        <option key={i} value={i.toString().padStart(2, '0')}>{i.toString().padStart(2, '0')}</option>
+                                      ))}
+                                    </select>
+                                    <span>:</span>
+                                    <select value={q.maxTimeMM} onChange={(e) => updateQuestion(q.id, 'maxTimeMM', e.target.value)}>
+                                      <option>MM</option>
+                                      {[...Array(60)].map((_, i) => (
+                                        <option key={i} value={i.toString().padStart(2, '0')}>{i.toString().padStart(2, '0')}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Current Time as answer</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.currentTimeAsAnswer}
+                                    onChange={(e) => updateQuestion(q.id, 'currentTimeAsAnswer', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Display In Survey</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.displayInSurvey}
+                                    onChange={(e) => updateQuestion(q.id, 'displayInSurvey', e.target.checked)}
+                                  />
+                                </div>
                               </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Prevent duplicate location capture</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.preventDuplicateLocationCapture}
-                                  onChange={(e) => updateQuestion(q.id, 'preventDuplicateLocationCapture', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {q.type === 'Checkbox List' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row align-start">
-                                <label>Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.options}
-                                    onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
+                            {q.type === 'Date' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Description</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Type help information for question here...."
+                                    value={q.description}
+                                    onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row">
+                                  <label>Minimum Date</label>
+                                  <div className="input-with-icon">
+                                    <input
+                                      type="text"
+                                      value={q.minDate}
+                                      onChange={(e) => updateQuestion(q.id, 'minDate', e.target.value)}
+                                    />
+                                    <button className="icon-btn">📅</button>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Maximum Date</label>
+                                  <div className="input-with-icon">
+                                    <input
+                                      type="text"
+                                      value={q.maxDate}
+                                      onChange={(e) => updateQuestion(q.id, 'maxDate', e.target.value)}
+                                    />
+                                    <button className="icon-btn">📅</button>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Current Date as answer</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.currentDateAsAnswer}
+                                    onChange={(e) => updateQuestion(q.id, 'currentDateAsAnswer', e.target.checked)}
+                                  />
                                 </div>
                               </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>Image as Option</label>
-                                <div className="input-with-button">
-                                  <input type="text" value={q.imageGroup} readOnly />
-                                  <button className="q-cyan-btn">Select Group</button>
-                                </div>
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Minimum Options Required</label>
-                                <input
-                                  type="text"
-                                  value={q.minOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'minOptions', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Maximum Options Selectable</label>
-                                <input
-                                  type="text"
-                                  value={q.maxOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'maxOptions', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row align-start">
-                                <label>Unique Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.uniqueOptions}
-                                    onChange={(e) => updateQuestion(q.id, 'uniqueOptions', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
-                                </div>
-                              </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>Check All Options</label>
-                                <input
-                                  type="text"
-                                  value={q.checkAllOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'checkAllOptions', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Enable Text Search</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.enableTextSearch}
-                                  onChange={(e) => updateQuestion(q.id, 'enableTextSearch', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Randomize Options</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.randomizeOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {q.type === '2 Columns Checkbox' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row align-start">
-                                <label>Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.options}
-                                    onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
+                            {q.type === 'Net Promoter Score' && (
+                              <div className="question-form">
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Start Value Label</label>
+                                  <input
+                                    type="text"
+                                    value={q.startLabel}
+                                    onChange={(e) => updateQuestion(q.id, 'startLabel', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Mid Value Label</label>
+                                  <input
+                                    type="text"
+                                    value={q.midLabel}
+                                    onChange={(e) => updateQuestion(q.id, 'midLabel', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>End Value Label</label>
+                                  <input
+                                    type="text"
+                                    value={q.endLabel}
+                                    onChange={(e) => updateQuestion(q.id, 'endLabel', e.target.value)}
+                                  />
                                 </div>
                               </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>Image as Option</label>
-                                <div className="input-with-button">
-                                  <input type="text" value={q.imageGroup} readOnly />
-                                  <button className="q-cyan-btn">Select Group</button>
-                                </div>
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Minimum Options Required</label>
-                                <input
-                                  type="text"
-                                  value={q.minOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'minOptions', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Maximum Options Selectable</label>
-                                <input
-                                  type="text"
-                                  value={q.maxOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'maxOptions', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row align-start">
-                                <label>Unique Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.uniqueOptions}
-                                    onChange={(e) => updateQuestion(q.id, 'uniqueOptions', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
-                                </div>
-                              </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>Check All Options</label>
-                                <input
-                                  type="text"
-                                  value={q.checkAllOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'checkAllOptions', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Enable Text Search</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.enableTextSearch}
-                                  onChange={(e) => updateQuestion(q.id, 'enableTextSearch', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Randomize Options</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.randomizeOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {q.type === 'Checkbox List with Other' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row align-start">
-                                <label>Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.options}
-                                    onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
+                            {q.type === 'Barcode Scanner' && (
+                              <div className="question-form">
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Disallow Manual Entry</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.disallowManualEntry}
+                                    onChange={(e) => updateQuestion(q.id, 'disallowManualEntry', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
                                 </div>
                               </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>Image as Option</label>
-                                <div className="input-with-button">
-                                  <input type="text" value={q.imageGroup} readOnly />
-                                  <button className="q-cyan-btn">Select Group</button>
-                                </div>
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Other Text Optional?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.isOtherTextOptional}
-                                  onChange={(e) => updateQuestion(q.id, 'isOtherTextOptional', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Minimum Options Required</label>
-                                <input
-                                  type="text"
-                                  value={q.minOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'minOptions', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Maximum Options Selectable</label>
-                                <input
-                                  type="text"
-                                  value={q.maxOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'maxOptions', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row align-start">
-                                <label>Unique Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.uniqueOptions}
-                                    onChange={(e) => updateQuestion(q.id, 'uniqueOptions', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
-                                </div>
-                              </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>Check All Options</label>
-                                <input
-                                  type="text"
-                                  value={q.checkAllOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'checkAllOptions', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Enable Text Search</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.enableTextSearch}
-                                  onChange={(e) => updateQuestion(q.id, 'enableTextSearch', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Randomize Options</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.randomizeOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {q.type === 'Drop Down' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Description</label>
-                                <input
-                                  type="text"
-                                  placeholder="Type help information for question here...."
-                                  value={q.description}
-                                  onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row align-start">
-                                <label>Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.options}
-                                    onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
+                            {q.type === 'Map Coordinates (GPS)' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Prevent duplicate location capture</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.preventDuplicateLocationCapture}
+                                    onChange={(e) => updateQuestion(q.id, 'preventDuplicateLocationCapture', e.target.checked)}
+                                  />
                                 </div>
                               </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>Default Value</label>
-                                <input
-                                  type="text"
-                                  placeholder="Set default value"
-                                  value={q.defaultValue}
-                                  onChange={(e) => updateQuestion(q.id, 'defaultValue', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row align-start">
-                                <label>Hidden Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.hiddenOptions}
-                                    onChange={(e) => updateQuestion(q.id, 'hiddenOptions', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
-                                </div>
-                              </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>SPSS Codes</label>
-                                <div className="input-column">
-                                  <button className="q-cyan-btn">Define</button>
-                                  <span className="help-text">Default code values will be in sequence of 1,2,3...</span>
-                                </div>
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Enable Text Search</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.enableTextSearch}
-                                  onChange={(e) => updateQuestion(q.id, 'enableTextSearch', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Randomize Options</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.randomizeOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {q.type === 'Drop Down with Other' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Description</label>
-                                <input
-                                  type="text"
-                                  placeholder="Type help information for question here...."
-                                  value={q.description}
-                                  onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row align-start">
-                                <label>Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.options}
-                                    onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
+                            {q.type === 'Photo Capture' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Disable Text Annotation</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.disableTextAnnotation || false}
+                                    onChange={(e) => updateQuestion(q.id, 'disableTextAnnotation', e.target.checked)}
+                                  />
                                 </div>
                               </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>Default Value</label>
-                                <input
-                                  type="text"
-                                  placeholder="Set default value"
-                                  value={q.defaultValue}
-                                  onChange={(e) => updateQuestion(q.id, 'defaultValue', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row align-start">
-                                <label>Hidden Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.hiddenOptions}
-                                    onChange={(e) => updateQuestion(q.id, 'hiddenOptions', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
-                                </div>
-                              </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>SPSS Codes</label>
-                                <div className="input-column">
-                                  <button className="q-cyan-btn">Define</button>
-                                  <span className="help-text">Default code values will be in sequence of 1,2,3...</span>
-                                </div>
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Other Text Optional?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.isOtherTextOptional}
-                                  onChange={(e) => updateQuestion(q.id, 'isOtherTextOptional', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Enable Text Search</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.enableTextSearch}
-                                  onChange={(e) => updateQuestion(q.id, 'enableTextSearch', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Randomize Options</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.randomizeOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {q.type === 'Radio Button with Other' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Description</label>
-                                <input
-                                  type="text"
-                                  placeholder="Type help information for question here...."
-                                  value={q.description}
-                                  onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row align-start">
-                                <label>Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.options}
-                                    onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
+                            {q.type === 'Record Video' && (
+                              <div className="question-form">
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Max.Length (60 seconds)</label>
+                                  <input
+                                    type="text"
+                                    value={q.maxLength || ''}
+                                    onChange={(e) => updateQuestion(q.id, 'maxLength', e.target.value)}
+                                  />
                                 </div>
                               </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>Default Value</label>
-                                <input
-                                  type="text"
-                                  placeholder="Set default value"
-                                  value={q.defaultValue}
-                                  onChange={(e) => updateQuestion(q.id, 'defaultValue', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row align-start">
-                                <label>Hidden Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.hiddenOptions}
-                                    onChange={(e) => updateQuestion(q.id, 'hiddenOptions', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
-                                </div>
-                              </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>SPSS Codes</label>
-                                <div className="input-column">
-                                  <button className="q-cyan-btn">Define</button>
-                                  <span className="help-text">Default code values will be in sequence of 1,2,3...</span>
-                                </div>
-                              </div>
-                              <div className="form-row">
-                                <label>Image as Option</label>
-                                <div className="input-with-button">
-                                  <input type="text" value={q.imageGroup} readOnly />
-                                  <button className="q-cyan-btn">Select Group</button>
-                                </div>
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Other Text Optional?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.isOtherTextOptional}
-                                  onChange={(e) => updateQuestion(q.id, 'isOtherTextOptional', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Number of Columns</label>
-                                <div className="input-with-suffix-text">
-                                  <input type="text" className="small-input" value={q.numColumns} onChange={(e) => updateQuestion(q.id, 'numColumns', e.target.value)} />
-                                  <span className="suffix-text">(Web Survey Only)</span>
-                                </div>
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Randomize Options</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.randomizeOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {q.type === 'Radio Button' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Description</label>
-                                <input
-                                  type="text"
-                                  placeholder="Type help information for question here...."
-                                  value={q.description}
-                                  onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row align-start">
-                                <label>Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.options}
-                                    onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
+                            {q.type === 'Record Audio' && (
+                              <div className="question-form">
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Max.Length (60 seconds)</label>
+                                  <input
+                                    type="text"
+                                    value={q.maxLength || ''}
+                                    onChange={(e) => updateQuestion(q.id, 'maxLength', e.target.value)}
+                                  />
                                 </div>
                               </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>Default Value</label>
-                                <input
-                                  type="text"
-                                  placeholder="Set default value"
-                                  value={q.defaultValue}
-                                  onChange={(e) => updateQuestion(q.id, 'defaultValue', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row align-start">
-                                <label>Hidden Options</label>
-                                <div className="input-column">
-                                  <textarea
-                                    className="form-textarea"
-                                    value={q.hiddenOptions}
-                                    onChange={(e) => updateQuestion(q.id, 'hiddenOptions', e.target.value)}
-                                  ></textarea>
-                                  <span className="help-text">One option per line</span>
-                                </div>
-                              </div>
-                              {renderOptionMediaSelector(q)}
-                              <div className="form-row">
-                                <label>SPSS Codes</label>
-                                <div className="input-column">
-                                  <button className="q-cyan-btn">Define</button>
-                                  <span className="help-text">Default code values will be in sequence of 1,2,3...</span>
-                                </div>
-                              </div>
-                              <div className="form-row">
-                                <label>Image as Option</label>
-                                <div className="input-with-button">
-                                  <input type="text" value={q.imageGroup} readOnly />
-                                  <button className="q-cyan-btn">Select Group</button>
-                                </div>
-                              </div>
-                              <div className="form-row">
-                                <label>Orientation</label>
-                                <div className="orientation-group">
-                                  <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
-                                  <label><input type="radio" checked={q.orientation === 'Top'} onChange={() => updateQuestion(q.id, 'orientation', 'Top')} /> Top</label>
-                                  <label><input type="radio" checked={q.orientation === 'Bottom'} onChange={() => updateQuestion(q.id, 'orientation', 'Bottom')} /> Bottom</label>
-                                </div>
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Number of Columns</label>
-                                <div className="input-with-suffix-text">
-                                  <input type="text" className="small-input" value={q.numColumns} onChange={(e) => updateQuestion(q.id, 'numColumns', e.target.value)} />
-                                  <span className="suffix-text">(Web Survey Only)</span>
-                                </div>
-                              </div>
-                              <div className="form-row-compact">
-                                <label>Randomize Options</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.randomizeOptions}
-                                  onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {q.type === 'Email' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Description</label>
-                                <input
-                                  type="text"
-                                  placeholder="Type help information for question here...."
-                                  value={q.description}
-                                  onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
-                                />
+                            {q.type === 'Signature' && (
+                              <div className="question-form">
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
                               </div>
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {q.type === 'Phone Number' && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Description</label>
-                                <input
-                                  type="text"
-                                  placeholder="Type help information for question here...."
-                                  value={q.description}
-                                  onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
-                                />
+                            {q.type === 'Checkbox List' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.options}
+                                      onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>Image as Option</label>
+                                  <div className="input-with-button">
+                                    <input type="text" value={q.imageGroup} readOnly />
+                                    <button className="q-cyan-btn">Select Group</button>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Minimum Options Required</label>
+                                  <input
+                                    type="text"
+                                    value={q.minOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'minOptions', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Maximum Options Selectable</label>
+                                  <input
+                                    type="text"
+                                    value={q.maxOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'maxOptions', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Unique Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.uniqueOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'uniqueOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>Check All Options</label>
+                                  <input
+                                    type="text"
+                                    value={q.checkAllOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'checkAllOptions', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Enable Text Search</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.enableTextSearch}
+                                    onChange={(e) => updateQuestion(q.id, 'enableTextSearch', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Randomize Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
+                                  />
+                                </div>
                               </div>
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
+                            )}
+
+                            {q.type === '2 Columns Checkbox' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.options}
+                                      onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>Image as Option</label>
+                                  <div className="input-with-button">
+                                    <input type="text" value={q.imageGroup} readOnly />
+                                    <button className="q-cyan-btn">Select Group</button>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Minimum Options Required</label>
+                                  <input
+                                    type="text"
+                                    value={q.minOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'minOptions', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Maximum Options Selectable</label>
+                                  <input
+                                    type="text"
+                                    value={q.maxOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'maxOptions', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Unique Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.uniqueOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'uniqueOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>Check All Options</label>
+                                  <input
+                                    type="text"
+                                    value={q.checkAllOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'checkAllOptions', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Enable Text Search</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.enableTextSearch}
+                                    onChange={(e) => updateQuestion(q.id, 'enableTextSearch', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Randomize Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
+                                  />
+                                </div>
                               </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
+                            )}
+
+                            {q.type === 'Checkbox List with Other' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.options}
+                                      onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>Image as Option</label>
+                                  <div className="input-with-button">
+                                    <input type="text" value={q.imageGroup} readOnly />
+                                    <button className="q-cyan-btn">Select Group</button>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Other Text Optional?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.isOtherTextOptional}
+                                    onChange={(e) => updateQuestion(q.id, 'isOtherTextOptional', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Minimum Options Required</label>
+                                  <input
+                                    type="text"
+                                    value={q.minOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'minOptions', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Maximum Options Selectable</label>
+                                  <input
+                                    type="text"
+                                    value={q.maxOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'maxOptions', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Unique Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.uniqueOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'uniqueOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>Check All Options</label>
+                                  <input
+                                    type="text"
+                                    value={q.checkAllOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'checkAllOptions', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Enable Text Search</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.enableTextSearch}
+                                    onChange={(e) => updateQuestion(q.id, 'enableTextSearch', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Randomize Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
+                                  />
+                                </div>
                               </div>
-                              <div className="form-row">
-                                <label>Limit Value between</label>
-                                <div className="limit-inputs">
+                            )}
+
+                            {q.type === 'Drop Down' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Description</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Type help information for question here...."
+                                    value={q.description}
+                                    onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.options}
+                                      onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>Default Value</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Set default value"
+                                    value={q.defaultValue}
+                                    onChange={(e) => updateQuestion(q.id, 'defaultValue', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Hidden Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.hiddenOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'hiddenOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>SPSS Codes</label>
+                                  <div className="input-column">
+                                    <button className="q-cyan-btn">Define</button>
+                                    <span className="help-text">Default code values will be in sequence of 1,2,3...</span>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Enable Text Search</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.enableTextSearch}
+                                    onChange={(e) => updateQuestion(q.id, 'enableTextSearch', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Randomize Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Orientation</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {q.type === 'Drop Down with Other' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Description</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Type help information for question here...."
+                                    value={q.description}
+                                    onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.options}
+                                      onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>Default Value</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Set default value"
+                                    value={q.defaultValue}
+                                    onChange={(e) => updateQuestion(q.id, 'defaultValue', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Hidden Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.hiddenOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'hiddenOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>SPSS Codes</label>
+                                  <div className="input-column">
+                                    <button className="q-cyan-btn">Define</button>
+                                    <span className="help-text">Default code values will be in sequence of 1,2,3...</span>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Other Text Optional?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.isOtherTextOptional}
+                                    onChange={(e) => updateQuestion(q.id, 'isOtherTextOptional', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Enable Text Search</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.enableTextSearch}
+                                    onChange={(e) => updateQuestion(q.id, 'enableTextSearch', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Randomize Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {q.type === 'Radio Button with Other' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.options}
+                                      onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
+                                    ></textarea>
+                                    <div className="textarea-footer">
+                                      <span className="help-text">One option per line</span>
+                                      <button className="q-cyan-btn small-btn">Advance</button>
+                                    </div>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>Default Value</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Set default value"
+                                    value={q.defaultValue}
+                                    onChange={(e) => updateQuestion(q.id, 'defaultValue', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Hidden Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.hiddenOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'hiddenOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>SPSS Codes</label>
+                                  <div className="input-column">
+                                    <button className="q-cyan-btn">Define</button>
+                                    <span className="help-text">Default code values will be in sequence of 1,2,3...</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Image as Option</label>
+                                  <div className="input-with-button">
+                                    <input type="text" value={q.imageGroup} readOnly />
+                                    <button className="q-cyan-btn">Select Group</button>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Number of Columns</label>
+                                  <div className="input-with-suffix-text">
+                                    <input type="text" className="small-input" value={q.numColumns} onChange={(e) => updateQuestion(q.id, 'numColumns', e.target.value)} />
+                                    <span className="suffix-text">(Web Survey Only)</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Randomize Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+
+                            {(q.type === 'Radio Button' || q.type === 'Radio Button with Text') && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.options}
+                                      onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
+                                    ></textarea>
+                                    <div className="textarea-footer">
+                                      <span className="help-text">One option per line</span>
+                                      <button className="q-cyan-btn small-btn">Advance</button>
+                                    </div>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>Default Value</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Set default value"
+                                    value={q.defaultValue}
+                                    onChange={(e) => updateQuestion(q.id, 'defaultValue', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Hidden Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.hiddenOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'hiddenOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {renderOptionMediaSelector(q)}
+                                <div className="form-row">
+                                  <label>SPSS Codes</label>
+                                  <div className="input-column">
+                                    <button className="q-cyan-btn">Define</button>
+                                    <span className="help-text">Default code values will be in sequence of 1,2,3...</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Image as Option</label>
+                                  <div className="input-with-button">
+                                    <input type="text" value={q.imageGroup} readOnly />
+                                    <button className="q-cyan-btn">Select Group</button>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Number of Columns</label>
+                                  <div className="input-with-suffix-text">
+                                    <input type="text" className="small-input" value={q.numColumns} onChange={(e) => updateQuestion(q.id, 'numColumns', e.target.value)} />
+                                    <span className="suffix-text">(Web Survey Only)</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Randomize Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+
+                            {q.type === 'Email' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Description</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Type help information for question here...."
+                                    value={q.description}
+                                    onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {q.type === 'Phone Number' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Description</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Type help information for question here...."
+                                    value={q.description}
+                                    onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Limit Value between</label>
+                                  <div className="limit-inputs">
+                                    <input
+                                      type="text"
+                                      value={q.limitFrom}
+                                      placeholder=""
+                                      onChange={(e) => updateQuestion(q.id, 'limitFrom', e.target.value)}
+                                    />
+                                    <span>-</span>
+                                    <input
+                                      type="text"
+                                      value={q.limitTo}
+                                      placeholder=""
+                                      onChange={(e) => updateQuestion(q.id, 'limitTo', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {(q.type === 'Singleline Text Input' || q.type === 'Multiline Text Input') && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Description</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Type help information for question here...."
+                                    value={q.description}
+                                    onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Formula</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define Formula"
+                                    value={q.formula}
+                                    onChange={(e) => updateQuestion(q.id, 'formula', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Default Value</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Set default value"
+                                    value={q.defaultValue}
+                                    onChange={(e) => updateQuestion(q.id, 'defaultValue', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row">
+                                  <label>Suffix</label>
+                                  <input
+                                    type="text"
+                                    value={q.suffix}
+                                    onChange={(e) => updateQuestion(q.id, 'suffix', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Limit Length</label>
+                                  <div className="limit-inputs">
+                                    <input
+                                      type="text"
+                                      value={q.limitFrom}
+                                      placeholder=""
+                                      onChange={(e) => updateQuestion(q.id, 'limitFrom', e.target.value)}
+                                    />
+                                    <span>To</span>
+                                    <input
+                                      type="text"
+                                      value={q.limitTo}
+                                      placeholder=""
+                                      onChange={(e) => updateQuestion(q.id, 'limitTo', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Display In Survey</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.displayInSurvey}
+                                    onChange={(e) => updateQuestion(q.id, 'displayInSurvey', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Validation Pattern</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define validation pattern"
+                                    value={q.validationPattern}
+                                    onChange={(e) => updateQuestion(q.id, 'validationPattern', e.target.value)}
+                                  />
+                                </div>
+                                <div className="validation-help">
+                                  This field should contain the Regular Expression to validate the answer of this question.
+                                  For more details, refer: <a href="https://en.wikipedia.org/wiki/Regular_expression" target="_blank">https://en.wikipedia.org/wiki/Regular_expression</a>
+                                </div>
+                                <div className="form-row">
+                                  <label>Validation Message</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define validation message"
+                                    value={q.validationMessage}
+                                    onChange={(e) => updateQuestion(q.id, 'validationMessage', e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {(q.type === 'Radio Grid' || q.type === 'Radio Grid with Other') && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Row Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.rowOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'rowOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One question per line. Maximum 100 character length.</span>
+                                  </div>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Column Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.columnOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'columnOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Hidden Column Options</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.hiddenColumnOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'hiddenColumnOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>SPSS Codes</label>
+                                  <div className="input-column">
+                                    <button className="q-cyan-btn">Update</button>
+                                    <span className="help-text">Default code values will be in sequence of 1,2,3...</span>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Are All Questions Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                {q.type === 'Radio Grid with Other' && (
+                                  <div className="form-row-compact">
+                                    <label>Is Other Text Optional?</label>
+                                    <input
+                                      type="checkbox"
+                                      checked={q.isOtherTextOptional}
+                                      onChange={(e) => updateQuestion(q.id, 'isOtherTextOptional', e.target.checked)}
+                                    />
+                                  </div>
+                                )}
+                                <div className="form-row">
+                                  <label>Minimum Questions Required</label>
+                                  <input
+                                    type="text"
+                                    value={q.minQuestionsRequired}
+                                    onChange={(e) => updateQuestion(q.id, 'minQuestionsRequired', e.target.value)}
+                                  />
+                                </div>
+                                {q.minQuestionsRequired && (
+                                  <div className="validation-help" style={{ color: 'red' }}>
+                                    If "Minimum Questions Required" is specified, "Are All Questions Required" will be ignored.
+                                  </div>
+                                )}
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <select value={q.layout} onChange={(e) => updateQuestion(q.id, 'layout', e.target.value)}>
+                                    <option value="Horizontal">Horizontal</option>
+                                    <option value="Vertical">Vertical</option>
+                                  </select>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Randomize Row Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeRowOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeRowOptions', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Randomize Column Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeColumnOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeColumnOptions', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Row Option Width</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define width in pixel"
+                                    value={q.rowOptionWidth}
+                                    onChange={(e) => updateQuestion(q.id, 'rowOptionWidth', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardRowFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardRowFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options Type</label>
+                                  <select value={q.forwardRowType} onChange={(e) => updateQuestion(q.id, 'forwardRowType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Row Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardRowAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardRowAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Column Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardColumnFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardColumnFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Column Options Type</label>
+                                  <select value={q.forwardColumnType} onChange={(e) => updateQuestion(q.id, 'forwardColumnType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Column Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardColumnAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardColumnAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="validation-help" style={{ color: 'red' }}>
+                                  If number of rows or columns are more, it might not fit in single view of the mobile device. This depends on the screen size of the mobile device also. In this scenario, please scroll to right in columns area to view all columns and scroll to bottom to view all the rows.
+                                </div>
+                              </div>
+                            )}
+
+                            {(q.type === 'Checkbox Grid' || q.type === 'Checkbox Grid with Other' || q.type === 'Checkbox with Text') && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Row Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.rowOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'rowOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One question per line. Maximum 100 character length.</span>
+                                  </div>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Column Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.columnOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'columnOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Unique Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.uniqueOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'uniqueOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Hidden Column Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.hiddenColumnOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'hiddenColumnOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Are All Questions Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                {(q.type === 'Checkbox Grid with Other' || q.type === 'Checkbox with Text') && (
+                                  <div className="form-row-compact">
+                                    <label>Is Other Text Optional?</label>
+                                    <input
+                                      type="checkbox"
+                                      checked={q.isOtherTextOptional}
+                                      onChange={(e) => updateQuestion(q.id, 'isOtherTextOptional', e.target.checked)}
+                                    />
+                                  </div>
+                                )}
+                                <div className="form-row">
+                                  <label>Minimum Questions Required</label>
+                                  <input
+                                    type="text"
+                                    value={q.minQuestionsRequired}
+                                    onChange={(e) => updateQuestion(q.id, 'minQuestionsRequired', e.target.value)}
+                                  />
+                                </div>
+                                {q.minQuestionsRequired && (
+                                  <div className="validation-help" style={{ color: 'red' }}>
+                                    If "Minimum Questions Required" is specified, "Are All Questions Required" will be ignored.
+                                  </div>
+                                )}
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <select value={q.layout} onChange={(e) => updateQuestion(q.id, 'layout', e.target.value)}>
+                                    <option value="Horizontal">Horizontal</option>
+                                    <option value="Vertical">Vertical</option>
+                                  </select>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Randomize Row Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeRowOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeRowOptions', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Randomize Column Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeColumnOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeColumnOptions', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Row Option Width</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define width in pixel"
+                                    value={q.rowOptionWidth}
+                                    onChange={(e) => updateQuestion(q.id, 'rowOptionWidth', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardRowFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardRowFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options Type</label>
+                                  <select value={q.forwardRowType} onChange={(e) => updateQuestion(q.id, 'forwardRowType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Row Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardRowAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardRowAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Column Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardColumnFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardColumnFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Column Options Type</label>
+                                  <select value={q.forwardColumnType} onChange={(e) => updateQuestion(q.id, 'forwardColumnType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Column Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardColumnAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardColumnAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Display As Grid in Tablet/iPad</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.displayAsGridTablet}
+                                    onChange={(e) => updateQuestion(q.id, 'displayAsGridTablet', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="validation-help" style={{ color: 'red' }}>
+                                  If number of rows or columns are more, it might not fit in single view of the mobile device. This depends on the screen size of the mobile device also. In this scenario, please scroll to right in columns area to view all columns and scroll to bottom to view all the rows.
+                                </div>
+                              </div>
+                            )}
+
+                            {(q.type === 'Number Grid' || q.type === 'Decimal Grid') && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Row Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.rowOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'rowOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One question per line. Maximum 100 character length.</span>
+                                  </div>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Column Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.columnOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'columnOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                {q.type === 'Decimal Grid' && (
+                                  <div className="form-row">
+                                    <label>Precision</label>
+                                    <input
+                                      type="text"
+                                      value={q.precision}
+                                      onChange={(e) => updateQuestion(q.id, 'precision', e.target.value)}
+                                    />
+                                  </div>
+                                )}
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Limit Value between</label>
+                                  <div className="limit-inputs">
+                                    <input
+                                      type="text"
+                                      value={q.limitFrom}
+                                      placeholder=""
+                                      onChange={(e) => updateQuestion(q.id, 'limitFrom', e.target.value)}
+                                    />
+                                    <span>-</span>
+                                    <input
+                                      type="text"
+                                      value={q.limitTo}
+                                      placeholder=""
+                                      onChange={(e) => updateQuestion(q.id, 'limitTo', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Are All Questions Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Row Option Width</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define width in pixel"
+                                    value={q.rowOptionWidth}
+                                    onChange={(e) => updateQuestion(q.id, 'rowOptionWidth', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardRowFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardRowFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options Type</label>
+                                  <select value={q.forwardRowType} onChange={(e) => updateQuestion(q.id, 'forwardRowType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Row Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardRowAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardRowAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Column Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardColumnFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardColumnFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Column Options Type</label>
+                                  <select value={q.forwardColumnType} onChange={(e) => updateQuestion(q.id, 'forwardColumnType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Column Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardColumnAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardColumnAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Display As Grid in Tablet/iPad</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.displayAsGridTablet}
+                                    onChange={(e) => updateQuestion(q.id, 'displayAsGridTablet', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="validation-help" style={{ color: 'red' }}>
+                                  If number of rows or columns are more, it might not fit in single view of the mobile device. This depends on the screen size of the mobile device also. In this scenario, please scroll to right in columns area to view all columns and scroll to bottom to view all the rows.
+                                </div>
+                              </div>
+                            )}
+
+                            {q.type === 'Singleline Text Grid' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Row Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.rowOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'rowOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One question per line. Maximum 100 character length.</span>
+                                  </div>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Column Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.columnOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'columnOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Are All Questions Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Row Option Width</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define width in pixel"
+                                    value={q.rowOptionWidth}
+                                    onChange={(e) => updateQuestion(q.id, 'rowOptionWidth', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardRowFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardRowFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options Type</label>
+                                  <select value={q.forwardRowType} onChange={(e) => updateQuestion(q.id, 'forwardRowType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Row Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardRowAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardRowAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Column Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardColumnFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardColumnFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Column Options Type</label>
+                                  <select value={q.forwardColumnType} onChange={(e) => updateQuestion(q.id, 'forwardColumnType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Column Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardColumnAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardColumnAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Display As Grid in Tablet/iPad</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.displayAsGridTablet}
+                                    onChange={(e) => updateQuestion(q.id, 'displayAsGridTablet', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="validation-help" style={{ color: 'red' }}>
+                                  If number of rows or columns are more, it might not fit in single view of the mobile device. This depends on the screen size of the mobile device also. In this scenario, please scroll to right in columns area to view all columns and scroll to bottom to view all the rows.
+                                </div>
+                              </div>
+                            )}
+
+                            {q.type === 'NPS Grid' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Row Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.rowOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'rowOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One question per line. Maximum 100 character length.</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Are All Questions Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Minimum Questions Required</label>
+                                  <input
+                                    type="text"
+                                    value={q.minQuestionsRequired}
+                                    onChange={(e) => updateQuestion(q.id, 'minQuestionsRequired', e.target.value)}
+                                  />
+                                </div>
+                                {q.minQuestionsRequired && (
+                                  <div className="validation-help" style={{ color: 'red' }}>
+                                    If "Minimum Questions Required" is specified, "Are All Questions Required" will be ignored.
+                                  </div>
+                                )}
+                                <div className="form-row-compact">
+                                  <label>Randomize Row Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeRowOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeRowOptions', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Row Option Width</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define width in pixel"
+                                    value={q.rowOptionWidth}
+                                    onChange={(e) => updateQuestion(q.id, 'rowOptionWidth', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardRowFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardRowFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options Type</label>
+                                  <select value={q.forwardRowType} onChange={(e) => updateQuestion(q.id, 'forwardRowType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Row Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardRowAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardRowAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="validation-help" style={{ color: 'red' }}>
+                                  If number of rows are more, it might not fit in single view of the mobile device. This depends on the screen size of the mobile device also. In this scenario, please scroll to bottom to view all the rows.
+                                </div>
+                              </div>
+                            )}
+
+                            {q.type === 'Number point Grid' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                {renderMediaTypeSelector(q)}
+                                <div className="form-row align-start">
+                                  <label>Row Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.rowOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'rowOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One question per line. Maximum 100 character length.</span>
+                                  </div>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Column Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.columnOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'columnOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Limit Value between</label>
+                                  <div className="limit-inputs">
+                                    <input
+                                      type="text"
+                                      value={q.limitFrom}
+                                      placeholder=""
+                                      onChange={(e) => updateQuestion(q.id, 'limitFrom', e.target.value)}
+                                    />
+                                    <span>-</span>
+                                    <input
+                                      type="text"
+                                      value={q.limitTo}
+                                      placeholder=""
+                                      onChange={(e) => updateQuestion(q.id, 'limitTo', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Are All Questions Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Display As Grid in Tablet/iPad</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.displayAsGridTablet}
+                                    onChange={(e) => updateQuestion(q.id, 'displayAsGridTablet', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Row Option Width</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define width in pixel"
+                                    value={q.rowOptionWidth}
+                                    onChange={(e) => updateQuestion(q.id, 'rowOptionWidth', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardRowFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardRowFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options Type</label>
+                                  <select value={q.forwardRowType} onChange={(e) => updateQuestion(q.id, 'forwardRowType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Row Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardRowAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardRowAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Column Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardColumnFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardColumnFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Column Options Type</label>
+                                  <select value={q.forwardColumnType} onChange={(e) => updateQuestion(q.id, 'forwardColumnType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Column Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardColumnAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardColumnAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="validation-help" style={{ color: 'red' }}>
+                                  If number of rows or columns are more, it might not fit in single view of the mobile device. This depends on the screen size of the mobile device also. In this scenario, please scroll to right in columns area to view all columns and scroll to bottom to view all the rows.
+                                </div>
+                              </div>
+                            )}
+
+                            {q.type === 'Ranking - Checkbox' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.options}
+                                      onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Image as Option</label>
+                                  <div className="input-column-row">
+                                    <input
+                                      type="text"
+                                      value={q.imageGroup}
+                                      onChange={(e) => updateQuestion(q.id, 'imageGroup', e.target.value)}
+                                      readOnly
+                                    />
+                                    <button className="q-cyan-btn" onClick={() => setShowMediaSelector(q.id)}>Select Group</button>
+                                  </div>
+                                </div>
+                                <div className="help-text-row">
+                                  <span className="help-text">Select Image Group to display images as a options.</span>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Is Question Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Minimum Options Required</label>
                                   <input
                                     type="text"
                                     value={q.limitFrom}
-                                    placeholder=""
                                     onChange={(e) => updateQuestion(q.id, 'limitFrom', e.target.value)}
                                   />
-                                  <span>-</span>
+                                </div>
+                                <div className="form-row">
+                                  <label>Maximum Options Selectable</label>
                                   <input
                                     type="text"
                                     value={q.limitTo}
-                                    placeholder=""
                                     onChange={(e) => updateQuestion(q.id, 'limitTo', e.target.value)}
                                   />
                                 </div>
+                                <div className="form-row-compact">
+                                  <label>Randomize Options</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Export raw data instead of rank</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.exportRawData}
+                                    onChange={(e) => updateQuestion(q.id, 'exportRawData', e.target.checked)}
+                                  />
+                                </div>
                               </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
-                              </div>
-                            </div>
-                          )}
+                            )}
 
-                          {(q.type === 'Singleline Text Input' || q.type === 'Multiline Text Input') && (
-                            <div className="question-form">
-                              <div className="form-row">
-                                <label>Description</label>
-                                <input
-                                  type="text"
-                                  placeholder="Type help information for question here...."
-                                  value={q.description}
-                                  onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
-                                />
+                            {q.type === 'NSEC' && (
+                              <div className="question-form">
+                                <div className="nsec-section" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                                  <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>Household Items</h4>
+                                  <div className="form-row">
+                                    <label>Question</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Items owned/have access at home"
+                                      value={q.nsecHouseholdTitle}
+                                      onChange={(e) => updateQuestion(q.id, 'nsecHouseholdTitle', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="form-row align-start">
+                                    <label>Items</label>
+                                    <div className="input-column">
+                                      <textarea
+                                        className="form-textarea"
+                                        value={q.rowOptions}
+                                        onChange={(e) => updateQuestion(q.id, 'rowOptions', e.target.value)}
+                                      ></textarea>
+                                      <span className="help-text">One option per line At least 10 items are required</span>
+                                    </div>
+                                  </div>
+                                  <div className="form-row">
+                                    <label>Variable Name</label>
+                                    <input
+                                      type="text"
+                                      placeholder="Define variable name"
+                                      value={q.variableName}
+                                      onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="nsec-section" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                                  <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>Agricultural Land</h4>
+                                  <div className="form-row">
+                                    <label>Question</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Do you own agricultural land?"
+                                      value={q.nsecAgricultureTitle}
+                                      onChange={(e) => updateQuestion(q.id, 'nsecAgricultureTitle', e.target.value)}
+                                    />
+                                  </div>
+                                  <div style={{ textAlign: 'left', marginTop: '10px' }}>
+                                    <button
+                                      className="btn-secondary"
+                                      style={{ background: '#00a8a8', border: 'none', color: 'white', padding: '5px 15px', borderRadius: '4px' }}
+                                      onClick={() => updateQuestion(q.id, 'nsecAgricultureTitle', '')}
+                                    >
+                                      Remove Question
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="nsec-section" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                                  <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>Education</h4>
+                                  <div className="form-row">
+                                    <label>Question</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Education of Chief Earner"
+                                      value={q.nsecEducationTitle}
+                                      onChange={(e) => updateQuestion(q.id, 'nsecEducationTitle', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="form-row align-start">
+                                    <label>Options</label>
+                                    <div className="input-column">
+                                      <textarea
+                                        className="form-textarea"
+                                        value={q.options}
+                                        onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
+                                      ></textarea>
+                                      <span className="help-text">One option per line</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="nsec-section" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px' }}>
+                                  <div className="form-row">
+                                    <label>Grade Question</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. NSEC Grade"
+                                      value={q.nsecGradeTitle}
+                                      onChange={(e) => updateQuestion(q.id, 'nsecGradeTitle', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
                               </div>
-                              <div className="form-row">
-                                <label>Display Title</label>
-                                <input
-                                  type="text"
-                                  placeholder="Display Title"
-                                  value={q.displayTitle}
-                                  onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
-                                />
+                            )}
+
+                            {q.type === 'SEC' && (
+                              <div className="question-form">
+                                <div className="nsec-section" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                                  <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>Occupation</h4>
+                                  <div className="form-row">
+                                    <label>Question</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Please tell us the occupation of Chief wage Earner (CWE)?"
+                                      value={q.secOccupationTitle}
+                                      onChange={(e) => updateQuestion(q.id, 'secOccupationTitle', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="form-row align-start">
+                                    <label>Items</label>
+                                    <div className="input-column">
+                                      <textarea
+                                        className="form-textarea"
+                                        value={q.rowOptions}
+                                        onChange={(e) => updateQuestion(q.id, 'rowOptions', e.target.value)}
+                                      ></textarea>
+                                      <span className="help-text">One option per line At least 10 items are required</span>
+                                    </div>
+                                  </div>
+                                  <div className="form-row">
+                                    <label>Variable Name</label>
+                                    <input
+                                      type="text"
+                                      placeholder="Define variable name"
+                                      value={q.variableName}
+                                      onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="nsec-section" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                                  <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>Education</h4>
+                                  <div className="form-row">
+                                    <label>Question</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Please tell us the highest education of Chief wage Earner (CWE)?"
+                                      value={q.secEducationTitle}
+                                      onChange={(e) => updateQuestion(q.id, 'secEducationTitle', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="form-row align-start">
+                                    <label>Options</label>
+                                    <div className="input-column">
+                                      <textarea
+                                        className="form-textarea"
+                                        value={q.options}
+                                        onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
+                                      ></textarea>
+                                      <span className="help-text">One option per line</span>
+                                    </div>
+                                  </div>
+                                  <div className="form-row">
+                                    <label>Variable Name</label>
+                                    <input
+                                      type="text"
+                                      placeholder="Define variable name"
+                                      value={q.secEduVariableName}
+                                      onChange={(e) => updateQuestion(q.id, 'secEduVariableName', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="nsec-section" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px' }}>
+                                  <div className="form-row">
+                                    <label>Grade Question</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. SEC Grade"
+                                      value={q.secGradeTitle}
+                                      onChange={(e) => updateQuestion(q.id, 'secGradeTitle', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
                               </div>
-                              <div className="form-row">
-                                <label>Variable Name</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define variable name"
-                                  value={q.variableName}
-                                  onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
-                                />
+                            )}
+
+                            {q.type === 'Rural SEC' && (
+                              <div className="question-form">
+                                <div className="nsec-section" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                                  <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>House Wall Material</h4>
+                                  <div className="form-row">
+                                    <label>Question</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Select Material for Walls"
+                                      value={q.ruralWallTitle}
+                                      onChange={(e) => updateQuestion(q.id, 'ruralWallTitle', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="form-row align-start">
+                                    <label>Items</label>
+                                    <div className="input-column">
+                                      <textarea
+                                        className="form-textarea"
+                                        value={q.ruralWallOptions}
+                                        onChange={(e) => updateQuestion(q.id, 'ruralWallOptions', e.target.value)}
+                                      ></textarea>
+                                      <span className="help-text">One option per line</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="nsec-section" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                                  <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>House Roof Material</h4>
+                                  <div className="form-row">
+                                    <label>Question</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Select Material for Roof"
+                                      value={q.ruralRoofTitle}
+                                      onChange={(e) => updateQuestion(q.id, 'ruralRoofTitle', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="form-row align-start">
+                                    <label>Items</label>
+                                    <div className="input-column">
+                                      <textarea
+                                        className="form-textarea"
+                                        value={q.ruralRoofOptions}
+                                        onChange={(e) => updateQuestion(q.id, 'ruralRoofOptions', e.target.value)}
+                                      ></textarea>
+                                      <span className="help-text">One option per line</span>
+                                    </div>
+                                  </div>
+                                  <div className="form-row">
+                                    <label>Variable Name</label>
+                                    <input
+                                      type="text"
+                                      placeholder="Define variable name"
+                                      value={q.variableName}
+                                      onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="nsec-section" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                                  <div className="form-row">
+                                    <label>House Type Question</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. House Type"
+                                      value={q.ruralHouseTypeTitle}
+                                      onChange={(e) => updateQuestion(q.id, 'ruralHouseTypeTitle', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="nsec-section" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+                                  <h4 style={{ margin: '0 0 10px 0', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>Education</h4>
+                                  <div className="form-row">
+                                    <label>Question</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Level of Education"
+                                      value={q.ruralEducationTitle}
+                                      onChange={(e) => updateQuestion(q.id, 'ruralEducationTitle', e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="form-row align-start">
+                                    <label>Options</label>
+                                    <div className="input-column">
+                                      <textarea
+                                        className="form-textarea"
+                                        value={q.options}
+                                        onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
+                                      ></textarea>
+                                      <span className="help-text">One option per line</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="nsec-section" style={{ border: '1px solid #eee', padding: '15px', borderRadius: '8px' }}>
+                                  <div className="form-row">
+                                    <label>Grade Question</label>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Grade"
+                                      value={q.ruralGradeTitle}
+                                      onChange={(e) => updateQuestion(q.id, 'ruralGradeTitle', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
                               </div>
-                              <div className="form-row">
-                                <label>Formula</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define Formula"
-                                  value={q.formula}
-                                  onChange={(e) => updateQuestion(q.id, 'formula', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Default Value</label>
-                                <input
-                                  type="text"
-                                  placeholder="Set default value"
-                                  value={q.defaultValue}
-                                  onChange={(e) => updateQuestion(q.id, 'defaultValue', e.target.value)}
-                                />
-                              </div>
-                              {renderMediaTypeSelector(q)}
-                              <div className="form-row">
-                                <label>Suffix</label>
-                                <input
-                                  type="text"
-                                  value={q.suffix}
-                                  onChange={(e) => updateQuestion(q.id, 'suffix', e.target.value)}
-                                />
-                              </div>
-                              <div className="form-row">
-                                <label>Limit Length</label>
-                                <div className="limit-inputs">
+                            )}
+
+                            {q.type === 'Cascade Options' && (
+                              <div className="question-form" style={{ background: '#f0fbff', padding: '20px', borderRadius: '8px', border: '1px solid #c8eefd' }}>
+                                <div className="form-row">
+                                  <label>Cascade Data Source</label>
+                                  <div className="media-input-wrapper">
+                                    <input type="text" value={q.cascadeDataSource} readOnly placeholder="Select source..." />
+                                    <button className="q-cyan-btn" onClick={() => {/* Data source selector placeholder */ }}>Select Data Source</button>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
                                   <input
                                     type="text"
-                                    value={q.limitFrom}
-                                    placeholder=""
-                                    onChange={(e) => updateQuestion(q.id, 'limitFrom', e.target.value)}
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
                                   />
-                                  <span>To</span>
+                                </div>
+                                <div className="form-row">
+                                  <label>Question Type</label>
+                                  <div className="type-options" style={{ gap: '20px', display: 'flex', fontSize: '14px' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <input
+                                        type="radio"
+                                        checked={q.cascadeQuestionType === 'Dropdown'}
+                                        onChange={() => updateQuestion(q.id, 'cascadeQuestionType', 'Dropdown')}
+                                      /> Dropdown
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <input
+                                        type="radio"
+                                        checked={q.cascadeQuestionType === 'Radio'}
+                                        onChange={() => updateQuestion(q.id, 'cascadeQuestionType', 'Radio')}
+                                      /> Radio
+                                    </label>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Enable Text Search</label>
                                   <input
-                                    type="text"
-                                    value={q.limitTo}
-                                    placeholder=""
-                                    onChange={(e) => updateQuestion(q.id, 'limitTo', e.target.value)}
+                                    type="checkbox"
+                                    checked={q.enableTextSearch}
+                                    onChange={(e) => updateQuestion(q.id, 'enableTextSearch', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Are All Questions Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.cascadeAllRequired}
+                                    onChange={(e) => updateQuestion(q.id, 'cascadeAllRequired', e.target.checked)}
                                   />
                                 </div>
                               </div>
-                              <div className="form-row-compact">
-                                <label>Is Question Required?</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.required}
-                                  onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
-                                />
+                            )}
+
+                            {q.type === 'Ranking' && (
+                              <div className="question-form">
+                                <div className="form-row align-start">
+                                  <label>Questions (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.rowOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'rowOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Randomize Rows</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.randomizeRowOptions}
+                                    onChange={(e) => updateQuestion(q.id, 'randomizeRowOptions', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="validation-help" style={{ color: 'red' }}>
+                                  If number of rows or columns are more, it might not fit in single view of the mobile device. This depends on the screen size of the mobile device also. In this scenario, please scroll to right in columns area to view all columns and scroll to bottom to view all the rows.
+                                </div>
                               </div>
-                              <div className="form-row-compact">
-                                <label>Display In Survey</label>
-                                <input
-                                  type="checkbox"
-                                  checked={q.displayInSurvey}
-                                  onChange={(e) => updateQuestion(q.id, 'displayInSurvey', e.target.checked)}
-                                />
+                            )}
+
+                            {(q.type === 'Dropdown Grid' || q.type === 'Dropdown with Other Grid') && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Row Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.rowOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'rowOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One question per line. Maximum 100 character length.</span>
+                                  </div>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Column Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.columnOptions}
+                                      onChange={(e) => updateQuestion(q.id, 'columnOptions', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Question Options (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.options}
+                                      onChange={(e) => updateQuestion(q.id, 'options', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Are All Questions Required?</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required}
+                                    onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                                {q.type === 'Dropdown with Other Grid' && (
+                                  <div className="form-row-compact">
+                                    <label>Is Other Text Optional?</label>
+                                    <input
+                                      type="checkbox"
+                                      checked={q.isOtherTextOptional}
+                                      onChange={(e) => updateQuestion(q.id, 'isOtherTextOptional', e.target.checked)}
+                                    />
+                                  </div>
+                                )}
+                                <div className="form-row">
+                                  <label>SPSS Codes</label>
+                                  <div className="input-column">
+                                    <button className="q-cyan-btn">Update</button>
+                                    <span className="help-text">Default code values will be in sequence of 1,2,3...</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Row Option Width</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define width in pixel"
+                                    value={q.rowOptionWidth}
+                                    onChange={(e) => updateQuestion(q.id, 'rowOptionWidth', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardRowFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardRowFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Row Options Type</label>
+                                  <select value={q.forwardRowType} onChange={(e) => updateQuestion(q.id, 'forwardRowType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Row Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardRowAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardRowAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Column Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardColumnFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardColumnFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Column Options Type</label>
+                                  <select value={q.forwardColumnType} onChange={(e) => updateQuestion(q.id, 'forwardColumnType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row align-start">
+                                  <label>Forward Column Options Always Show (One per line)</label>
+                                  <div className="input-column">
+                                    <textarea
+                                      className="form-textarea"
+                                      value={q.forwardColumnAlwaysShow}
+                                      onChange={(e) => updateQuestion(q.id, 'forwardColumnAlwaysShow', e.target.value)}
+                                    ></textarea>
+                                    <span className="help-text">One option per line</span>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Question Options From</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Variable Name"
+                                    value={q.forwardQuestionFrom}
+                                    onChange={(e) => updateQuestion(q.id, 'forwardQuestionFrom', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Forward Question Options Type</label>
+                                  <select value={q.forwardQuestionType} onChange={(e) => updateQuestion(q.id, 'forwardQuestionType', e.target.value)}>
+                                    <option value="">Select Type</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Unselected">Unselected</option>
+                                  </select>
+                                </div>
+                                <div className="form-row-compact">
+                                  <label>Display As Grid in Tablet/iPad</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.displayAsGridTablet}
+                                    onChange={(e) => updateQuestion(q.id, 'displayAsGridTablet', e.target.checked)}
+                                  />
+                                </div>
+                                <div className="validation-help" style={{ color: 'red', marginTop: '10px' }}>
+                                  If number of rows or columns are more, it might not fit in single view of the mobile device. This depends on the screen size of the mobile device also. In this scenario, please scroll to right in columns area to view all columns and scroll to bottom to view all the rows.
+                                </div>
                               </div>
-                              <div className="form-row">
-                                <label>Validation Pattern</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define validation pattern"
-                                  value={q.validationPattern}
-                                  onChange={(e) => updateQuestion(q.id, 'validationPattern', e.target.value)}
-                                />
-                              </div>
-                              <div className="validation-help">
-                                This field should contain the Regular Expression to validate the answer of this question.
-                                For more details, refer: <a href="https://en.wikipedia.org/wiki/Regular_expression" target="_blank">https://en.wikipedia.org/wiki/Regular_expression</a>
-                              </div>
-                              <div className="form-row">
-                                <label>Validation Message</label>
-                                <input
-                                  type="text"
-                                  placeholder="Define validation message"
-                                  value={q.validationMessage}
-                                  onChange={(e) => updateQuestion(q.id, 'validationMessage', e.target.value)}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                            )}
+                          </div>
+                        )}
+
                       </div>
                     ))}
                   </div>
@@ -2549,11 +4295,12 @@ const SurveyView = () => {
                       <span className="survey-icon">{survey.type === 'app' ? '📱' : '🌐'}</span>
                       <div>
                         <a
-                          href={`/take-survey/${survey.id}`}
+                          href={`/take-survey/${survey.name.toLowerCase().replace(/\s+/g, '-')}`}
                           className="survey-link"
                           onClick={(e) => {
                             e.preventDefault();
-                            navigate(`/take-survey/${survey.id}`);
+                            const slug = survey.name.toLowerCase().replace(/\s+/g, '-');
+                            navigate(`/take-survey/${slug}`);
                           }}
                         >
                           {survey.name}
@@ -2563,18 +4310,37 @@ const SurveyView = () => {
                     </div>
                   </td>
                   <td className="center">
-                    <span
-                      className="edit-icon"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => { setCurrentSurvey(survey); setShowQuestionnaire(true); }}
-                    >
-                      📝
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                      <span
+                        className="edit-icon"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => { setCurrentSurvey(survey); setShowQuestionnaire(true); }}
+                        title="Edit Questionnaire"
+                      >
+                        📝
+                      </span>
+                      <span
+                        className="copy-link-icon"
+                        style={{ cursor: 'pointer', fontSize: '14px' }}
+                        title="Copy Public Link"
+                        onClick={() => {
+                          const slug = survey.name.toLowerCase().replace(/\s+/g, '-');
+                          const url = `${window.location.origin}/take-survey/${slug}`;
+                          navigator.clipboard.writeText(url);
+                          alert('Survey link copied to clipboard!');
+                        }}
+                      >
+                        🔗
+                      </span>
+                    </div>
                   </td>
                   <td className="center">
                     <span
                       style={{ cursor: 'pointer', fontSize: '18px' }}
-                      onClick={() => window.open(`/take-survey/${survey.id}`, '_blank')}
+                      onClick={() => {
+                        const slug = survey.name.toLowerCase().replace(/\s+/g, '-');
+                        window.open(`/take-survey/${slug}`, '_blank');
+                      }}
                       title="Access Live Survey URL"
                     >
                       🌐
@@ -2591,7 +4357,8 @@ const SurveyView = () => {
                   </td>
                   <td className="center actions">
                     <span title="Edit Settings" onClick={() => openEditSurvey(survey)}>⚙️</span>
-                    <span title="Profile">👤</span><span title="Copy">📄</span><span title="Delete">🗑️</span>
+                    <span title="Profile">👤</span><span title="Copy">📄</span>
+                    <span title="Delete" onClick={() => deleteSurvey(survey.id)}>🗑️</span>
                   </td>
                 </tr>
               ))}
@@ -2702,6 +4469,30 @@ const SurveyView = () => {
               <button className="btn-teal" onClick={startDetailedCreate}>Create Survey</button>
               <button className="btn-red" onClick={() => setShowCreatePopup(false)}>Cancel</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showMediaSelector && (
+        <div className="share-modal-overlay">
+          <div className="share-modal" style={{ maxWidth: '400px' }}>
+            <h3>Select Image Group</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+              {['Political Parties', 'Brand Logos', 'Social Icons', 'Custom Assets'].map(group => (
+                <button
+                  key={group}
+                  className="modal-btn"
+                  style={{ textAlign: 'left', padding: '12px' }}
+                  onClick={() => {
+                    updateQuestion(showMediaSelector, 'imageGroup', group);
+                    setShowMediaSelector(null);
+                  }}
+                >
+                  {group}
+                </button>
+              ))}
+            </div>
+            <button className="modal-btn cancel" style={{ marginTop: '15px' }} onClick={() => setShowMediaSelector(null)}>Cancel</button>
           </div>
         </div>
       )}

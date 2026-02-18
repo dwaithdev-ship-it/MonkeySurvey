@@ -22,6 +22,27 @@
     font-weight: 400;
 }
 
+.back-btn-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 1px solid #e5e7eb;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #666;
+    font-size: 18px;
+    transition: all 0.2s;
+}
+
+.back-btn-circle:hover {
+    background: #f3f4f6;
+    color: #0a67e9;
+    border-color: #0a67e9;
+}
+
 .header-toolbar {
     display: flex;
     gap: 8px;
@@ -688,6 +709,66 @@
     background: #f3f4f6;
 }
 
-.menu-item:not(:last-child) {
-    border-bottom: 1px solid #f3f4f6;
+.textarea-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 5px;
+}
+
+.q-cyan-btn.small-btn {
+    padding: 5px 15px;
+    font-size: 14px;
+    background-color: #24b4ce;
+    /* Teal from attachment */
+}
+
+.suffix-text {
+    font-size: 13px;
+    color: #666;
+}
+
+.input-with-suffix-text {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.small-input {
+    width: 60px !important;
+    flex: none !important;
+}
+
+.option-media-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.option-media-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: #fcfcfc;
+    border: 1px solid #eef2f7;
+    border-radius: 4px;
+}
+
+.opt-name {
+    font-size: 13px;
+    color: #4b5563;
+    font-weight: 500;
+}
+
+.opt-upload-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.check-mark {
+    color: #10b981;
+    font-size: 14px;
 }

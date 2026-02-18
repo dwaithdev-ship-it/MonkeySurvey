@@ -687,4 +687,158 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}/* CASCADE POPUP STYLES */
+.cascade-modal {
+    background: white;
+    width: 600px;
+    max-width: 95%;
+    border-radius: 4px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.cascade-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.cascade-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #444;
+}
+
+.cascade-header .close-btn {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+}
+
+.cascade-body {
+    padding: 20px;
+}
+
+.form-group-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.form-group-vertical label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #444;
+}
+
+.cascade-select {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #555;
+    background-color: white;
+}
+
+.cascade-actions-row {
+    display: flex;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.btn-cascade {
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    color: white;
+    transition: opacity 0.2s;
+}
+
+.btn-cascade:hover {
+    opacity: 0.9;
+}
+
+/* Colors based on screenshot */
+.btn-cascade.cyan {
+    background-color: #5bc0de;
+    /* Bootstrap cyan-like */
+}
+
+.btn-cascade.teal {
+    background-color: #00a896;
+    /* Matching existing teal */
+}
+
+.btn-cascade.save {
+    background-color: #5bc0de;
+    /* Using cyan for save as per screenshot usually, or maybe teal? Screenshot shows Save is cyan/teal */
+    /* Screenshot shows Save is the same color like "Download" or "Update Data"? 
+       Actually "Save" is Cyan/Teal. "Cancel" is Red. */
+    background-color: #5bc0de;
+}
+
+.btn-cascade.cancel {
+    background-color: #d9534f;
+    /* Red */
+}
+
+.cascade-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 10px;
+    /* Screenshot has Save and Cancel on the left or specific placement? 
+       Actually let's look at screenshot again. 
+       Save and Cancel seem to be at bottom left? No they are just buttons. 
+    */
+}
+
+/* Specific button colors from screenshot analysis if possible, but standard bootstrap colors are safe approximation */
+/* 
+   "Download" -> Light Blue/Cyan
+   "Update Data" -> Light Blue/Cyan
+   "Add New Data Source" -> Green/Teal
+   "Save" -> Light Blue/Cyan
+   "Cancel" -> Red
+*/
+
+.btn-cascade.cyan {
+    background-color: #64cedc;
+    /* Approximate lighter cyan */
+}
+
+.btn-cascade.teal {
+    background-color: #00a099;
+}
+
+.btn-cascade.save {
+    background-color: #64cedc;
+    margin-right: 5px;
+}
+
+.btn-cascade.cancel {
+    background-color: #e85f5c;
 }
