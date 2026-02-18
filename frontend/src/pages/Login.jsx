@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { userAPI } from "../services/api";
 import { offlineSync } from "../utils/offlineSync";
 import "./Login.css";
@@ -11,6 +11,7 @@ const Login = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Generate or retrieve device ID
   const getDeviceId = () => {
@@ -61,13 +62,11 @@ const Login = () => {
             }));
           }
 
-          if (authData.user.role === 'admin') {
-            navigate("/dashboard");
-          } else {
-            navigate("/take-survey/1");
-          }
+          const from = location.state?.from?.pathname || (authData.user.role === 'admin' ? "/dashboard" : "/take-survey/1");
+          navigate(from);
         } else {
-          navigate("/take-survey/1");
+          const from = location.state?.from?.pathname || "/take-survey/1";
+          navigate(from);
         }
       } else {
         setError(response.error?.message || "Login failed");
@@ -96,11 +95,8 @@ const Login = () => {
           localStorage.setItem("token", offlineResult.data.token);
           localStorage.setItem("user", JSON.stringify(offlineResult.data.user));
 
-          if (offlineResult.data.user.role === 'admin') {
-            navigate("/dashboard");
-          } else {
-            navigate("/take-survey/1");
-          }
+          const from = location.state?.from?.pathname || (offlineResult.data.user.role === 'admin' ? "/dashboard" : "/take-survey/1");
+          navigate(from);
           return;
         } else {
           setError("Internet connection lost. No offline login data found for this account. Please log in once while online.");
@@ -120,8 +116,8 @@ const Login = () => {
         console.log("Server error but offline cache matched. Logging in via cache.");
         localStorage.setItem("token", secondaryOfflineCheck.data.token);
         localStorage.setItem("user", JSON.stringify(secondaryOfflineCheck.data.user));
-        if (secondaryOfflineCheck.data.user.role === 'admin') navigate("/dashboard");
-        else navigate("/take-survey/1");
+        const from = location.state?.from?.pathname || (secondaryOfflineCheck.data.user.role === 'admin' ? "/dashboard" : "/take-survey/1");
+        navigate(from);
         return;
       }
 

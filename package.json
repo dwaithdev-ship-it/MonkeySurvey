@@ -5,7 +5,7 @@
     "private": true,
     "scripts": {
         "install-all": "npm install && cd backend/shared && npm install && cd ../user-service && npm install && cd ../survey-service && npm install && cd ../response-service && npm install && cd ../analytics-service && npm install && cd ../notification-service && npm install && cd ../api-gateway && npm install && cd ../ai-service && npm install && cd ../../frontend && npm install",
-        "dev": "concurrently -n \"GATEWAY,USER,SURVEY,RESPONSE,ANALYTICS,NOTIF,AI,FRONTEND\" -c \"magenta,blue,green,yellow,cyan,white,red,blue\" \"npm run dev:gateway\" \"npm run dev:user\" \"npm run dev:survey\" \"npm run dev:notification\" \"npm run dev:analytics\" \"npm run dev:ai\" \"npm run dev:frontend\"",
+        "dev": "concurrently -n \"GATEWAY,USER,SURVEY,RESPONSE,ANALYTICS,NOTIF,AI,FRONTEND\" -c \"magenta,blue,green,yellow,cyan,white,red,blue\" \"npm run dev:gateway\" \"npm run dev:user\" \"npm run dev:survey\" \"npm run dev:response\" \"npm run dev:notification\" \"npm run dev:analytics\" \"npm run dev:ai\" \"npm run dev:frontend\"",
         "dev:gateway": "cd backend/api-gateway && npm run dev",
         "dev:user": "cd backend/user-service && npm run dev",
         "dev:survey": "cd backend/survey-service && npm run dev",
@@ -13,7 +13,7 @@
         "dev:analytics": "cd backend/analytics-service && npm run dev",
         "dev:notification": "cd backend/notification-service && npm run dev",
         "dev:ai": "cd backend/ai-service && npm run dev",
-        "dev:frontend": "cd frontend && npm run dev -- --port 4000"
+        "dev:frontend": "cd frontend && npm run dev"
     },
     "devDependencies": {
         "concurrently": "^8.2.2"

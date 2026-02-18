@@ -61,6 +61,12 @@ const SurveyView = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingSurveyId, setEditingSurveyId] = useState(null);
 
+  // Cascade Popup State
+  const [showCascadePopup, setShowCascadePopup] = useState(false);
+  const [cascadeSources, setCascadeSources] = useState(['Select']);
+  const [selectedCascadeSource, setSelectedCascadeSource] = useState('Select');
+  const [currentCascadeId, setCurrentCascadeId] = useState(null);
+
   const standardItems = [
     { icon: 'T', label: 'Text Block', isTextIcon: true },
     { icon: '➖', label: 'Singleline Text Input' },
@@ -115,6 +121,7 @@ const SurveyView = () => {
     { icon: '0.1', label: 'Formula', isTextIcon: true },
     { icon: '👤', label: 'Contact Form' },
     { icon: '🏠', label: 'Address' },
+    { icon: 'H', label: 'Pseudo Header', isTextIcon: true },
   ];
 
   // Load surveys from localStorage on mount
@@ -281,7 +288,8 @@ const SurveyView = () => {
         ruralRoofOptions: '',
         cascadeDataSource: '',
         cascadeQuestionType: 'Dropdown',
-        cascadeAllRequired: true
+        cascadeAllRequired: true,
+        cascadeLevels: []
       };
 
       if (q.label === 'Phone Number') {
@@ -526,58 +534,87 @@ const SurveyView = () => {
     const today = new Date();
     const formattedDate = `${today.getDate()}-${today.toLocaleString('en-US', { month: 'short' })}-${today.getFullYear()}`;
 
+    const surveyData = {
+      name: surveyForm.name || "Untitled Survey",
+      type: surveyForm.surveyType,
+      headerText: surveyForm.headerText,
+      theme: surveyForm.theme,
+      layoutType: surveyForm.layoutType,
+      accessPin: surveyForm.accessPin,
+      loopSurvey: surveyForm.loopSurvey,
+      pdfShowAnswered: surveyForm.pdfShowAnswered,
+      backgroundLocation: surveyForm.backgroundLocation,
+      isLocationMandatory: surveyForm.isLocationMandatory,
+      thankYouDuration: surveyForm.thankYouDuration,
+      welcomeImageName: surveyForm.welcomeImageName,
+      thankYouImageName: surveyForm.thankYouImageName
+    };
+
     if (isEditMode && editingSurveyId) {
-      setSurveys(prevSurveys => {
-        const updatedSurveys = prevSurveys.map(s =>
-          s.id === editingSurveyId
-            ? {
-              ...s,
-              name: surveyForm.name || s.name,
-              type: surveyForm.surveyType,
-              headerText: surveyForm.headerText,
-              theme: surveyForm.theme,
-              layoutType: surveyForm.layoutType,
-              accessPin: surveyForm.accessPin,
-              loopSurvey: surveyForm.loopSurvey,
-              pdfShowAnswered: surveyForm.pdfShowAnswered,
-              backgroundLocation: surveyForm.backgroundLocation,
-              isLocationMandatory: surveyForm.isLocationMandatory,
-              thankYouDuration: surveyForm.thankYouDuration,
-              welcomeImageName: surveyForm.welcomeImageName,
-              thankYouImageName: surveyForm.thankYouImageName
-            }
-            : s
-        );
-        localStorage.setItem('local_surveys', JSON.stringify(updatedSurveys));
-        return updatedSurveys;
-      });
+      // Update existing survey
+      surveyAPI.update(editingSurveyId, surveyData)
+        .then(response => {
+          console.log('Survey updated on server', response);
+          setSurveys(prevSurveys => {
+            const updatedSurveys = prevSurveys.map(s =>
+              s.id === editingSurveyId ? { ...s, ...surveyData } : s
+            );
+            localStorage.setItem('local_surveys', JSON.stringify(updatedSurveys));
+            return updatedSurveys;
+          });
+        })
+        .catch(err => {
+          console.error('Failed to update survey on server', err);
+          // Fallback to local update if server fails (optional, or show error)
+          alert('Failed to save to server. Changes saved locally.');
+          setSurveys(prevSurveys => {
+            const updatedSurveys = prevSurveys.map(s =>
+              s.id === editingSurveyId ? { ...s, ...surveyData } : s
+            );
+            localStorage.setItem('local_surveys', JSON.stringify(updatedSurveys));
+            return updatedSurveys;
+          });
+        });
+
     } else {
-      setSurveys(prevSurveys => {
-        const newSurvey = {
-          id: prevSurveys.length + 1,
-          name: surveyForm.name || "Untitled Survey",
-          date: formattedDate,
-          type: surveyForm.surveyType,
-          responses: 0,
-          status: 'UnPublished',
-          headerText: surveyForm.headerText,
-          theme: surveyForm.theme,
-          layoutType: surveyForm.layoutType,
-          accessPin: surveyForm.accessPin,
-          loopSurvey: surveyForm.loopSurvey,
-          pdfShowAnswered: surveyForm.pdfShowAnswered,
-          backgroundLocation: surveyForm.backgroundLocation,
-          isImageMandatory: surveyForm.isLocationMandatory,
-          thankYouDuration: surveyForm.thankYouDuration,
-          welcomeImageName: surveyForm.welcomeImageName,
-          thankYouImageName: surveyForm.thankYouImageName,
-          questions: [],
-          pages: [1]
-        };
-        const newList = [newSurvey, ...prevSurveys];
-        localStorage.setItem('local_surveys', JSON.stringify(newList));
-        return newList;
-      });
+      // Create new survey
+      surveyAPI.create(surveyData)
+        .then(response => {
+          console.log('Survey created on server', response);
+          const newSurvey = {
+            ...surveyData,
+            id: response.data?._id || response._id || (Date.now()), // Use server ID if available
+            date: formattedDate,
+            responses: 0,
+            status: 'UnPublished',
+            questions: [],
+            pages: [1]
+          };
+
+          setSurveys(prevSurveys => {
+            const newList = [newSurvey, ...prevSurveys];
+            localStorage.setItem('local_surveys', JSON.stringify(newList));
+            return newList;
+          });
+        })
+        .catch(err => {
+          console.error('Failed to create survey on server', err);
+          alert('Failed to create on server. Created locally.');
+          const newSurvey = {
+            ...surveyData,
+            id: Date.now(),
+            date: formattedDate,
+            responses: 0,
+            status: 'UnPublished',
+            questions: [],
+            pages: [1]
+          };
+          setSurveys(prevSurveys => {
+            const newList = [newSurvey, ...prevSurveys];
+            localStorage.setItem('local_surveys', JSON.stringify(newList));
+            return newList;
+          });
+        });
     }
 
     setShowDetailedCreate(false);
@@ -645,6 +682,137 @@ const SurveyView = () => {
   const closeQuestionnaire = () => {
     setShowQuestionnaire(false);
     setCurrentSurvey(null);
+  };
+
+  const openCascadePopup = (qId) => {
+    const q = questions.find(q => q.id === qId);
+
+    if (q) {
+      const currentSource = q.cascadeDataSource || 'Select';
+      setSelectedCascadeSource(currentSource);
+
+      if (currentSource !== 'Select' && !cascadeSources.includes(currentSource)) {
+        setCascadeSources(prev => [...prev, currentSource]);
+      }
+
+      setCurrentCascadeId(qId);
+      setShowCascadePopup(true);
+    }
+  };
+
+  const updateCascadeLevel = (qId, levelIndex, field, value) => {
+    setQuestions(prev => prev.map(q => {
+      if (q.id === qId) {
+        const newLevels = [...(q.cascadeLevels || [])];
+        newLevels[levelIndex] = { ...newLevels[levelIndex], [field]: value };
+        return { ...q, cascadeLevels: newLevels };
+      }
+      return q;
+    }));
+  };
+
+  const handleCascadeSave = () => {
+    if (currentCascadeId) {
+      updateQuestion(currentCascadeId, 'cascadeDataSource', selectedCascadeSource);
+
+      // Initialize levels if they don't exist and source matches keywords
+      const q = questions.find(q => q.id === currentCascadeId);
+      if (q && (!q.cascadeLevels || q.cascadeLevels.length === 0)) {
+        const sourceLower = selectedCascadeSource.toLowerCase();
+        if (sourceLower.includes('survey4') ||
+          sourceLower.includes('parliament') ||
+          sourceLower.includes('assembly') ||
+          sourceLower.includes('mandal') ||
+          sourceLower.includes('cascade')) {
+          const mockLevels = [
+            { label: 'Parliament', displayOnMain: false },
+            { label: 'Assembly', displayOnMain: false },
+            { label: 'Mandal', displayOnMain: false }
+          ];
+          updateQuestion(currentCascadeId, 'cascadeLevels', mockLevels);
+        }
+      }
+    }
+    setShowCascadePopup(false);
+  };
+
+  const handleCascadeFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && currentCascadeId) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          if (!window.XLSX) {
+            console.error("XLSX library not loaded");
+            return;
+          }
+          const data = new Uint8Array(e.target.result);
+          const workbook = window.XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const json = window.XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          if (json.length < 2) {
+            alert("File is empty or invalid structure.");
+            return;
+          }
+
+          // Header row defines the labels
+          const headers = json[0];
+          const rows = json.slice(1);
+
+          // Build hierarchy
+          const levels = headers.map((header, colIdx) => {
+            const levelData = {
+              label: header,
+              displayOnMain: false,
+              options: [],
+              parentMap: {}
+            };
+
+            if (colIdx === 0) {
+              // Top level unique options
+              levelData.options = [...new Set(rows.map(r => r[0]).filter(Boolean))];
+            } else {
+              // Nested levels: map from parent value -> list of children
+              rows.forEach(row => {
+                const parentValue = row[colIdx - 1];
+                const currentValue = row[colIdx];
+                if (parentValue && currentValue) {
+                  if (!levelData.parentMap[parentValue]) {
+                    levelData.parentMap[parentValue] = new Set();
+                  }
+                  levelData.parentMap[parentValue].add(currentValue);
+                }
+              });
+              // Convert Sets to Arrays
+              Object.keys(levelData.parentMap).forEach(key => {
+                levelData.parentMap[key] = [...levelData.parentMap[key]];
+              });
+            }
+            return levelData;
+          });
+
+          updateQuestion(currentCascadeId, 'cascadeLevels', levels);
+          updateQuestion(currentCascadeId, 'cascadeDataSource', file.name);
+
+          // Also populate standard options as a secondary string fallback
+          if (levels.length > 0 && levels[0].options.length > 0) {
+            updateQuestion(currentCascadeId, 'options', levels[0].options.join('\n'));
+          }
+
+          if (!cascadeSources.includes(file.name)) {
+            setCascadeSources(prev => [...prev, file.name]);
+          }
+          setSelectedCascadeSource(file.name);
+          alert(`Successfully parsed ${levels.length} levels from ${rows.length} data rows.`);
+        } catch (err) {
+          console.error("Error parsing Excel file", err);
+          alert("Failed to parse Excel file.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
   };
 
   // QUESTIONNAIRE VIEW
@@ -1640,6 +1808,13 @@ const SurveyView = () => {
                                     onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
                                   />
                                 </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
+                                </div>
                               </div>
                             )}
 
@@ -1742,6 +1917,13 @@ const SurveyView = () => {
                                     checked={q.randomizeOptions}
                                     onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
                                   />
+                                </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -1854,6 +2036,13 @@ const SurveyView = () => {
                                     onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
                                   />
                                 </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
+                                </div>
                               </div>
                             )}
 
@@ -1952,7 +2141,7 @@ const SurveyView = () => {
                                   />
                                 </div>
                                 <div className="form-row">
-                                  <label>Orientation</label>
+                                  <label>Layout</label>
                                   <div className="orientation-group">
                                     <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
                                     <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
@@ -2063,6 +2252,13 @@ const SurveyView = () => {
                                     onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
                                   />
                                 </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
+                                </div>
                               </div>
                             )}
 
@@ -2159,6 +2355,13 @@ const SurveyView = () => {
                                     checked={q.randomizeOptions}
                                     onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
                                   />
+                                </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -2257,6 +2460,13 @@ const SurveyView = () => {
                                     checked={q.randomizeOptions}
                                     onChange={(e) => updateQuestion(q.id, 'randomizeOptions', e.target.checked)}
                                   />
+                                </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -2571,10 +2781,10 @@ const SurveyView = () => {
                                 )}
                                 <div className="form-row">
                                   <label>Layout</label>
-                                  <select value={q.layout} onChange={(e) => updateQuestion(q.id, 'layout', e.target.value)}>
-                                    <option value="Horizontal">Horizontal</option>
-                                    <option value="Vertical">Vertical</option>
-                                  </select>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
                                 </div>
                                 <div className="form-row-compact">
                                   <label>Randomize Row Options</label>
@@ -2761,10 +2971,10 @@ const SurveyView = () => {
                                 )}
                                 <div className="form-row">
                                   <label>Layout</label>
-                                  <select value={q.layout} onChange={(e) => updateQuestion(q.id, 'layout', e.target.value)}>
-                                    <option value="Horizontal">Horizontal</option>
-                                    <option value="Vertical">Vertical</option>
-                                  </select>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
                                 </div>
                                 <div className="form-row-compact">
                                   <label>Randomize Row Options</label>
@@ -2966,6 +3176,13 @@ const SurveyView = () => {
                                     <option value="Unselected">Unselected</option>
                                   </select>
                                 </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
+                                </div>
                                 <div className="form-row align-start">
                                   <label>Forward Row Options Always Show (One per line)</label>
                                   <div className="input-column">
@@ -3135,6 +3352,13 @@ const SurveyView = () => {
                                     <span className="help-text">One option per line</span>
                                   </div>
                                 </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
+                                </div>
                                 <div className="form-row-compact">
                                   <label>Display As Grid in Tablet/iPad</label>
                                   <input
@@ -3235,6 +3459,13 @@ const SurveyView = () => {
                                     <option value="Selected">Selected</option>
                                     <option value="Unselected">Unselected</option>
                                   </select>
+                                </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
                                 </div>
                                 <div className="form-row align-start">
                                   <label>Forward Row Options Always Show (One per line)</label>
@@ -3486,6 +3717,13 @@ const SurveyView = () => {
                                     checked={q.exportRawData}
                                     onChange={(e) => updateQuestion(q.id, 'exportRawData', e.target.checked)}
                                   />
+                                </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -3782,7 +4020,9 @@ const SurveyView = () => {
                                   <label>Cascade Data Source</label>
                                   <div className="media-input-wrapper">
                                     <input type="text" value={q.cascadeDataSource} readOnly placeholder="Select source..." />
-                                    <button className="q-cyan-btn" onClick={() => {/* Data source selector placeholder */ }}>Select Data Source</button>
+                                    <button type="button" className="q-cyan-btn" onClick={() => openCascadePopup(q.id)}>
+                                      {q.cascadeDataSource && q.cascadeDataSource !== 'Select' ? 'View Data Source' : 'Select Data Source'}
+                                    </button>
                                   </div>
                                 </div>
                                 <div className="form-row">
@@ -3794,12 +4034,36 @@ const SurveyView = () => {
                                     onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
                                   />
                                 </div>
+
+                                {/* Dynamic Levels mapped from cascadeLevels */}
+                                {(q.cascadeLevels || []).map((level, idx) => (
+                                  <React.Fragment key={idx}>
+                                    <div className="form-row">
+                                      <label>Question {idx + 1}</label>
+                                      <input
+                                        type="text"
+                                        value={level.label}
+                                        onChange={(e) => updateCascadeLevel(q.id, idx, 'label', e.target.value)}
+                                      />
+                                    </div>
+                                    <div className="form-row-compact">
+                                      <label>Display On Main Form?</label>
+                                      <input
+                                        type="checkbox"
+                                        checked={level.displayOnMain}
+                                        onChange={(e) => updateCascadeLevel(q.id, idx, 'displayOnMain', e.target.checked)}
+                                      />
+                                    </div>
+                                  </React.Fragment>
+                                ))}
+
                                 <div className="form-row">
                                   <label>Question Type</label>
                                   <div className="type-options" style={{ gap: '20px', display: 'flex', fontSize: '14px' }}>
                                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                       <input
                                         type="radio"
+                                        name={`cascadeType-${q.id}`}
                                         checked={q.cascadeQuestionType === 'Dropdown'}
                                         onChange={() => updateQuestion(q.id, 'cascadeQuestionType', 'Dropdown')}
                                       /> Dropdown
@@ -3807,10 +4071,18 @@ const SurveyView = () => {
                                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                       <input
                                         type="radio"
+                                        name={`cascadeType-${q.id}`}
                                         checked={q.cascadeQuestionType === 'Radio'}
                                         onChange={() => updateQuestion(q.id, 'cascadeQuestionType', 'Radio')}
                                       /> Radio
                                     </label>
+                                  </div>
+                                </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
                                   </div>
                                 </div>
                                 <div className="form-row-compact">
@@ -3834,6 +4106,24 @@ const SurveyView = () => {
 
                             {q.type === 'Ranking' && (
                               <div className="question-form">
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
                                 <div className="form-row align-start">
                                   <label>Questions (One per line)</label>
                                   <div className="input-column">
@@ -3855,6 +4145,13 @@ const SurveyView = () => {
                                 </div>
                                 <div className="validation-help" style={{ color: 'red' }}>
                                   If number of rows or columns are more, it might not fit in single view of the mobile device. This depends on the screen size of the mobile device also. In this scenario, please scroll to right in columns area to view all columns and scroll to bottom to view all the rows.
+                                </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -4027,6 +4324,13 @@ const SurveyView = () => {
                                     onChange={(e) => updateQuestion(q.id, 'displayAsGridTablet', e.target.checked)}
                                   />
                                 </div>
+                                <div className="form-row">
+                                  <label>Layout</label>
+                                  <div className="orientation-group">
+                                    <label><input type="radio" checked={q.orientation === 'Vertical'} onChange={() => updateQuestion(q.id, 'orientation', 'Vertical')} /> Vertical</label>
+                                    <label><input type="radio" checked={q.orientation === 'Horizontal'} onChange={() => updateQuestion(q.id, 'orientation', 'Horizontal')} /> Horizontal</label>
+                                  </div>
+                                </div>
                                 <div className="validation-help" style={{ color: 'red', marginTop: '10px' }}>
                                   If number of rows or columns are more, it might not fit in single view of the mobile device. This depends on the screen size of the mobile device also. In this scenario, please scroll to right in columns area to view all columns and scroll to bottom to view all the rows.
                                 </div>
@@ -4082,7 +4386,104 @@ const SurveyView = () => {
             </div>
           </div>
         </div>
-      </Layout>
+        {/* MEDIA SELECTOR POPUP */}
+        {
+          showMediaSelector && (
+            <div className="share-modal-overlay" style={{ zIndex: 100001 }}>
+              <div className="modal" style={{ maxWidth: '400px', background: 'white', padding: '20px', borderRadius: '8px' }}>
+                <h3>Select Image Group</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+                  {['Political Parties', 'Brand Logos', 'Social Icons', 'Custom Assets'].map(group => (
+                    <button
+                      key={group}
+                      className="modal-btn"
+                      style={{ textAlign: 'left', padding: '12px' }}
+                      onClick={() => {
+                        updateQuestion(showMediaSelector, 'imageGroup', group);
+                        setShowMediaSelector(null);
+                      }}
+                    >
+                      {group}
+                    </button>
+                  ))}
+                </div>
+                <button className="modal-btn cancel" style={{ marginTop: '15px' }} onClick={() => setShowMediaSelector(null)}>Cancel</button>
+              </div>
+            </div>
+          )
+        }
+
+        {/* CASCADE DATA SOURCE POPUP */}
+        {
+          showCascadePopup && (
+            <div className="modal-overlay" style={{ zIndex: 999999, display: 'flex', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+              <div className="modal" style={{ maxWidth: '500px', width: '90%', background: 'white', padding: '20px', borderRadius: '8px' }}>
+                <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <h3 style={{ margin: 0 }}>Cascade Data Source</h3>
+                  <button
+                    className="close-btn"
+                    onClick={() => setShowCascadePopup(false)}
+                    style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}
+                  >
+                    &times;
+                  </button>
+                </div>
+
+                <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  <div className="form-group">
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Select Data Source</label>
+                    <select
+                      className="form-control"
+                      value={selectedCascadeSource}
+                      onChange={(e) => setSelectedCascadeSource(e.target.value)}
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                    >
+                      {cascadeSources.map((source, idx) => (
+                        <option key={idx} value={source}>{source}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="action-buttons" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <button className="q-cyan-btn small" disabled={selectedCascadeSource === 'Select'}>Download</button>
+                    <button className="q-cyan-btn small" disabled={selectedCascadeSource === 'Select'}>Update Data</button>
+                    <button
+                      className="q-cyan-btn small"
+                      onClick={() => document.getElementById('cascade-file-upload').click()}
+                    >
+                      Add New Data Source
+                    </button>
+                    <input
+                      type="file"
+                      id="cascade-file-upload"
+                      accept=".xls,.xlsx"
+                      style={{ display: 'none' }}
+                      onChange={handleCascadeFileUpload}
+                    />
+                  </div>
+                </div>
+
+                <div className="modal-footer" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button
+                    className="btn-save"
+                    onClick={handleCascadeSave}
+                    style={{ padding: '8px 20px', background: '#00bfa5', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    className="btn-cancel"
+                    onClick={() => setShowCascadePopup(false)}
+                    style={{ padding: '8px 20px', background: '#f44336', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        }
+      </Layout >
     );
   }
 
@@ -4295,12 +4696,29 @@ const SurveyView = () => {
                       <span className="survey-icon">{survey.type === 'app' ? '📱' : '🌐'}</span>
                       <div>
                         <a
-                          href={`/take-survey/${survey.name.toLowerCase().replace(/\s+/g, '-')}`}
+                          href="#"
                           className="survey-link"
                           onClick={(e) => {
                             e.preventDefault();
-                            const slug = survey.name.toLowerCase().replace(/\s+/g, '-');
-                            navigate(`/take-survey/${slug}`);
+                            setIsEditMode(true);
+                            setEditingSurveyId(survey.id);
+                            setSurveyForm({
+                              name: survey.name || '',
+                              layoutType: survey.layoutType || 'portrait',
+                              surveyType: survey.type || 'app',
+                              headerText: survey.headerText || '',
+                              theme: survey.theme || 'Default',
+                              accessPin: survey.accessPin || '',
+                              loopSurvey: survey.loopSurvey || false,
+                              pdfShowAnswered: survey.pdfShowAnswered || false,
+                              backgroundLocation: survey.backgroundLocation || false,
+                              isLocationMandatory: survey.isLocationMandatory || false,
+                              thankYouDuration: survey.thankYouDuration || 20,
+                              welcomeImageName: survey.welcomeImageName || '',
+                              thankYouImageName: survey.thankYouImageName || ''
+                            });
+                            setShowDetailedCreate(true);
+                            setShowQuestionnaire(false);
                           }}
                         >
                           {survey.name}
@@ -4473,29 +4891,7 @@ const SurveyView = () => {
         </div>
       )}
 
-      {showMediaSelector && (
-        <div className="share-modal-overlay">
-          <div className="share-modal" style={{ maxWidth: '400px' }}>
-            <h3>Select Image Group</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
-              {['Political Parties', 'Brand Logos', 'Social Icons', 'Custom Assets'].map(group => (
-                <button
-                  key={group}
-                  className="modal-btn"
-                  style={{ textAlign: 'left', padding: '12px' }}
-                  onClick={() => {
-                    updateQuestion(showMediaSelector, 'imageGroup', group);
-                    setShowMediaSelector(null);
-                  }}
-                >
-                  {group}
-                </button>
-              ))}
-            </div>
-            <button className="modal-btn cancel" style={{ marginTop: '15px' }} onClick={() => setShowMediaSelector(null)}>Cancel</button>
-          </div>
-        </div>
-      )}
+
     </Layout>
   );
 };

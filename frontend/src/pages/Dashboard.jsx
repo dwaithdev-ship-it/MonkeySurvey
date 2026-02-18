@@ -61,14 +61,23 @@ const Dashboard = () => {
 
   const navigate = useNavigate();
 
+  const getMostRecentSurveyId = () => {
+    const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
+    if (localSurveys.length > 0) {
+      // Assuming the first one is the most recent (sorted by date desc in SurveyView)
+      return localSurveys[0].id || 1;
+    }
+    return 1;
+  };
+
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        // Redirect non-admins to survey page
+        // Redirect non-admins to the most recent survey page
         if (parsedUser.role !== 'admin') {
-          navigate("/take-survey/1");
+          navigate(`/take-survey/${getMostRecentSurveyId()}`);
           return;
         }
         setUser(parsedUser);
@@ -433,7 +442,7 @@ const Dashboard = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 className="page-title" style={{ marginBottom: 0 }}>Dashboard Analytics</h1>
         <button
-          onClick={() => navigate('/take-survey/1')}
+          onClick={() => navigate(`/take-survey/${getMostRecentSurveyId()}`)}
           className="btn-primary"
           style={{ padding: '0.8rem 2rem', borderRadius: '12px', boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)' }}
         >

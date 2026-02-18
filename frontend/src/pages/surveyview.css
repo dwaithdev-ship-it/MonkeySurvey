@@ -687,7 +687,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-}/* CASCADE POPUP STYLES */
+}
+
+/* CASCADE POPUP STYLES */
 .cascade-modal {
     background: white;
     width: 600px;
@@ -841,4 +843,39 @@
 
 .btn-cascade.cancel {
     background-color: #e85f5c;
+}
+
+/* CUSTOM RADIO STYLING */
+.type-options input[type="radio"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #ddd;
+    border-radius: 50%;
+    outline: none;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.type-options input[type="radio"]:checked {
+    border-color: #00bfa5;
+}
+
+.type-options input[type="radio"]:checked::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: #00bfa5;
+    border-radius: 50%;
+    display: block;
+}
+
+.type-options label {
+    cursor: pointer;
+    user-select: none;
 }

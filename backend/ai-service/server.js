@@ -3,7 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
-const { authMiddleware, adminMiddleware } = require('@monkeysurvey/shared/auth');
+const { authMiddleware, adminMiddleware } = require('@bodhasurvey/shared/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3006;

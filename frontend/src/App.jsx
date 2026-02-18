@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { responseAPI } from './services/api';
 import { offlineSync } from './utils/offlineSync';
 import Login from './pages/Login';
@@ -13,17 +13,27 @@ import Profile from './pages/Profile';
 import UsersPage from './pages/UsersPage';
 import './App.css';
 
+const getMostRecentSurveyId = () => {
+  const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
+  if (localSurveys.length > 0) {
+    return localSurveys[0].id || 1;
+  }
+  return 1;
+};
+
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/login" />;
+  const location = useLocation();
+  return token ? children : <Navigate to="/login" state={{ from: location }} />;
 }
 
 function AdminRoute({ children }) {
   const token = localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const location = useLocation();
 
-  if (!token) return <Navigate to="/login" />;
-  if (user.role !== 'admin') return <Navigate to="/take-survey/1" />;
+  if (!token) return <Navigate to="/login" state={{ from: location }} />;
+  if (user.role !== 'admin') return <Navigate to={`/take-survey/${getMostRecentSurveyId()}`} />;
 
   return children;
 }
@@ -60,7 +70,7 @@ function App() {
         <Routes>
           <Route path="/login" element={
             isAuthenticated ? (
-              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/take-survey/1" />
+              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to={`/take-survey/${getMostRecentSurveyId()}`} />
             ) : <Login />
           } />
           <Route path="/register" element={<Register />} />
@@ -138,12 +148,12 @@ function App() {
           />
           <Route path="/" element={
             isAuthenticated ? (
-              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/take-survey/1" />
+              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to={`/take-survey/${getMostRecentSurveyId()}`} />
             ) : <Navigate to="/login" />
           } />
           <Route path="*" element={
             isAuthenticated ? (
-              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/take-survey/1" />
+              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to={`/take-survey/${getMostRecentSurveyId()}`} />
             ) : <Navigate to="/login" />
           } />
         </Routes>

@@ -23,6 +23,9 @@ export default function TakeSurvey() {
   const [municipalities, setMunicipalities] = useState([]);
 
   const [location, setLocation] = useState(null);
+  const [isReorderEnabled, setIsReorderEnabled] = useState(false);
+  const [draggedQuestionIndex, setDraggedQuestionIndex] = useState(null);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   useEffect(() => {
     fetchSurvey();
@@ -69,30 +72,31 @@ export default function TakeSurvey() {
   const fetchParliaments = async () => {
     try {
       const res = await parlConsAPI.getParliaments();
-      if (res.success) {
+      if (res.success && res.data && res.data.length > 0) {
         setParliaments(res.data);
         localStorage.setItem('cached_parliaments', JSON.stringify(res.data));
         const newOptions = res.data.map(p => ({ label: p, value: p }));
         setSurvey(prev => {
-          if (!prev) return prev;
+          if (!prev || !prev.questions || prev.questions.length === 0) return prev;
           const updatedQs = [...prev.questions];
-          if (updatedQs.length >= 1) {
+          // Only overwrite if current options are empty
+          if (!updatedQs[0].options || updatedQs[0].options.length === 0) {
             updatedQs[0] = { ...updatedQs[0], options: newOptions };
           }
           return { ...prev, questions: updatedQs };
         });
       }
     } catch (err) {
-      console.error("Failed to fetch parliaments");
+      console.warn("Failed to fetch parliaments from API, trying cache");
       const cached = localStorage.getItem('cached_parliaments');
       if (cached) {
         const data = JSON.parse(cached);
         setParliaments(data);
         const newOptions = data.map(p => ({ label: p, value: p }));
         setSurvey(prev => {
-          if (!prev) return prev;
+          if (!prev || !prev.questions || prev.questions.length === 0) return prev;
           const updatedQs = [...prev.questions];
-          if (updatedQs.length >= 1) {
+          if (!updatedQs[0].options || updatedQs[0].options.length === 0) {
             updatedQs[0] = { ...updatedQs[0], options: newOptions };
           }
           return { ...prev, questions: updatedQs };
@@ -144,14 +148,140 @@ export default function TakeSurvey() {
     await fetchMunis(val);
   };
 
+  const normalizeOptions = (opts) => {
+    if (!opts) return [];
+    if (typeof opts === 'string') {
+      return opts.split('\n')
+        .filter(o => o.trim())
+        .map(o => ({ label: o.trim(), value: o.trim() }));
+    }
+    if (Array.isArray(opts)) {
+      return opts.map(o => {
+        if (!o) return { label: '', value: '' };
+        if (typeof o === 'string') return { label: o.trim(), value: o.trim() };
+        if (typeof o === 'object') return {
+          label: o.label || o.value || o.title || String(o),
+          value: o.value || o.label || o.id || String(o)
+        };
+        return { label: String(o), value: String(o) };
+      });
+    }
+    return [];
+  };
+
+  const saveNewOrder = async () => {
+    if (!survey || !survey._id) return;
+
+    try {
+      // Show some visual indication or just proceed
+      console.log('Saving new question order...');
+
+      // We need to send the original types if possible, or ensure the backend handles adapted ones
+      // Looking at adaptSurveyData, we have originalType. Let's use it if available.
+      const questionsToSave = survey.questions.map(q => ({
+        ...q,
+        type: q.originalType || q.type // Favor original type for backend compatibility
+      }));
+
+      const response = await surveyAPI.update(surveyId, { questions: questionsToSave });
+
+      if (response.success) {
+        // Update local_surveys cache
+        const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
+        const index = localSurveys.findIndex(s => (s._id || s.id) == surveyId);
+        if (index > -1) {
+          localSurveys[index].questions = questionsToSave;
+          localStorage.setItem('local_surveys', JSON.stringify(localSurveys));
+        }
+        console.log('Order saved successfully');
+      } else {
+        console.warn('Failed to save order to server, but state is updated locally');
+      }
+    } catch (err) {
+      console.error('Error saving question order:', err);
+    }
+  };
+
+  const handleDragStart = (e, index) => {
+    if (hasSubmitted || !isReorderEnabled) return;
+    setDraggedQuestionIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    // Add a ghost image or just styling
+    e.currentTarget.style.opacity = '0.5';
+  };
+
+  const handleDragEnd = (e) => {
+    e.currentTarget.style.opacity = '1';
+    setDraggedQuestionIndex(null);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (hasSubmitted || !isReorderEnabled || draggedQuestionIndex === null || draggedQuestionIndex === dropIndex) return;
+
+    setSurvey(prev => {
+      if (!prev || !prev.questions) return prev;
+      const newQuestions = [...prev.questions];
+      const [draggedItem] = newQuestions.splice(draggedQuestionIndex, 1);
+      newQuestions.splice(dropIndex, 0, draggedItem);
+      return { ...prev, questions: newQuestions };
+    });
+    setDraggedQuestionIndex(null);
+  };
+
+  const adaptSurveyData = (source, id) => {
+    if (!source) return null;
+    return {
+      _id: source._id || source.id || id,
+      title: source.name || source.title,
+      description: source.description,
+      branding: source.branding,
+      questions: (source.questions || []).map((q, idx) => ({
+        _id: q.id || q._id || `q-${idx}`,
+        question: q.title || q.displayTitle || q.question,
+        type: mapType(q.type),
+        required: q.required,
+        description: q.description || '',
+        options: normalizeOptions(q.options),
+        rowOptions: normalizeOptions(q.rowOptions),
+        columnOptions: normalizeOptions(q.columnOptions),
+        orientation: q.orientation || 'Vertical',
+        numColumns: q.numColumns || 1,
+        optionMedia: q.optionMedia || {},
+        layout: q.layout || 'Horizontal',
+        mediaUrl: q.mediaUrl,
+        mediaType: q.mediaType,
+        displayTitle: q.displayTitle || q.title,
+        isOtherTextOptional: q.isOtherTextOptional || false,
+        originalType: q.type,
+        nsecHouseholdTitle: q.nsecHouseholdTitle,
+        nsecAgricultureTitle: q.nsecAgricultureTitle,
+        nsecEducationTitle: q.nsecEducationTitle,
+        ruralWallTitle: q.ruralWallTitle,
+        ruralWallOptions: q.ruralWallOptions,
+        ruralRoofTitle: q.ruralRoofTitle,
+        ruralRoofOptions: q.ruralRoofOptions,
+        ruralEducationTitle: q.ruralEducationTitle,
+        cascadeLevels: q.cascadeLevels || [],
+        cascadeQuestionType: q.cascadeQuestionType || 'Dropdown',
+        cascadeDataSource: q.cascadeDataSource
+      }))
+    };
+  };
+
   const fetchSurvey = async () => {
     try {
       const response = await surveyAPI.getById(surveyId);
       if (response.success) {
-        const surveyData = response.data;
-        setSurvey(surveyData);
-        const initializedAnswers = initializeAnswers(surveyData);
-        setupBatchAndAnswers(surveyData, initializedAnswers);
+        const adapted = adaptSurveyData(response.data, surveyId);
+        setSurvey(adapted);
+        const initializedAnswers = initializeAnswers(adapted);
+        setupBatchAndAnswers(adapted, initializedAnswers);
 
         try {
           const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -164,15 +294,12 @@ export default function TakeSurvey() {
           console.warn('Failed to fetch response count:', cErr);
         }
 
-        // Cache the successful response for offline use
-        if (response.data) {
-          const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
-          const index = localSurveys.findIndex(s => (s._id || s.id) == surveyId);
-          const surveyToCache = { ...response.data, id: surveyId };
-          if (index > -1) localSurveys[index] = surveyToCache;
-          else localSurveys.push(surveyToCache);
-          localStorage.setItem('local_surveys', JSON.stringify(localSurveys));
-        }
+        // Cache for offline
+        const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
+        const index = localSurveys.findIndex(s => (s._id || s.id) == surveyId);
+        if (index > -1) localSurveys[index] = { ...response.data, id: surveyId };
+        else localSurveys.push({ ...response.data, id: surveyId });
+        localStorage.setItem('local_surveys', JSON.stringify(localSurveys));
       } else {
         throw new Error('Survey not found');
       }
@@ -184,14 +311,12 @@ export default function TakeSurvey() {
         (s.name && s.name.toLowerCase().replace(/\s+/g, '-') === surveyId.toString())
       );
 
-      // Fallback for demo survey if not found in local_surveys
+      // Fallback for demo survey
       if (surveyId.toString() === "1" || surveyId.toString() === "demo-pre-election") {
         if (!found || !found.questions || found.questions.length === 0) {
           found = {
             id: 1,
             name: "Demo-Pre Election",
-            description: "MSR Municipal Survey - Prototype",
-            branding: { logo: '/logo.png' },
             questions: [
               { id: "q1", displayTitle: "Select your Parliament", type: "Drop Down", options: "Chevella\nMalkajgiri\nHyderabad", required: true },
               { id: "q2", displayTitle: "Select your Municipality", type: "Drop Down", options: "Chevella\nManikonda\nNarsingi", required: true },
@@ -203,56 +328,10 @@ export default function TakeSurvey() {
       }
 
       if (found) {
-        const adaptedSurvey = {
-          _id: found.id || surveyId,
-          title: found.name,
-          description: found.description,
-          branding: found.branding,
-          questions: (found.questions || []).map((q, idx) => ({
-            _id: q.id || q._id || `q-${idx}`,
-            question: q.title || q.displayTitle || q.question,
-            type: mapType(q.type),
-            required: q.required,
-            description: q.description || '',
-            options: q.options ? (typeof q.options === 'string' ? q.options.split('\n').filter(o => o.trim()).map(o => ({ label: o.trim(), value: o.trim() })) : q.options) : [],
-            rowOptions: q.rowOptions ? (typeof q.rowOptions === 'string' ? q.rowOptions.split('\n').filter(o => o.trim()).map(o => ({ label: o.trim(), value: o.trim() })) : q.rowOptions) : [],
-            columnOptions: q.columnOptions ? (typeof q.columnOptions === 'string' ? q.columnOptions.split('\n').filter(o => o.trim()).map(o => ({ label: o.trim(), value: o.trim() })) : q.columnOptions) : [],
-            orientation: q.orientation || 'Vertical',
-            numColumns: q.numColumns || 1,
-            optionMedia: q.optionMedia || {},
-            layout: q.layout || 'Horizontal',
-            mediaUrl: q.mediaUrl,
-            mediaType: q.mediaType,
-            displayTitle: q.displayTitle || q.title,
-            isOtherTextOptional: q.isOtherTextOptional || false,
-            originalType: q.type,
-            nsecHouseholdTitle: q.nsecHouseholdTitle,
-            nsecAgricultureTitle: q.nsecAgricultureTitle,
-            nsecEducationTitle: q.nsecEducationTitle,
-            ruralWallTitle: q.ruralWallTitle,
-            ruralWallOptions: q.ruralWallOptions,
-            ruralRoofTitle: q.ruralRoofTitle,
-            ruralRoofOptions: q.ruralRoofOptions,
-            ruralHouseTypeTitle: q.ruralHouseTypeTitle,
-            ruralEducationTitle: q.ruralEducationTitle,
-            ruralGradeTitle: q.ruralGradeTitle
-          }))
-        };
-        setSurvey(adaptedSurvey);
-        const initializedAnswers = initializeAnswers(adaptedSurvey);
-
-        // Detect if this is a standard 4-question pre-election survey
-        const isStandardBatch = adaptedSurvey.questions.length >= 4 &&
-          adaptedSurvey.questions[0].question.toLowerCase().includes('parliament') &&
-          adaptedSurvey.questions[1].question.toLowerCase().includes('municipality');
-
-        if (!isStandardBatch) {
-          // If it's a custom survey, just show questions directly
-          setIsHeaderLocked(true);
-          setAnswers(initializedAnswers);
-        } else {
-          setupBatchAndAnswers(adaptedSurvey, initializedAnswers);
-        }
+        const adapted = adaptSurveyData(found, surveyId);
+        setSurvey(adapted);
+        const initializedAnswers = initializeAnswers(adapted);
+        setupBatchAndAnswers(adapted, initializedAnswers);
       } else {
         setError('Survey not found. Please verify the URL.');
       }
@@ -263,12 +342,12 @@ export default function TakeSurvey() {
 
   const mapType = (type) => {
     if (!type) return 'text';
-    const t = type.toLowerCase();
+    const t = type.toLowerCase().trim();
     if (t.includes('text block')) return 'text-block';
     if (t.includes('singleline text input')) return 'text';
     if (t.includes('multiline text input')) return 'textarea';
-    if (t.includes('number input') || t.includes('number with auto code')) return 'number';
-    if (t.includes('decimal input')) return 'decimal';
+    if (t.includes('numeric input') || t.includes('number input') || t.includes('number with auto code')) return 'number';
+    if (t.includes('decimal input')) return 'number';
     if (t.includes('dropdown') && t.includes('grid')) return 'dropdown-grid';
     if (t.includes('radio grid')) return 'radio-grid';
     if (t.includes('checkbox') && t.includes('grid')) return 'checkbox-grid';
@@ -280,7 +359,10 @@ export default function TakeSurvey() {
     if (t.includes('number point grid')) return 'number-grid';
     if (t.includes('grid')) return 'radio-grid';
     if (t.includes('radio button with text')) return 'radio-with-text';
+    if (t.includes('radio button')) return 'radio';
+    if (t.includes('radio btn')) return 'radio';
     if (t.includes('radio')) return 'radio';
+    if (t.includes('multi choice')) return 'radio';
     if (t.includes('checkbox')) return 'checkbox';
     if (t.includes('rating')) return 'rating';
     if (t.includes('dropdown')) return 'dropdown';
@@ -293,6 +375,9 @@ export default function TakeSurvey() {
     if (t.includes('sec')) return 'sec';
     if (t.includes('ranking')) return 'ranking';
     if (t.includes('signature')) return 'signature';
+    if (t.includes('date')) return 'date';
+    if (t.includes('email')) return 'email';
+    if (t === 'pseudo-header' || t === 'pseudo header' || t.includes('pseudo-header') || t.includes('pseudo header') || t.includes('boundary')) return 'pseudo-header';
     return 'text';
   };
 
@@ -304,7 +389,43 @@ export default function TakeSurvey() {
     return initialAnswers;
   };
 
+  const getHeaderIndices = (qs) => {
+    if (!qs) return [];
+    const indices = [];
+    let inHeader = false;
+    qs.forEach((q, idx) => {
+      const type = (q.type || '').toLowerCase();
+      // Boundary toggle logic
+      if (type === 'pseudo-header' || type.includes('pseudo header')) {
+        inHeader = !inHeader;
+      } else if (inHeader) {
+        indices.push(idx);
+      }
+    });
+    return indices;
+  };
+
+  const getDisplayQuestions = (qs) => {
+    if (!qs) return [];
+    return qs.map((q, idx) => ({ ...q, originalIndex: idx }))
+      .filter(q => {
+        const type = (q.type || '').toLowerCase();
+        // Filter out pseudo-headers
+        if (type === 'pseudo-header' || type.includes('pseudo header') || type.includes('boundary')) return false;
+        // Explicit hide
+        if (q.displayInSurvey === false) return false;
+        return true;
+      });
+  };
+
   const setupBatchAndAnswers = (surveyData, initialAnswers) => {
+    const headerIndices = getHeaderIndices(surveyData.questions);
+    const isPseudoSetup = headerIndices.length > 0;
+
+    // Fallback to standard 3-question logic if no pseudo-header exists
+    const isStandardBatch = !isPseudoSetup && surveyData.questions && surveyData.questions.length >= 4 &&
+      surveyData.questions[0].question.toLowerCase().includes('parliament');
+
     const existingBatch = localStorage.getItem(`ward_batch_${surveyId}`);
 
     if (existingBatch) {
@@ -313,12 +434,17 @@ export default function TakeSurvey() {
         if (batch.count <= batch.limit) {
           setIsHeaderLocked(true);
           setWardBatch(batch);
-          setAnswers({
-            ...initialAnswers,
-            [surveyData.questions[0]._id || surveyData.questions[0].id]: batch.parliament,
-            [surveyData.questions[1]._id || surveyData.questions[1].id]: batch.municipality,
-            [surveyData.questions[2]._id || surveyData.questions[2].id]: batch.ward_num
-          });
+
+          // Re-fill answers from batch
+          const newAnswers = { ...initialAnswers };
+          if (isPseudoSetup) {
+            Object.assign(newAnswers, batch.headerAnswers || {});
+          } else if (isStandardBatch) {
+            newAnswers[surveyData.questions[0]._id || surveyData.questions[0].id] = batch.parliament;
+            newAnswers[surveyData.questions[1]._id || surveyData.questions[1].id] = batch.municipality;
+            newAnswers[surveyData.questions[2]._id || surveyData.questions[2].id] = batch.ward_num;
+          }
+          setAnswers(newAnswers);
 
           if (batch.parliament) {
             fetchMunis(batch.parliament);
@@ -330,39 +456,80 @@ export default function TakeSurvey() {
       }
     }
 
-    // If no batch, show setup mode using user profile defaults
-    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-    setIsHeaderLocked(false);
-    setWardBatch({
-      parliament: storedUser.district || '',
-      municipality: storedUser.municipality || '',
-      ward_num: '',
-      limit: 3,
-      count: 1
-    });
-    setAnswers(initialAnswers);
+    if (isPseudoSetup || isStandardBatch) {
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      setIsHeaderLocked(false);
+
+      const newBatch = {
+        parliament: storedUser.district || '',
+        municipality: storedUser.municipality || '',
+        ward_num: '',
+        limit: 3,
+        count: 1,
+        headerAnswers: {}
+      };
+
+      if (isPseudoSetup) {
+        headerIndices.forEach(idx => {
+          const qId = surveyData.questions[idx]._id || surveyData.questions[idx].id;
+          newBatch.headerAnswers[qId] = '';
+        });
+      }
+
+      setWardBatch(newBatch);
+      setAnswers(initialAnswers);
+    } else {
+      setIsHeaderLocked(true);
+      setAnswers(initialAnswers);
+    }
   };
 
   const startBatch = () => {
-    if (!wardBatch.parliament || !wardBatch.municipality || !wardBatch.ward_num) {
+    const headerIndices = getHeaderIndices(survey?.questions);
+    const isPseudo = headerIndices.length > 0;
+
+    if (!isPseudo && (!wardBatch.parliament || !wardBatch.municipality || !wardBatch.ward_num)) {
       alert("Please select and enter all location details first.");
       return;
     }
 
-    localStorage.setItem(`ward_batch_${surveyId}`, JSON.stringify(wardBatch));
+    if (isPseudo) {
+      // Check if all header answers are filled
+      const missing = headerIndices.some(idx => {
+        const qId = survey.questions[idx]._id || survey.questions[idx].id;
+        return !answers[qId];
+      });
+      if (missing) {
+        alert("Please fill all header questions before starting.");
+        return;
+      }
+    }
+
+    // Sync wardBatch with current answers for pseudo mode
+    const finalBatch = { ...wardBatch };
+    if (isPseudo) {
+      finalBatch.headerAnswers = {};
+      headerIndices.forEach(idx => {
+        const qId = survey.questions[idx]._id || survey.questions[idx].id;
+        finalBatch.headerAnswers[qId] = answers[qId];
+      });
+    }
+
+    localStorage.setItem(`ward_batch_${surveyId}`, JSON.stringify(finalBatch));
     setIsHeaderLocked(true);
 
-    // Pre-fill answers with locked values
-    const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
-    const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
-    const q3Id = survey?.questions?.[2]?._id || survey?.questions?.[2]?.id;
+    if (!isPseudo) {
+      const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
+      const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
+      const q3Id = survey?.questions?.[2]?._id || survey?.questions?.[2]?.id;
 
-    setAnswers(prev => ({
-      ...prev,
-      [q1Id]: wardBatch.parliament,
-      [q2Id]: wardBatch.municipality,
-      [q3Id]: wardBatch.ward_num
-    }));
+      setAnswers(prev => ({
+        ...prev,
+        [q1Id]: wardBatch.parliament,
+        [q2Id]: wardBatch.municipality,
+        [q3Id]: wardBatch.ward_num
+      }));
+    }
   };
 
   const updateBatchLimit = (newLimit) => {
@@ -373,21 +540,31 @@ export default function TakeSurvey() {
 
   const handleAnswerChange = (questionId, value) => {
     const qIndex = survey?.questions?.findIndex(q => (q._id || q.id) === questionId);
+    if (qIndex === -1) return;
 
-    // Check if this is the standard 4-question pre-election survey structure
-    const isStandardStructure = survey?.questions?.length >= 4 &&
+    const q = survey.questions[qIndex];
+    const headerIndices = getHeaderIndices(survey.questions);
+    const isPseudo = headerIndices.length > 0;
+    const isStandard = !isPseudo && survey?.questions?.length >= 4 &&
       survey?.questions?.[0]?.question?.toLowerCase().includes('parliament') &&
       survey?.questions?.[1]?.question?.toLowerCase().includes('municipality');
 
-    // In locked mode, Question 1, 2, 3 are strictly blocked if they are part of the header batch
-    if (isHeaderLocked && qIndex !== -1 && qIndex < 3 && isStandardStructure) {
-      return;
+    // Only lock if it's actually part of the header block and we are locked
+    if (isHeaderLocked) {
+      if (isPseudo && headerIndices.includes(qIndex)) return;
+      if (isStandard && qIndex < 3) return;
     }
+
     const newAnswers = { ...answers, [questionId]: value };
     setAnswers(newAnswers);
 
-    // Auto-submit if it's the 4th question of the standard pre-election survey
-    if (qIndex === 3 && isStandardStructure) {
+    // Auto-fetch municipalities if this is a Parliament dropdown
+    if (q.question.toLowerCase().includes('parliament') && value) {
+      fetchMunis(value);
+    }
+
+    // Auto-submit if it's the question immediately following the standard 3-question header
+    if (isStandard && qIndex === 3) {
       performSubmit(newAnswers);
     }
   };
@@ -443,6 +620,8 @@ export default function TakeSurvey() {
         }
 
         setResponseCount(prev => prev + 1);
+        setHasSubmitted(true);
+        setIsReorderEnabled(false);
         alert('Survey submitted successfully!');
 
         // RE-INITIALIZE with locked values
@@ -517,6 +696,8 @@ export default function TakeSurvey() {
         }
 
         setResponseCount(prev => prev + 1);
+        setHasSubmitted(true);
+        setIsReorderEnabled(false);
         alert('Survey saved locally (Offline). It will be synced when internet is restored.');
 
         // RE-INITIALIZE with locked values
@@ -524,15 +705,25 @@ export default function TakeSurvey() {
         const activeBatch = localStorage.getItem(`ward_batch_${surveyId}`);
         if (activeBatch) {
           const batch = JSON.parse(activeBatch);
-          const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
-          const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
-          const q3Id = survey?.questions?.[2]?._id || survey?.questions?.[2]?.id;
-          setAnswers({
-            ...freshAnswers,
-            [q1Id]: batch.parliament,
-            [q2Id]: batch.municipality,
-            [q3Id]: batch.ward_num
-          });
+          const headerIndices = getHeaderIndices(survey.questions);
+          const isPseudo = headerIndices.length > 0;
+
+          if (isPseudo) {
+            setAnswers({
+              ...freshAnswers,
+              ...(batch.headerAnswers || {})
+            });
+          } else {
+            const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
+            const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
+            const q3Id = survey?.questions?.[2]?._id || survey?.questions?.[2]?.id;
+            setAnswers({
+              ...freshAnswers,
+              [q1Id]: batch.parliament,
+              [q2Id]: batch.municipality,
+              [q3Id]: batch.ward_num
+            });
+          }
         } else {
           setAnswers(freshAnswers);
           setupBatchAndAnswers(survey, freshAnswers);
@@ -549,7 +740,16 @@ export default function TakeSurvey() {
 
   const renderQuestion = (question, index) => {
     const qId = question._id || question.id;
-    const isDisabled = isHeaderLocked && index < 3;
+    const headerIndices = getHeaderIndices(survey?.questions);
+    const isPseudo = headerIndices.length > 0;
+    const isStandard = !isPseudo && survey?.questions?.length >= 4 &&
+      survey?.questions?.[0]?.question?.toLowerCase().includes('parliament') &&
+      survey?.questions?.[1]?.question?.toLowerCase().includes('municipality');
+
+    const isDisabled = isHeaderLocked && (
+      (isPseudo && headerIndices.includes(index)) ||
+      (isStandard && index < 3)
+    );
     const value = answers[qId] || '';
 
     if (question.type === 'text-block') {
@@ -559,11 +759,16 @@ export default function TakeSurvey() {
     }
 
     if (question.type === 'dropdown') {
+      const opts = Array.isArray(question.options) ? question.options : [];
       return (
         <div style={{ display: 'flex', flexDirection: question.orientation === 'Horizontal' ? 'row' : 'column', gap: '8px' }}>
           <select value={value} onChange={(e) => handleAnswerChange(qId, e.target.value)} disabled={isDisabled} className="answer-select" style={{ flex: 1 }}>
             <option value="">Select an option</option>
-            {(question.options || []).map((opt, i) => <option key={i} value={opt.value || opt.label}>{opt.label}</option>)}
+            {opts.map((opt, i) => {
+              const label = typeof opt === 'object' ? (opt.label || opt.value) : opt;
+              const val = typeof opt === 'object' ? (opt.value || opt.label) : opt;
+              return <option key={i} value={val}>{label}</option>;
+            })}
           </select>
         </div>
       );
@@ -851,9 +1056,11 @@ export default function TakeSurvey() {
                             style={{ width: '100%', padding: '6px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '12px' }}
                           >
                             <option value="">Select</option>
-                            {opts.map((opt, k) => (
-                              <option key={k} value={opt.value || opt.label}>{opt.label}</option>
-                            ))}
+                            {opts.map((opt, k) => {
+                              const label = typeof opt === 'object' ? (opt.label || opt.value) : opt;
+                              const val = typeof opt === 'object' ? (opt.value || opt.label) : opt;
+                              return <option key={k} value={val}>{label}</option>;
+                            })}
                             {isOtherGrid && <option value="Other">Other</option>}
                           </select>
                           {showOtherInput && (
@@ -901,14 +1108,16 @@ export default function TakeSurvey() {
         <div className="ranking-container" style={{ padding: '5px 0' }}>
           <div className="ranking-options" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {items.map((opt, i) => {
-              const rank = currentRanking.indexOf(opt.label) + 1;
+              const label = typeof opt === 'object' ? (opt.label || opt.value) : opt;
+              const val = typeof opt === 'object' ? (opt.value || opt.label) : opt;
+              const rank = currentRanking.indexOf(label) + 1;
               const isSelected = rank > 0;
-              const imageUrl = question.optionMedia?.[opt.label];
+              const imageUrl = question.optionMedia?.[label];
 
               return (
                 <div
                   key={i}
-                  onClick={() => !isDisabled && handleRankingToggle(opt.label)}
+                  onClick={() => !isDisabled && handleRankingToggle(label)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -939,7 +1148,7 @@ export default function TakeSurvey() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
                     {imageUrl && <img src={imageUrl} alt="" style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '4px' }} />}
-                    <span style={{ fontSize: '14px', color: '#1f2937', fontWeight: isSelected ? '500' : '400' }}>{opt.label}</span>
+                    <span style={{ fontSize: '14px', color: '#1f2937', fontWeight: isSelected ? '500' : '400' }}>{label}</span>
                   </div>
                 </div>
               );
@@ -954,40 +1163,74 @@ export default function TakeSurvey() {
       );
     }
     if (question.type === 'cascade') {
-      const cascadeLevels = answers[qId] || []; // Store as array of selected values
-
+      const cascadeLevelsSelection = answers[qId] || []; // Store as array of selected values
       const handleCascadeChange = (level, value) => {
-        const newLevels = [...cascadeLevels];
+        const newLevels = [...cascadeLevelsSelection];
         newLevels[level] = value;
-        // Clear all subsequent levels
         newLevels.splice(level + 1);
         handleAnswerChange(qId, newLevels);
       };
 
-      // Mock levels for rendering (typically from cascadeDataSource)
-      const mockLevels = [
-        { label: 'Select Level 1', options: ['Option 1.1', 'Option 1.2'] },
-        { label: 'Select Level 2', options: ['Option 2.1', 'Option 2.2'] },
-        { label: 'Select Level 3', options: ['Option 3.1', 'Option 3.2'] }
-      ];
+      const levelsConfig = question.cascadeLevels && question.cascadeLevels.length > 0
+        ? question.cascadeLevels
+        : [
+          { label: 'Select Parliament', options: ['Chevella', 'Malkajgiri'] },
+          { label: 'Select Assembly', options: ['Chevella', 'Maheshwaram'] },
+          { label: 'Select Mandal', options: ['Mandal 1', 'Mandal 2'] }
+        ];
+
+      const isHorizontal = question.orientation === 'Horizontal';
 
       return (
-        <div className="cascade-render-container" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          {mockLevels.map((lvl, idx) => {
+        <div
+          className="cascade-render-container"
+          style={{
+            display: 'flex',
+            flexDirection: isHorizontal ? 'row' : 'column',
+            flexWrap: 'wrap',
+            gap: '15px',
+            alignItems: 'flex-start',
+            width: '100%'
+          }}
+        >
+          {levelsConfig.map((lvl, idx) => {
             // Only show level if it's the first one OR the previous level has a selection
-            if (idx > 0 && !cascadeLevels[idx - 1]) return null;
+            if (idx > 0 && !cascadeLevelsSelection[idx - 1]) return null;
+
+            let options = [];
+            if (idx === 0) {
+              if (lvl.options && lvl.options.length > 0) {
+                options = lvl.options;
+              } else if (question.options && question.options.length > 0) {
+                options = question.options.map(o => o.label || o);
+              } else if (lvl.label.toLowerCase().includes('parliament') || lvl.label.toLowerCase().includes('district')) {
+                // Fallback to global parliaments if file is empty
+                options = parliaments;
+              }
+            } else {
+              const parentValue = cascadeLevelsSelection[idx - 1];
+              options = lvl.parentMap?.[parentValue] || [];
+
+              // If empty and it's Level 2 for Parliament, maybe fallback to municipalities?
+              if (options.length === 0 && (lvl.label.toLowerCase().includes('assembly') || lvl.label.toLowerCase().includes('muni'))) {
+                options = municipalities;
+              }
+            }
+
+            // Final fallback to avoid empty selects
+            if (options.length === 0) options = [];
 
             return (
-              <div key={idx} className="cascade-level">
-                <label style={{ display: 'block', fontSize: '13px', color: '#666', marginBottom: '5px' }}>{lvl.label}</label>
+              <div key={idx} className="cascade-level" style={{ flex: isHorizontal ? '1 1 180px' : 'none', minWidth: isHorizontal ? '150px' : 'auto', maxWidth: isHorizontal ? '250px' : 'none' }}>
+                <label style={{ display: 'block', fontSize: '13px', borderBottom: isHorizontal ? 'none' : 'none', color: '#666', marginBottom: '5px' }}>{lvl.label}</label>
                 {question.cascadeQuestionType === 'Radio' ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {lvl.options.map(opt => (
+                    {options.length === 0 ? <span style={{ fontSize: '12px', color: '#999' }}>No options available</span> : options.map(opt => (
                       <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
                         <input
                           type="radio"
                           name={`${qId}_level_${idx}`}
-                          checked={cascadeLevels[idx] === opt}
+                          checked={cascadeLevelsSelection[idx] === opt}
                           onChange={() => !isDisabled && handleCascadeChange(idx, opt)}
                           disabled={isDisabled}
                         />
@@ -997,13 +1240,13 @@ export default function TakeSurvey() {
                   </div>
                 ) : (
                   <select
-                    value={cascadeLevels[idx] || ''}
+                    value={cascadeLevelsSelection[idx] || ''}
                     onChange={(e) => handleCascadeChange(idx, e.target.value)}
                     disabled={isDisabled}
                     style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px' }}
                   >
                     <option value="">{lvl.label}</option>
-                    {lvl.options.map((opt, i) => (
+                    {options.map((opt, i) => (
                       <option key={i} value={opt}>{opt}</option>
                     ))}
                   </select>
@@ -1094,23 +1337,13 @@ export default function TakeSurvey() {
     }
 
     if (question.type === 'rural sec') {
-      // Handle both raw string (from localStorage) and adapted array (from API)
-      const parseOpts = (val) => {
-        if (!val) return [];
-        if (typeof val === 'string') return val.split('\n').filter(o => o.trim()).map(o => o.trim());
-        if (Array.isArray(val)) return val.map(o => (typeof o === 'object' ? o.label || o.value : o));
-        return [];
-      };
-
-      const wallOptions = parseOpts(question.ruralWallOptions);
-      const roofOptions = parseOpts(question.ruralRoofOptions);
-      const educationOptions = parseOpts(question.options);
+      const wallOptions = typeof question.ruralWallOptions === 'string' ? question.ruralWallOptions.split('\n').filter(o => o.trim()) : [];
+      const roofOptions = typeof question.ruralRoofOptions === 'string' ? question.ruralRoofOptions.split('\n').filter(o => o.trim()) : [];
+      const educationOptions = typeof question.options === 'string' ? question.options.split('\n').filter(o => o.trim()) : [];
 
       const wallAnswer = answers[`${qId}_wall`] || '';
       const roofAnswer = answers[`${qId}_roof`] || '';
-      const houseTypeAnswer = answers[`${qId}_housetype`] || '';
       const eduAnswer = answers[`${qId}_edu`] || '';
-      const gradeAnswer = answers[`${qId}_grade`] || '';
 
       return (
         <div className="rural-sec-render-container" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -1146,28 +1379,6 @@ export default function TakeSurvey() {
             </select>
           </div>
 
-          {/* House Type Section */}
-          {question.ruralHouseTypeTitle && (
-            <div className="rural-sec-sub-section" style={{ borderTop: '1px solid #eee', paddingTop: '15px' }}>
-              <h4 style={{ fontSize: '15px', color: '#374151', marginBottom: '10px', fontWeight: '600' }}>{question.ruralHouseTypeTitle}</h4>
-              <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                {['Pucca', 'Semi-Pucca', 'Kutcha'].map((opt) => (
-                  <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
-                    <input
-                      type="radio"
-                      name={`${qId}_housetype`}
-                      checked={houseTypeAnswer === opt}
-                      onChange={() => !isDisabled && handleAnswerChange(`${qId}_housetype`, opt)}
-                      disabled={isDisabled}
-                      style={{ accentColor: '#4f46e5' }}
-                    />
-                    {opt}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Education Section */}
           <div className="rural-sec-sub-section" style={{ borderTop: '1px solid #eee', paddingTop: '15px' }}>
             <h4 style={{ fontSize: '15px', color: '#374151', marginBottom: '10px', fontWeight: '600' }}>{question.ruralEducationTitle || 'Education'}</h4>
@@ -1183,24 +1394,6 @@ export default function TakeSurvey() {
               ))}
             </select>
           </div>
-
-          {/* Grade Section */}
-          {question.ruralGradeTitle && (
-            <div className="rural-sec-sub-section" style={{ borderTop: '1px solid #eee', paddingTop: '15px' }}>
-              <h4 style={{ fontSize: '15px', color: '#374151', marginBottom: '10px', fontWeight: '600' }}>{question.ruralGradeTitle}</h4>
-              <select
-                value={gradeAnswer}
-                onChange={(e) => handleAnswerChange(`${qId}_grade`, e.target.value)}
-                disabled={isDisabled}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px' }}
-              >
-                <option value="">Select Grade</option>
-                {['R1', 'R2', 'R3', 'R4', 'R5'].map((g) => (
-                  <option key={g} value={g}>{g}</option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
       );
     }
@@ -1251,16 +1444,19 @@ export default function TakeSurvey() {
 
     if (question.type === 'radio-with-text') {
       const columns = parseInt(question.numColumns) || 1;
+      const opts = Array.isArray(question.options) ? question.options : [];
+
       return (
         <div className="options-container" style={{
           display: 'grid',
           gridTemplateColumns: `repeat(${columns}, 1fr)`,
           gap: '15px'
         }}>
-          {(question.options || []).map((opt, i) => {
-            const label = opt.label;
+          {opts.map((opt, i) => {
+            const label = typeof opt === 'object' ? (opt.label || opt.value) : opt;
+            const val = typeof opt === 'object' ? (opt.value || opt.label) : opt;
             const imageUrl = question.optionMedia?.[label];
-            const isSelected = value === (opt.value || opt.label);
+            const isSelected = value === val;
 
             return (
               <div key={i} className="option-with-text-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: isSelected ? '#f5f7ff' : 'transparent', padding: '8px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
@@ -1269,9 +1465,9 @@ export default function TakeSurvey() {
                     type="radio"
                     name={`q-${qId}`}
                     checked={isSelected}
-                    onChange={() => handleAnswerChange(qId, opt.value || opt.label)}
+                    onChange={() => handleAnswerChange(qId, val)}
                     disabled={isDisabled}
-                    style={{ accentColor: '#6366f1', cursor: 'pointer', transform: 'scale(1.1)' }}
+                    style={{ accentColor: '#3b82f6', cursor: 'pointer', transform: 'scale(1.1)' }}
                   />
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
                     {imageUrl && <img src={imageUrl} alt="" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />}
@@ -1310,31 +1506,113 @@ export default function TakeSurvey() {
         "4. ఇతరులు": "/others.jpeg"
       };
 
+      const isHorizontal = question.orientation === 'Horizontal';
       const columns = parseInt(question.numColumns) || 1;
+      const opts = Array.isArray(question.options) ? question.options : [];
 
       return (
-        <div className="options-container" style={{
+        <div className="options-container" style={isHorizontal ? {
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '10px'
+        } : {
           display: 'grid',
           gridTemplateColumns: `repeat(${columns}, 1fr)`,
           gap: '10px'
         }}>
-          {(question.options || []).map((opt, i) => {
-            const label = opt.label;
+          {opts.map((opt, i) => {
+            const label = typeof opt === 'object' ? (opt.label || opt.value) : opt;
+            const val = typeof opt === 'object' ? (opt.value || opt.label) : opt;
             const imageUrl = question.optionMedia?.[label] || optionImages[label];
+            const isSelected = value === val;
 
             return (
-              <label key={i} className="option-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '10px' }}>
+              <label key={i} className="option-label" style={{
+                background: isSelected ? '#eff6ff' : 'white',
+                borderColor: isSelected ? '#3b82f6' : '#e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                padding: '10px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                ...(isHorizontal ? { flexShrink: 0 } : {})
+              }}>
                 <input
                   type="radio"
                   name={`q-${qId}`}
-                  checked={value === (opt.value || opt.label)}
-                  onChange={() => handleAnswerChange(qId, opt.value || opt.label)}
+                  checked={isSelected}
+                  onChange={() => handleAnswerChange(qId, val)}
                   disabled={isDisabled}
-                  style={{ accentColor: '#6366f1', cursor: 'pointer', transform: 'scale(1.2)' }}
+                  style={{ accentColor: '#3b82f6', transform: 'scale(1.2)' }}
                 />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                   {imageUrl && <img src={imageUrl} alt="" className="option-media-img" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />}
-                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#1f2937' }}>{label}</span>
+                  <span style={{ fontSize: '13px', fontWeight: isSelected ? '700' : '500', color: '#1f2937' }}>{label}</span>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (question.type === 'checkbox') {
+      const isHorizontal = question.orientation === 'Horizontal';
+      const columns = parseInt(question.numColumns) || 1;
+      const opts = Array.isArray(question.options) ? question.options : [];
+      const currentValues = Array.isArray(value) ? value : (value ? [value] : []);
+
+      const handleCheckboxToggle = (val) => {
+        let newArr = [...currentValues];
+        if (newArr.includes(val)) {
+          newArr = newArr.filter(v => v !== val);
+        } else {
+          newArr.push(val);
+        }
+        handleAnswerChange(qId, newArr);
+      };
+
+      return (
+        <div className="options-container" style={isHorizontal ? {
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '10px'
+        } : {
+          display: 'grid',
+          gridTemplateColumns: `repeat(${columns}, 1fr)`,
+          gap: '10px'
+        }}>
+          {opts.map((opt, i) => {
+            const label = typeof opt === 'object' ? (opt.label || opt.value) : opt;
+            const val = typeof opt === 'object' ? (opt.value || opt.label) : opt;
+            const imageUrl = question.optionMedia?.[label];
+            const isChecked = currentValues.includes(val);
+
+            return (
+              <label key={i} className="option-label" style={{
+                background: isChecked ? '#eff6ff' : 'white',
+                borderColor: isChecked ? '#3b82f6' : '#e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                padding: '10px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                ...(isHorizontal ? { flexShrink: 0 } : {})
+              }}>
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => handleCheckboxToggle(val)}
+                  disabled={isDisabled}
+                  style={{ accentColor: '#3b82f6', transform: 'scale(1.2)' }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                  {imageUrl && <img src={imageUrl} alt="" className="option-media-img" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />}
+                  <span style={{ fontSize: '13px', fontWeight: isChecked ? '700' : '500', color: '#1f2937' }}>{label}</span>
                 </div>
               </label>
             );
@@ -1620,6 +1898,66 @@ export default function TakeSurvey() {
       );
     }
 
+    if (question.type === 'textarea') {
+      return (
+        <textarea
+          value={value}
+          onChange={(e) => handleAnswerChange(qId, e.target.value)}
+          disabled={isDisabled}
+          className="answer-input"
+          placeholder="Enter your response"
+          style={{ minHeight: '120px', resize: 'vertical' }}
+        />
+      );
+    }
+
+    if (question.type === 'rating') {
+      const maxStars = parseInt(question.ratingLimit) || 5;
+      return (
+        <div style={{ display: 'flex', gap: '8px', fontSize: '24px' }}>
+          {[...Array(maxStars)].map((_, i) => {
+            const starValue = i + 1;
+            const isActive = value >= starValue;
+            return (
+              <span
+                key={i}
+                onClick={() => !isDisabled && handleAnswerChange(qId, starValue)}
+                style={{ cursor: isDisabled ? 'default' : 'pointer', color: isActive ? '#fbbf24' : '#d1d5db', transition: 'color 0.1s' }}
+              >
+                ★
+              </span>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (question.type === 'number') {
+      return (
+        <input type="number" value={value} onChange={(e) => handleAnswerChange(qId, e.target.value)} disabled={isDisabled} className="answer-input" placeholder="Enter number" />
+      );
+    }
+
+    if (question.type === 'email') {
+      return (
+        <input type="email" value={value} onChange={(e) => handleAnswerChange(qId, e.target.value)} disabled={isDisabled} className="answer-input" placeholder="Enter email" />
+      );
+    }
+
+    if (question.type === 'date') {
+      return (
+        <input type="date" value={value} onChange={(e) => handleAnswerChange(qId, e.target.value)} disabled={isDisabled} className="answer-input" />
+      );
+    }
+
+    if (question.type === 'pseudo-header') {
+      return (
+        <div style={{ padding: '8px', background: 'rgba(99, 102, 241, 0.05)', border: '1px dashed #6366f1', color: '#6366f1', fontSize: '11px', fontWeight: 'bold', textAlign: 'center', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Boundary Marker
+        </div>
+      );
+    }
+
     return (
       <input type="text" value={value} onChange={(e) => handleAnswerChange(qId, e.target.value)} disabled={isDisabled} className="answer-input" placeholder="Enter your answer" />
     );
@@ -1629,131 +1967,96 @@ export default function TakeSurvey() {
 
   return (
     <div className="take-survey-container">
-      <div className="survey-header-section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+      <div className="survey-header-section" style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'white', borderBottom: '1px solid #e5e7eb', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '10px' }}>
           <div className="survey-logo-wrapper" style={{ margin: 0, flex: '0 0 auto' }}>
-            <img src={survey?.branding?.logo || logo} alt="Logo" className="survey-logo" />
+            <img src={survey?.branding?.logo || logo} alt="Logo" className="survey-logo" style={{ maxHeight: '45px' }} />
           </div>
           <div style={{ flex: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', minWidth: '120px' }}>
-            <h1 style={{ margin: 0, fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 'bold', color: '#333', whiteSpace: 'nowrap' }}>{survey?.title || survey?.name || "MSR SURVEY"}</h1>
-            <img src="https://img.icons8.com/color/48/000000/marker.png" alt="Location" style={{ width: 'clamp(18px, 4vw, 22px)', height: 'clamp(18px, 4vw, 22px)' }} />
+            <h1 style={{ margin: 0, fontSize: 'clamp(15px, 3.5vw, 19px)', fontWeight: '800', color: '#111827', textAlign: 'center', lineHeight: '1.2' }}>{survey?.title || survey?.name || "MSR SURVEY"}</h1>
+            <img src="https://img.icons8.com/color/48/000000/marker.png" alt="Location" style={{ width: '20px', height: '20px' }} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '0 0 auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', padding: 'clamp(3px, 1vw, 5px) clamp(8px, 2vw, 15px)', borderRadius: '12px', border: '1px solid #dcfce7' }}>
-              <img src="https://img.icons8.com/color/48/000000/checklist.png" alt="Responses" style={{ width: 'clamp(18px, 4vw, 24px)', height: 'clamp(18px, 4vw, 24px)' }} />
-              <span style={{ fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 'bold', color: '#10b981' }}>{responseCount}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', padding: '4px 12px', borderRadius: '12px', border: '1px solid #dcfce7' }}>
+              <img src="https://img.icons8.com/color/48/000000/checklist.png" alt="Responses" style={{ width: '20px', height: '20px' }} />
+              <span style={{ fontSize: '18px', fontWeight: '800', color: '#10b981' }}>{responseCount}</span>
             </div>
             <button
               onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
               className="btn-secondary"
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: '4px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
+              style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               title="Logout"
             >
-              <img
-                src="https://img.icons8.com/material-outlined/32/000000/logout-rounded-left.png"
-                alt="Logout"
-                style={{ width: 'clamp(22px, 4vw, 28px)', height: 'clamp(22px, 4vw, 28px)' }}
-              />
+              <img src="https://img.icons8.com/material-outlined/32/000000/logout-rounded-left.png" alt="Logout" style={{ width: '24px', height: '24px' }} />
             </button>
           </div>
         </div>
+
       </div>
 
       <form onSubmit={handleSubmit} className="survey-form">
-        {!isHeaderLocked && (
-          <div className="question-block" style={{ border: '1.5px dashed #6366f1', background: '#f8f9ff', borderRadius: '12px', padding: '1rem 2rem', marginBottom: '0.75rem' }}>
-            <h2 style={{ color: '#4f46e5', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '16px' }}>⚙️ Batch Holding Setup</h2>
-            <div className="setup-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
-              <div className="setup-field">
-                <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px', fontSize: '12px' }}>Parliament</label>
-                <select className="answer-select" style={{ padding: '0.5rem', fontSize: '13px' }} value={wardBatch?.parliament} onChange={(e) => handleParlChange(e.target.value)}>
-                  <option value="">Select Parliament</option>
-                  {parliaments.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </div>
-              <div className="setup-field">
-                <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px', fontSize: '12px' }}>Municipality</label>
-                <select className="answer-select" style={{ padding: '0.5rem', fontSize: '13px' }} value={wardBatch?.municipality} onChange={(e) => setWardBatch(prev => ({ ...prev, municipality: e.target.value }))}>
-                  <option value="">Select Municipality</option>
-                  {municipalities.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </div>
-              <div className="setup-field">
-                <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px', fontSize: '12px' }}>Ward num</label>
-                <input type="text" className="answer-input" style={{ padding: '0.5rem', fontSize: '13px' }} placeholder="e.g. 15" value={wardBatch?.ward_num} onChange={(e) => setWardBatch(prev => ({ ...prev, ward_num: e.target.value }))} />
-              </div>
-              <div className="setup-field">
-                <label style={{ fontWeight: 600, display: 'block', marginBottom: '4px', fontSize: '12px' }}>Holding Limit</label>
-                <input
-                  type="number"
-                  className="answer-input"
-                  style={{ padding: '0.5rem', fontSize: '13px' }}
-                  placeholder="e.g. 20"
-                  value={wardBatch?.limit}
-                  onChange={(e) => setWardBatch(prev => ({ ...prev, limit: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-            </div>
-            <button type="button" className="btn-primary" style={{ width: '100%', padding: '0.75rem', fontSize: '14px' }} onClick={startBatch}>Confirm & Start Surveying</button>
-          </div>
-        )}
+        {getDisplayQuestions(survey?.questions).map((q, i) => {
+          const isDragging = draggedQuestionIndex === q.originalIndex;
 
-        {isHeaderLocked && (
-          <div className={`question-block header-group-block is-locked`} style={{ padding: '0.75rem 2rem', marginBottom: '0.75rem' }}>
-            {survey?.questions?.length >= 4 &&
-              survey?.questions[0].question.toLowerCase().includes('parliament') && (
-                <div className="lock-indicator-bar" style={{ padding: '0.5rem 0.75rem', marginBottom: '0.75rem', fontSize: '13px' }}>
-                  <span style={{ fontSize: '16px' }}>🔒</span>
-                  <div style={{ flex: 1 }}><div style={{ fontWeight: '700', color: '#92400e' }}>Location Locked</div></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.5)', padding: '2px 6px', borderRadius: '6px' }}>
-                      <span style={{ fontSize: '10px', color: '#92400e', fontWeight: '700' }}>Limit:</span>
-                      <input
-                        type="number"
-                        style={{ border: '1px solid #fbbf24', borderRadius: '4px', fontSize: '12px', padding: '0 4px', background: 'white', width: '40px', textAlign: 'center' }}
-                        value={wardBatch?.limit}
-                        onChange={(e) => updateBatchLimit(parseInt(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ background: '#fbbf24', color: '#92400e', padding: '2px 8px', borderRadius: '12px', fontWeight: 'bold', fontSize: '11px' }}>{wardBatch?.count} / {wardBatch?.limit}</span>
-                      <button type="button" onClick={() => { if (window.confirm("Reset batch?")) { localStorage.removeItem(`ward_batch_${surveyId}`); setupBatchAndAnswers(survey, initializeAnswers(survey)); } }} style={{ background: 'none', border: 'none', color: '#92400e', fontSize: '10px', textDecoration: 'underline', cursor: 'pointer', fontWeight: '600' }}>Reset</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-            {(survey?.questions?.length >= 4 &&
-              survey?.questions[0].question.toLowerCase().includes('parliament')) ? (
-              <div className="inline-fields-row" style={{ gap: '0.75rem' }}>
-                {survey?.questions?.slice(0, 3).map((q, i) => (
-                  <div key={q._id || q.id} className="inline-field">
-                    <label className="field-label-compact" style={{ fontSize: '11px', marginBottom: '4px' }}>{q.question}</label>
-                    {renderQuestion(q, i)}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        )}
-
-        {isHeaderLocked && survey?.questions?.slice((survey?.questions?.length >= 4 && survey?.questions[0].question.toLowerCase().includes('parliament')) ? 3 : 0).filter(q => q.displayInSurvey !== false).map((q, i) => {
-          const actualIndex = (survey?.questions?.length >= 4 && survey?.questions[0].question.toLowerCase().includes('parliament')) ? i + 4 : i + 1;
           return (
-            <div key={q._id || q.id} className="question-block full-width-block" style={{ padding: '1rem 2rem', marginBottom: '0.5rem' }}>
-              <div className="question-header" style={{ marginBottom: '0.5rem' }}>
-                <span className="question-number" style={{ fontSize: '11px' }}>Question {actualIndex}</span>
+            <div
+              key={q._id || q.id}
+              className={`question-block ${isReorderEnabled ? 'reorder-active' : ''}`}
+              style={{
+                padding: '1rem 2rem',
+                marginBottom: '0.5rem',
+                cursor: (isReorderEnabled && !hasSubmitted) ? 'move' : 'default',
+                border: isReorderEnabled ? '2px dashed #6366f1' : 'none',
+                opacity: isDragging ? 0.4 : 1,
+                transition: 'all 0.2s ease',
+                position: 'relative',
+                background: isReorderEnabled ? '#f8f9ff' : 'white',
+                flex: isReorderEnabled ? '1 1 45%' : '1 1 100%',
+                minWidth: isReorderEnabled ? '300px' : '100%',
+                boxSizing: 'border-box'
+              }}
+              draggable={isReorderEnabled && !hasSubmitted}
+              onDragStart={(e) => handleDragStart(e, q.originalIndex)}
+              onDragEnd={handleDragEnd}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, q.originalIndex)}
+              onDoubleClick={() => {
+                if (!hasSubmitted) {
+                  if (isReorderEnabled) saveNewOrder();
+                  setIsReorderEnabled(!isReorderEnabled);
+                }
+              }}
+            >
+              {isReorderEnabled && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    zIndex: 1,
+                    cursor: 'move',
+                    background: 'transparent'
+                  }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (!hasSubmitted) {
+                      saveNewOrder();
+                      setIsReorderEnabled(false);
+                    }
+                  }}
+                />
+              )}
+              <div className="question-header" style={{ marginBottom: '0.5rem', position: 'relative', zIndex: 2 }}>
+                <span className="question-number" style={{ fontSize: '11px' }}>
+                  Question {i + 1}
+                </span>
+                {isReorderEnabled && (
+                  <span style={{ float: 'right', fontSize: '10px', color: '#6366f1' }}>Double-click to save</span>
+                )}
               </div>
               <h3 className="question-text" style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{q.question}</h3>
-
 
               {q.mediaUrl && (
                 <div className="question-media" style={{ marginBottom: '1rem', textAlign: 'center', background: '#f9fafb', padding: '10px', borderRadius: '8px' }}>
@@ -1763,20 +2066,16 @@ export default function TakeSurvey() {
                 </div>
               )}
 
-              {renderQuestion(q, (survey?.questions?.length >= 4 && survey?.questions[0].question.toLowerCase().includes('parliament')) ? i + 3 : i)}
+              {renderQuestion(q, q.originalIndex)}
             </div>
           );
         })}
 
-        {isHeaderLocked && (
-          <div style={{ padding: '1rem 2rem' }}>
-            {!(survey?.questions?.length >= 4 && survey?.questions[0].question.toLowerCase().includes('parliament')) && (
-              <button type="submit" className="btn-primary" disabled={submitting} style={{ width: '100%', padding: '1rem', borderRadius: '12px', fontSize: '16px', fontWeight: '700' }}>
-                {submitting ? 'Submitting...' : 'Submit Survey'}
-              </button>
-            )}
-          </div>
-        )}
+        <div style={{ padding: '1rem 2rem' }}>
+          <button type="submit" className="btn-primary" disabled={submitting} style={{ width: '100%', padding: '1rem', borderRadius: '12px', fontSize: '16px', fontWeight: '700' }}>
+            {submitting ? 'Submitting...' : 'Submit Survey'}
+          </button>
+        </div>
 
         {submitting && (
           <div style={{ textAlign: 'center', padding: '0.5rem', color: '#6366f1', fontWeight: 'bold' }}>⌛ Submitting...</div>

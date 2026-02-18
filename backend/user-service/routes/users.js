@@ -189,6 +189,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
     console.log('User found:', user._id, user.roles);
 
     // Verify password
+    console.log('Verifying password...');
     const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) {
       console.log('Login failed: Password mismatch for user', user.email);
@@ -208,14 +209,17 @@ router.post('/login', validate(loginSchema), async (req, res) => {
     if (user.phoneNumber && user.role !== 'admin') {
       const currentDeviceId = (deviceId || '').toString().trim();
       const registeredId = (user.registeredDeviceId || '').toString().trim();
-      const sessionDeviceId = (user.activeSession?.deviceId || '').toString().trim();
+
+      // Safe access to activeSession
+      const activeSession = user.activeSession || {};
+      const sessionDeviceId = (activeSession.deviceId || '').toString().trim();
 
       console.log('🔐 Restriction Check:', {
         user: user.email,
         currentDeviceId,
         registeredId,
         sessionDeviceId,
-        hasSession: !!user.activeSession?.token
+        hasSession: !!activeSession.token
       });
 
       // 1. Hardware Match (Registered Device)
@@ -231,7 +235,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       }
 
       // 2. Session Match (Single Active Session)
-      if (user.activeSession?.token) {
+      if (activeSession.token) {
         if (currentDeviceId && sessionDeviceId && sessionDeviceId !== currentDeviceId) {
           console.log('🚫 BLOCK: Active session on different device');
           return res.status(403).json({
@@ -271,7 +275,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       }
     }
 
-
+    console.log('Generating token...');
 
     // Generate token
     const token = generateToken({
@@ -279,6 +283,8 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       email: user.email,
       role: user.role
     });
+
+    console.log('Updating active session...');
 
     // Update active session
     user.activeSession = {
@@ -288,7 +294,9 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       ipAddress: req.ip || req.connection.remoteAddress
     };
 
+    console.log('Saving user...');
     await user.save();
+    console.log('User saved successfully.');
 
     res.json({
       success: true,
@@ -307,12 +315,21 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login error details:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: error.message
+        }
+      });
+    }
     res.status(500).json({
       success: false,
       error: {
         code: 'INTERNAL_ERROR',
-        message: 'Failed to login'
+        message: 'Failed to login: ' + error.message
       }
     });
   }

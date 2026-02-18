@@ -30,14 +30,33 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+    const url = new URL(event.request.url);
+
+    // DISABLE SERVICE WORKER ON LOCALHOST / DEV
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+        return;
+    }
+
+    // Only handle GET requests
     if (event.request.method !== 'GET') return;
+
+    // CRITICAL: Skip internal Vite/HMR requests and WebSockets
+    if (
+        url.search.includes('v=') ||
+        url.search.includes('t=') ||
+        url.pathname.includes('@vite') ||
+        url.pathname.includes('node_modules') ||
+        event.request.headers.get('Upgrade') === 'websocket'
+    ) {
+        return;
+    }
 
     // Skip cross-origin requests except for CDNs we might use (like fonts)
     if (!event.request.url.startsWith(self.location.origin) && !event.request.url.includes('fonts.googleapis.com')) {
         return;
     }
 
-    // Define strategy: Network first, then fall back to cache
+    // Define strategy: Network first (with cache update), then fall back to cache
     event.respondWith(
         fetch(event.request)
             .then((response) => {
@@ -50,17 +69,23 @@ self.addEventListener('fetch', (event) => {
                 }
                 return response;
             })
-            .catch(() => {
+            .catch(async (error) => {
                 // If network fails, try the cache
-                return caches.match(event.request).then((cachedResponse) => {
+                try {
+                    const cachedResponse = await caches.match(event.request);
                     if (cachedResponse) return cachedResponse;
 
-                    // CRITICAL: For page navigation, always fall back to index.html 
-                    // to let React Router handle the route offline
+                    // For page navigation, fall back to index.html (SPA logic)
                     if (event.request.mode === 'navigate' || (event.request.headers.get('accept') || '').includes('text/html')) {
-                        return caches.match('/') || caches.match('/index.html');
+                        const indexHtml = await caches.match('/') || await caches.match('/index.html');
+                        if (indexHtml) return indexHtml;
                     }
-                });
+                } catch (e) {
+                    console.error('Cache match failed:', e);
+                }
+
+                // If everything fails, re-throw or return a network error
+                throw error;
             })
     );
 });
