@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Survey = require('../models/Survey');
 const { authMiddleware } = require('../../shared/auth');
 
@@ -10,12 +11,10 @@ router.post('/', authMiddleware, async (req, res) => {
     console.log('User:', req.user);
 
     const survey = new Survey({
-      title: req.body.title,
-      description: req.body.description,
-      category: req.body.category,
-      questions: req.body.questions,
+      ...req.body,
+      title: req.body.name || req.body.title, // Support both
       createdBy: req.user.id,
-      status: 'draft'
+      status: req.body.status || 'draft'
     });
 
     await survey.save();
@@ -52,22 +51,21 @@ router.get('/', authMiddleware, async (req, res) => {
     const { status, category, page = 1, limit = 20 } = req.query;
 
     const query = {};
-    if (status) query.status = status;
+
+    if (status) {
+      // Normalize: 'Published' maps to 'active' in the DB
+      const normalizedStatus = (status === 'Published') ? 'active' : status;
+      query.status = normalizedStatus;
+    }
     if (category) query.category = category;
 
-    // Non-admin users can see:
-    // 1. All active/published surveys (public)
-    // 2. Only their own draft/closed/archived surveys
+    // Non-admin users can only see published (active) surveys
     if (req.user.role !== 'admin') {
-      query.$or = [
-        { status: 'active' },  // Public active surveys
-        { createdBy: req.user.id }  // Their own surveys
-      ];
+      query.status = 'active'; // Force only published surveys for non-admins, regardless of query param
     }
 
     const skip = (page - 1) * limit;
     const surveys = await Survey.find(query)
-      .select('-questions')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -98,6 +96,7 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -109,9 +108,15 @@ router.get('/:id', async (req, res) => {
     if (isValidId) {
       survey = await Survey.findById(id);
     } else {
-      // If it's a numeric ID like '1', try searching by a custom field if we had one, 
-      // but for now just return 404 as it won't be in the DB
-      survey = await Survey.findOne({ _id: id }).catch(() => null);
+      // Try searching by name/title (slug matching)
+      // Convert slug back to a search pattern (case insensitive)
+      const slugPattern = new RegExp('^' + id.replace(/-/g, '[\\s-]') + '$', 'i');
+      survey = await Survey.findOne({
+        $or: [
+          { name: slugPattern },
+          { title: slugPattern }
+        ]
+      });
     }
 
     if (!survey) {
@@ -297,6 +302,37 @@ router.post('/:id/publish', authMiddleware, async (req, res) => {
         code: 'INTERNAL_ERROR',
         message: error.message || 'Failed to publish survey'
       }
+    });
+  }
+});
+
+// Unpublish a survey (admin only)
+router.post('/:id/unpublish', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: { code: 'FORBIDDEN', message: 'Only admins can unpublish surveys' }
+      });
+    }
+
+    const survey = await Survey.findById(req.params.id);
+    if (!survey) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Survey not found' }
+      });
+    }
+
+    survey.status = 'UnPublished';
+    await survey.save();
+
+    res.json({ success: true, data: survey });
+  } catch (error) {
+    console.error('Unpublish survey error:', error);
+    res.status(500).json({
+      success: false,
+      error: { code: 'INTERNAL_ERROR', message: error.message || 'Failed to unpublish survey' }
     });
   }
 });

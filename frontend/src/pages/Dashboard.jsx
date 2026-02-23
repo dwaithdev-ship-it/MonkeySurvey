@@ -64,10 +64,10 @@ const Dashboard = () => {
   const getMostRecentSurveyId = () => {
     const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
     if (localSurveys.length > 0) {
-      // Assuming the first one is the most recent (sorted by date desc in SurveyView)
-      return localSurveys[0].id || 1;
+      // Prefer MongoDB _id, fallback to id, then to the Prajābhiprāya official Id
+      return localSurveys[0]._id || localSurveys[0].id || '6997e719071aea1670643e21';
     }
-    return 1;
+    return '6997e719071aea1670643e21';
   };
 
   useEffect(() => {
@@ -75,9 +75,9 @@ const Dashboard = () => {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        // Redirect non-admins to the most recent survey page
+        // Redirect non-admins to the published survey page
         if (parsedUser.role !== 'admin') {
-          navigate(`/take-survey/${getMostRecentSurveyId()}`);
+          navigate('/survey-redirect');
           return;
         }
         setUser(parsedUser);

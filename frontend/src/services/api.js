@@ -183,6 +183,8 @@ export const surveyAPI = {
   update: (id, data) => api.put(`/surveys/${id}`, data),
   delete: (id) => api.delete(`/surveys/${id}`),
   publish: (id) => api.post(`/surveys/${id}/publish`),
+  unpublish: (id) => api.post(`/surveys/${id}/unpublish`),
+  getPublished: () => api.get('/surveys', { params: { status: 'Published' } }),
   getTemplates: (params) => api.get('/surveys/templates', { params }),
 };
 
@@ -197,6 +199,10 @@ export const responseAPI = {
 export const parlConsAPI = {
   getParliaments: () => api.get('/parl-cons/parliaments'),
   getMunicipalities: (parlName) => api.get(`/parl-cons/municipalities/${parlName}`),
+  // New hierarchy support
+  getHierarchyParliaments: () => api.get('/parl-cons/hierarchy/parliaments'),
+  getAssemblies: (parl) => api.get(`/parl-cons/hierarchy/assemblies/${parl}`),
+  getMandals: (parl, assembly) => api.get(`/parl-cons/hierarchy/mandals/${parl}/${assembly}`),
 };
 
 export default api;

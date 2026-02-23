@@ -70,6 +70,24 @@ export default function TakeSurvey() {
   };
 
   const fetchParliaments = async () => {
+    // Specific logic for New Survey
+    if (surveyId === '6997e719071aea1670643e21') {
+      try {
+        const res = await parlConsAPI.getHierarchyParliaments();
+        if (res.success) {
+          const newOptions = res.data.map(p => ({ label: p, value: p }));
+          setSurvey(prev => {
+            if (!prev || !prev.questions || prev.questions.length === 0) return prev;
+            const updatedQs = [...prev.questions];
+            // Force update Q1 for this survey
+            updatedQs[0] = { ...updatedQs[0], options: newOptions };
+            return { ...prev, questions: updatedQs };
+          });
+        }
+      } catch (e) { console.error("Failed to fetch hierarchy parliaments", e); }
+      return;
+    }
+
     try {
       const res = await parlConsAPI.getParliaments();
       if (res.success && res.data && res.data.length > 0) {
@@ -139,6 +157,50 @@ export default function TakeSurvey() {
         });
         return data;
       }
+    }
+    return [];
+  };
+
+  const fetchAssemblies = async (parl) => {
+    try {
+      const res = await parlConsAPI.getAssemblies(parl);
+      if (res.success) {
+        const newOptions = res.data.map(m => ({ label: m, value: m }));
+        setSurvey(prev => {
+          if (!prev) return prev;
+          const updatedQs = [...prev.questions];
+          const q2Index = updatedQs.findIndex(q => q.dataSource?.field === 'assembly');
+          if (q2Index !== -1) {
+            updatedQs[q2Index] = { ...updatedQs[q2Index], options: newOptions };
+          }
+          return { ...prev, questions: updatedQs };
+        });
+        return res.data;
+      }
+    } catch (err) {
+      console.error("Failed to fetch assemblies", err);
+    }
+    return [];
+  };
+
+  const fetchMandals = async (parl, assembly) => {
+    try {
+      const res = await parlConsAPI.getMandals(parl, assembly);
+      if (res.success) {
+        const newOptions = res.data.map(m => ({ label: m, value: m }));
+        setSurvey(prev => {
+          if (!prev) return prev;
+          const updatedQs = [...prev.questions];
+          const q3Index = updatedQs.findIndex(q => q.dataSource?.field === 'mandal');
+          if (q3Index !== -1) {
+            updatedQs[q3Index] = { ...updatedQs[q3Index], options: newOptions };
+          }
+          return { ...prev, questions: updatedQs };
+        });
+        return res.data;
+      }
+    } catch (err) {
+      console.error("Failed to fetch mandals", err);
     }
     return [];
   };
@@ -237,10 +299,15 @@ export default function TakeSurvey() {
   const adaptSurveyData = (source, id) => {
     if (!source) return null;
     return {
-      _id: source._id || source.id || id,
+      _id: source._id || source.id, // Prefer _id from DB
       title: source.name || source.title,
       description: source.description,
       branding: source.branding,
+      welcomeImageData: source.welcomeImageData,
+      thankYouImageData: source.thankYouImageData,
+      headerText: source.headerText,
+      theme: source.theme, // Also include theme as it was in the builder
+      multipleSubmissions: source.multipleSubmissions,
       questions: (source.questions || []).map((q, idx) => ({
         _id: q.id || q._id || `q-${idx}`,
         question: q.title || q.displayTitle || q.question,
@@ -259,6 +326,8 @@ export default function TakeSurvey() {
         displayTitle: q.displayTitle || q.title,
         isOtherTextOptional: q.isOtherTextOptional || false,
         originalType: q.type,
+        headingAlignment: q.headingAlignment || 'start',
+        isBold: q.isBold || false,
         nsecHouseholdTitle: q.nsecHouseholdTitle,
         nsecAgricultureTitle: q.nsecAgricultureTitle,
         nsecEducationTitle: q.nsecEducationTitle,
@@ -269,7 +338,9 @@ export default function TakeSurvey() {
         ruralEducationTitle: q.ruralEducationTitle,
         cascadeLevels: q.cascadeLevels || [],
         cascadeQuestionType: q.cascadeQuestionType || 'Dropdown',
-        cascadeDataSource: q.cascadeDataSource
+        cascadeDataSource: q.cascadeDataSource,
+        dataSource: q.dataSource,
+        width: q.width || '100%'
       }))
     };
   };
@@ -377,6 +448,7 @@ export default function TakeSurvey() {
     if (t.includes('signature')) return 'signature';
     if (t.includes('date')) return 'date';
     if (t.includes('email')) return 'email';
+    if (t === 'line' || t.includes('line drawing')) return 'line';
     if (t === 'pseudo-header' || t === 'pseudo header' || t.includes('pseudo-header') || t.includes('pseudo header') || t.includes('boundary')) return 'pseudo-header';
     return 'text';
   };
@@ -538,74 +610,267 @@ export default function TakeSurvey() {
     localStorage.setItem(`ward_batch_${surveyId}`, JSON.stringify(updatedBatch));
   };
 
-  const handleAnswerChange = (questionId, value) => {
+  const handleAnswerChange = async (questionId, value) => {
     const qIndex = survey?.questions?.findIndex(q => (q._id || q.id) === questionId);
     if (qIndex === -1) return;
 
     const q = survey.questions[qIndex];
+
+    // Legacy locking logic
     const headerIndices = getHeaderIndices(survey.questions);
     const isPseudo = headerIndices.length > 0;
     const isStandard = !isPseudo && survey?.questions?.length >= 4 &&
       survey?.questions?.[0]?.question?.toLowerCase().includes('parliament') &&
       survey?.questions?.[1]?.question?.toLowerCase().includes('municipality');
 
-    // Only lock if it's actually part of the header block and we are locked
     if (isHeaderLocked) {
       if (isPseudo && headerIndices.includes(qIndex)) return;
       if (isStandard && qIndex < 3) return;
     }
 
     const newAnswers = { ...answers, [questionId]: value };
-    setAnswers(newAnswers);
 
-    // Auto-fetch municipalities if this is a Parliament dropdown
-    if (q.question.toLowerCase().includes('parliament') && value) {
-      fetchMunis(value);
+    // Clear dependent answers
+    if (q.dataSource?.field === 'parliament') {
+      const assemblyQ = survey.questions.find(qu => qu.dataSource?.field === 'assembly');
+      if (assemblyQ) newAnswers[assemblyQ._id || assemblyQ.id] = '';
+      const mandalQ = survey.questions.find(qu => qu.dataSource?.field === 'mandal');
+      if (mandalQ) newAnswers[mandalQ._id || mandalQ.id] = '';
+    }
+    if (q.dataSource?.field === 'assembly') {
+      const mandalQ = survey.questions.find(qu => qu.dataSource?.field === 'mandal');
+      if (mandalQ) newAnswers[mandalQ._id || mandalQ.id] = '';
     }
 
-    // Auto-submit if it's the question immediately following the standard 3-question header
-    if (isStandard && qIndex === 3) {
-      performSubmit(newAnswers);
+    setAnswers(newAnswers);
+
+    // Dynamic Fetch Logic
+    if (value) {
+      if (q.dataSource?.field === 'parliament') {
+        await fetchAssemblies(value);
+      } else if (q.dataSource?.field === 'assembly') {
+        const parlQ = survey.questions.find(qu => qu.dataSource?.field === 'parliament');
+        const parlVal = parlQ ? newAnswers[parlQ._id || parlQ.id] : '';
+        if (parlVal) {
+          await fetchMandals(parlVal, value);
+        }
+      }
+    }
+
+    // Auto-fetch municipalities for legacy
+    if (q.question.toLowerCase().includes('parliament') && value && !q.dataSource) {
+      fetchMunis(value);
     }
   };
 
   const handleSubmit = (e) => {
     if (e) e.preventDefault();
+    console.log("handleSubmit called. Current submitting state:", submitting);
     performSubmit(answers);
   };
 
   const performSubmit = async (currentAnswers) => {
     if (submitting) return;
+    console.log("Submit initiated with answers:", currentAnswers);
+
+    // Check for duplicate submission
+    const canSubmitMultiple = survey?.settings?.multipleSubmissions !== false && survey?.multipleSubmissions !== false;
+
+    if (!canSubmitMultiple && responseCount > 0) {
+      alert("You have already submitted this survey. Multiple submissions are disabled for this survey.");
+      console.log("Blocking submission due to multipleSubmissions restriction");
+      return;
+    }
+    console.log("Passing multiple submissions check");
+
+    // VALIDATION — runs outside try/catch so return properly exits performSubmit
+    {
+      const allQuestions = getDisplayQuestions(survey?.questions);
+      const missing = allQuestions.filter(q => {
+        const t = String(q.type || '').toLowerCase();
+        const origT = String(q.originalType || '').toLowerCase();
+        const qText = String(q.question || '').trim();
+        const qId = q._id || q.id;
+
+        // Skip validation for headings/text-blocks/HTML
+        if (['text-block', 'html', 'expression', 'image', 'pseudo-header', 'line'].includes(t)) return false;
+        if (['heading', 'html', 'expression', 'image', 'text block'].includes(origT)) return false;
+
+        // Explicitly skip user-reported headings
+        if (qText.includes('ప్రజాభిప్రాయ సేకరణ') || qText === 'ప్రశ్నావళి') return false;
+
+        // Validation for required questions
+        if (q.required) {
+          // Visibility Check
+          if (q.visibleIf) {
+            const { questionId, operator, value } = q.visibleIf;
+            const depVal = currentAnswers[questionId];
+            if (operator === 'equals' && depVal !== value) return false;
+          }
+
+          // COMPLEX TYPE VALIDATION
+
+          // 1. Grid Types (Radio, Checkbox, Dropdown, Number, Text, NPS)
+          // For grids, we generally expect at least one row answered, or ALL rows if strict?
+          // Usually in surveys, required grid means ALL rows must be answered.
+          if (t.includes('grid')) {
+            const rows = q.rowOptions || [];
+            if (!rows.length) return false; // No rows to answer
+
+            // Check if every row has an answer
+            // Radio/NPS/Dropdown grids: one answer per row
+            // Checkbox grid: at least one check per row? (Usually yes)
+            const allRowsAnswered = rows.every((row, i) => {
+              // Iterate columns to see if any key exists?
+              // Actually, looking at render:
+              // Radio/NPS/Single-Choice Grids: key is `${qId}_${i}`
+              // Checkbox/Text/Number/Dropdown Grids: key is `${qId}_${i}_${j}` (for each col)
+
+              if (t === 'radio-grid' || t === 'nps-grid') {
+                // Key is `${qId}_${i}`
+                const rowVal = currentAnswers[`${qId}_${i}`];
+                return rowVal !== undefined && rowVal !== null && rowVal !== '';
+              }
+
+              // For Cell-based grids (Checkbox, Number, Text, Dropdown)
+              // We need to check if AT LEAST ONE cell in the row is filled? Or ALL?
+              // Usually for checkbox grid, at least one per row is not strictly enforced unless specified.
+              // For Number/Text/Dropdown grid, usually ALL cells? Or at least one?
+              // Let's assume for now that if it's required, at least one cell in the row must be filled.
+              const cols = q.columnOptions || [];
+              const hasRowAnswer = cols.some((col, j) => {
+                const cellKey = `${qId}_${i}_${j}`;
+                const cellVal = currentAnswers[cellKey];
+                return cellVal !== undefined && cellVal !== null && cellVal !== '';
+              });
+              return hasRowAnswer;
+            });
+            return !allRowsAnswered;
+          }
+
+          // 2. NSEC Type
+          if (t === 'nsec') {
+            // Check sub-keys: household, agri, edu
+            // Usually all parts required?
+            const hasHousehold = (currentAnswers[`${qId}_household`] || []).length > 0;
+            const hasAgri = !!currentAnswers[`${qId}_agri`];
+            const hasEdu = !!currentAnswers[`${qId}_edu`];
+            return !(hasHousehold && hasAgri && hasEdu);
+          }
+
+          // 3. Rural SEC Type
+          if (t === 'rural sec') {
+            const hasWall = !!currentAnswers[`${qId}_wall`];
+            const hasRoof = !!currentAnswers[`${qId}_roof`];
+            const hasEdu = !!currentAnswers[`${qId}_edu`];
+            return !(hasWall && hasRoof && hasEdu);
+          }
+
+          // 4. Cascade Type
+          if (t === 'cascade') {
+            // Assuming the main qId holds the array of selections
+            const cascadeVals = currentAnswers[qId];
+            return !(Array.isArray(cascadeVals) && cascadeVals.length > 0 && cascadeVals[0]);
+          }
+
+          // 5. Standard Types (Text, Radio, Checkbox, Dropdown, etc.)
+          const val = currentAnswers[qId];
+          // Check if value is present 
+          if (val === undefined || val === null || val === '') return true;
+          if (val === 0 || val === false) return false;
+          if (Array.isArray(val) && val.length === 0) return true;
+        }
+        return false;
+      });
+
+      if (missing.length > 0) {
+        console.warn("Validation failed. Missing required questions:", missing.map(q => q.question || q.id));
+        alert(`Please answer the following required questions:\n${missing.map(q => "- " + String(q.question || q.text || "Q" + (allQuestions.indexOf(q) + 1))).join('\n')}`);
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const userName = storedUser.name || storedUser.firstName || 'Anonymous';
+      const userName = storedUser.phoneNumber || storedUser.name || storedUser.firstName || 'Anonymous';
       const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
       const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
       const q3Id = survey?.questions?.[2]?._id || survey?.questions?.[2]?.id;
 
-      // Specifically target the "Ward Councilor" question for Question_1 storage (for records table)
-      const targetQuestionText = "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?";
-      const wardCouncilorQuestion = survey?.questions?.find(q => q.question === targetQuestionText) || survey?.questions?.[3];
-      const wardCouncilorId = wardCouncilorQuestion?._id || wardCouncilorQuestion?.id;
-      let question1Value = currentAnswers[wardCouncilorId] || '';
-      if (Array.isArray(question1Value)) question1Value = question1Value.join(', ');
+      if (!survey?._id) {
+        alert("System Error: Survey ID not found. Please refresh and try again.");
+        return;
+      }
+
+      // Construct payload
+      const sId = (survey._id || survey.id || surveyId).toString();
+
+      // Normalize answers: Iterate through survey.questions to ensure fixed order and 1-to-1 mapping
+      const normalizedAnswers = (survey.questions || []).map(q => {
+        const qId = q._id || q.id;
+        const type = (q.type || '').toLowerCase();
+        let val = currentAnswers[qId];
+
+        // Group multi-part answers into single objects (stable indices)
+        if (type.includes('grid')) {
+          const rows = q.rowOptions || [];
+          const cols = q.columnOptions || [];
+          const gridVal = {};
+
+          if (type === 'radio-grid' || type === 'nps-grid') {
+            rows.forEach((r, rowIdx) => {
+              const rowKey = `${qId}_${rowIdx}`;
+              if (currentAnswers[rowKey] !== undefined) gridVal[rowIdx] = currentAnswers[rowKey];
+            });
+          } else {
+            rows.forEach((r, rowIdx) => {
+              cols.forEach((c, colIdx) => {
+                const cellKey = `${qId}_${rowIdx}_${colIdx}`;
+                if (currentAnswers[cellKey] !== undefined) {
+                  if (!gridVal[rowIdx]) gridVal[rowIdx] = {};
+                  gridVal[rowIdx][colIdx] = currentAnswers[cellKey];
+                }
+              });
+            });
+          }
+          if (Object.keys(gridVal).length > 0) val = gridVal;
+        } else if (type === 'sec' || type === 'nsec' || type === 'rural sec') {
+          const secVal = {};
+          ['occ', 'edu', 'household', 'agri', 'wall', 'roof'].forEach(suff => {
+            const k = `${qId}_${suff}`;
+            if (currentAnswers[k] !== undefined) secVal[suff] = currentAnswers[k];
+          });
+          if (Object.keys(secVal).length > 0) val = secVal;
+        }
+
+        return {
+          questionId: qId,
+          value: val !== undefined ? val : ""
+        };
+      });
 
       const payload = {
-        surveyId: survey?._id || surveyId,
+        surveyId: sId,
+        userId: storedUser?._id || storedUser?.id, // Send userId if logged in
         userName,
         parliament: currentAnswers[q1Id] || '',
         municipality: currentAnswers[q2Id] || '',
         ward_num: currentAnswers[q3Id] || '',
-        Question_1_title: targetQuestionText,
-        Question_1_answer: question1Value,
-        Question_1: question1Value,
         location,
-        answers: Object.entries(currentAnswers).map(([qId, val]) => ({ questionId: qId, value: val }))
+        answers: normalizedAnswers,
+
+        // Pass metadata
+        userAgent: navigator.userAgent,
+        submittedAt: new Date().toISOString()
       };
 
+      console.log("Submitting payload:", payload);
       const response = await responseAPI.submit(payload);
+      console.log("Response from server:", response);
+
       if (response.success) {
+        // Handle Batch Logic (Legacy)
         const currentBatch = JSON.parse(localStorage.getItem(`ward_batch_${surveyId}`) || 'null');
         if (currentBatch) {
           const newCount = (currentBatch.count || 0) + 1;
@@ -624,110 +889,62 @@ export default function TakeSurvey() {
         setIsReorderEnabled(false);
         alert('Survey submitted successfully!');
 
-        // RE-INITIALIZE with locked values
+        // RE-INITIALIZE 
         const freshAnswers = initializeAnswers(survey);
-        const activeBatch = localStorage.getItem(`ward_batch_${surveyId}`);
-        if (activeBatch) {
-          const batch = JSON.parse(activeBatch);
-          setAnswers({
-            ...freshAnswers,
-            [q1Id]: batch.parliament,
-            [q2Id]: batch.municipality,
-            [q3Id]: batch.ward_num
-          });
-        } else {
-          setAnswers(freshAnswers);
-          setupBatchAndAnswers(survey, freshAnswers);
-        }
-
-        window.scrollTo(0, 0);
-      }
-    } catch (err) {
-      console.warn('Submission failed, checking for offline mode:', err);
-
-      // If network error OR offline, queue it
-      const isNetworkError =
-        !navigator.onLine ||
-        err === 'Network Error' ||
-        err?.message === 'Network Error' ||
-        (typeof err === 'string' && err.includes('Network Error')) ||
-        err?.code === 'ERR_NETWORK';
-
-      if (isNetworkError) {
-        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
-        const userName = storedUser.name || storedUser.firstName || 'Anonymous';
-        const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
-        const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
-        const q3Id = survey?.questions?.[2]?._id || survey?.questions?.[2]?.id;
-
-        const targetQuestionText = "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?";
-        const wardCouncilorQuestion = survey?.questions?.find(q => q.question === targetQuestionText) || survey?.questions?.[3];
-        const wardCouncilorId = wardCouncilorQuestion?._id || wardCouncilorQuestion?.id;
-        let question1Value = currentAnswers[wardCouncilorId] || '';
-        if (Array.isArray(question1Value)) question1Value = question1Value.join(', ');
-
-        const payload = {
-          surveyId: survey?._id || surveyId,
-          userName,
-          parliament: currentAnswers[q1Id] || '',
-          municipality: currentAnswers[q2Id] || '',
-          ward_num: currentAnswers[q3Id] || '',
-          Question_1_title: targetQuestionText,
-          Question_1_answer: question1Value,
-          Question_1: question1Value,
-          location,
-          answers: Object.entries(currentAnswers).map(([qId, val]) => ({ questionId: qId, value: val }))
-        };
-
-        offlineSync.queueResponse(payload);
-
-        // Proceed with local batch logic as if it succeeded
-        const currentBatch = JSON.parse(localStorage.getItem(`ward_batch_${surveyId}`) || 'null');
-        if (currentBatch) {
-          const newCount = (currentBatch.count || 0) + 1;
-          if (newCount > currentBatch.limit) {
-            localStorage.removeItem(`ward_batch_${surveyId}`);
-            setIsHeaderLocked(false);
-          } else {
-            const updatedBatch = { ...currentBatch, count: newCount };
-            localStorage.setItem(`ward_batch_${surveyId}`, JSON.stringify(updatedBatch));
-            setWardBatch(updatedBatch);
-          }
-        }
-
-        setResponseCount(prev => prev + 1);
-        setHasSubmitted(true);
-        setIsReorderEnabled(false);
-        alert('Survey saved locally (Offline). It will be synced when internet is restored.');
-
-        // RE-INITIALIZE with locked values
-        const freshAnswers = initializeAnswers(survey);
+        // If we have an active batch, restore header values
         const activeBatch = localStorage.getItem(`ward_batch_${surveyId}`);
         if (activeBatch) {
           const batch = JSON.parse(activeBatch);
           const headerIndices = getHeaderIndices(survey.questions);
           const isPseudo = headerIndices.length > 0;
-
           if (isPseudo) {
-            setAnswers({
-              ...freshAnswers,
-              ...(batch.headerAnswers || {})
-            });
+            setAnswers({ ...freshAnswers, ...(batch.headerAnswers || {}) });
           } else {
-            const q1Id = survey?.questions?.[0]?._id || survey?.questions?.[0]?.id;
-            const q2Id = survey?.questions?.[1]?._id || survey?.questions?.[1]?.id;
-            const q3Id = survey?.questions?.[2]?._id || survey?.questions?.[2]?.id;
             setAnswers({
               ...freshAnswers,
-              [q1Id]: batch.parliament,
-              [q2Id]: batch.municipality,
-              [q3Id]: batch.ward_num
+              [q1Id]: batch.parliament || '',
+              [q2Id]: batch.municipality || '',
+              [q3Id]: batch.ward_num || ''
             });
           }
         } else {
           setAnswers(freshAnswers);
           setupBatchAndAnswers(survey, freshAnswers);
         }
+        window.scrollTo(0, 0);
+      } else {
+        const errorMsg = response.error?.message || response.message || 'Unknown server error';
+        console.error('Submission failed:', errorMsg);
+        alert(`Submission failed: ${errorMsg}`);
+        setError(`Submission failed: ${errorMsg}`);
+      }
+    } catch (err) {
+      console.warn('Submission failed, queueing offline if needed:', err);
+
+      // Offline fallback logic
+      const isNetworkError = !navigator.onLine || err?.message === 'Network Error' || (typeof err === 'string' && err.includes('Network Error'));
+
+      if (isNetworkError) {
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const userName = storedUser.phoneNumber || storedUser.name || 'Anonymous';
+
+        const payload = {
+          surveyId: survey?._id || surveyId,
+          userId: storedUser?._id || storedUser?.id,
+          userName,
+          location,
+          answers: Object.entries(currentAnswers).map(([qId, val]) => ({ questionId: qId, value: val })),
+          userAgent: navigator.userAgent,
+          submittedAt: new Date().toISOString()
+        };
+
+        offlineSync.queueResponse(payload);
+        setResponseCount(prev => prev + 1);
+        setHasSubmitted(true);
+        alert('Survey saved locally (Offline). Sync will occur when online.');
+
+        const freshAnswers = initializeAnswers(survey);
+        setAnswers(freshAnswers);
         window.scrollTo(0, 0);
         return;
       }
@@ -1950,6 +2167,26 @@ export default function TakeSurvey() {
       );
     }
 
+    if (question.type === 'line') {
+      const weight = question.isBold ? '5px' : '2px';
+      return (
+        <div style={{ width: '100%' }}>
+          <hr style={{ border: 'none', borderTop: `${weight} solid #e5e7eb`, margin: '1rem 0 0.5rem 0' }} />
+          {!(question.question === 'Type your question here....' || !question.question) && (
+            <h3 className="question-text" style={{
+              fontSize: '1.1rem',
+              marginBottom: '1rem',
+              textAlign: question.headingAlignment || 'start',
+              width: '100%',
+              display: 'block'
+            }}>
+              {question.question}
+            </h3>
+          )}
+        </div>
+      );
+    }
+
     if (question.type === 'pseudo-header') {
       return (
         <div style={{ padding: '8px', background: 'rgba(99, 102, 241, 0.05)', border: '1px dashed #6366f1', color: '#6366f1', fontSize: '11px', fontWeight: 'bold', textAlign: 'center', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -1995,81 +2232,107 @@ export default function TakeSurvey() {
       </div>
 
       <form onSubmit={handleSubmit} className="survey-form">
-        {getDisplayQuestions(survey?.questions).map((q, i) => {
-          const isDragging = draggedQuestionIndex === q.originalIndex;
+        {survey?.welcomeImageData && (
+          <div className="welcome-image-container" style={{ textAlign: 'center', marginBottom: '1.5rem', padding: '10px' }}>
+            <img src={survey.welcomeImageData} alt="Welcome" style={{ maxWidth: '100%', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+          </div>
+        )}
+        <div className="questions-flex-container" style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}>
+          {getDisplayQuestions(survey?.questions).map((q, i) => {
+            const isDragging = draggedQuestionIndex === q.originalIndex;
 
-          return (
-            <div
-              key={q._id || q.id}
-              className={`question-block ${isReorderEnabled ? 'reorder-active' : ''}`}
-              style={{
-                padding: '1rem 2rem',
-                marginBottom: '0.5rem',
-                cursor: (isReorderEnabled && !hasSubmitted) ? 'move' : 'default',
-                border: isReorderEnabled ? '2px dashed #6366f1' : 'none',
-                opacity: isDragging ? 0.4 : 1,
-                transition: 'all 0.2s ease',
-                position: 'relative',
-                background: isReorderEnabled ? '#f8f9ff' : 'white',
-                flex: isReorderEnabled ? '1 1 45%' : '1 1 100%',
-                minWidth: isReorderEnabled ? '300px' : '100%',
-                boxSizing: 'border-box'
-              }}
-              draggable={isReorderEnabled && !hasSubmitted}
-              onDragStart={(e) => handleDragStart(e, q.originalIndex)}
-              onDragEnd={handleDragEnd}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, q.originalIndex)}
-              onDoubleClick={() => {
-                if (!hasSubmitted) {
-                  if (isReorderEnabled) saveNewOrder();
-                  setIsReorderEnabled(!isReorderEnabled);
-                }
-              }}
-            >
-              {isReorderEnabled && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex: 1,
-                    cursor: 'move',
-                    background: 'transparent'
-                  }}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    if (!hasSubmitted) {
-                      saveNewOrder();
-                      setIsReorderEnabled(false);
-                    }
-                  }}
-                />
-              )}
-              <div className="question-header" style={{ marginBottom: '0.5rem', position: 'relative', zIndex: 2 }}>
-                <span className="question-number" style={{ fontSize: '11px' }}>
-                  Question {i + 1}
-                </span>
+            return (
+              <div
+                key={q._id || q.id}
+                className={`question-block ${isReorderEnabled ? 'reorder-active' : ''}`}
+                style={{
+                  padding: '1rem 2rem',
+                  marginBottom: '0.5rem',
+                  cursor: (isReorderEnabled && !hasSubmitted) ? 'move' : 'default',
+                  border: isReorderEnabled ? '2px dashed #6366f1' : 'none',
+                  opacity: isDragging ? 0.4 : 1,
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  background: isReorderEnabled ? '#f8f9ff' : 'white',
+                  flex: isReorderEnabled ? '0 0 48%' : `0 0 ${q.width || '100%'}`,
+                  width: isReorderEnabled ? '48%' : (q.width || '100%'),
+                  minWidth: isReorderEnabled ? '300px' : 'none',
+                  boxSizing: 'border-box'
+                }}
+                draggable={isReorderEnabled && !hasSubmitted}
+                onDragStart={(e) => handleDragStart(e, q.originalIndex)}
+                onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, q.originalIndex)}
+                onDoubleClick={() => {
+                  if (!hasSubmitted) {
+                    if (isReorderEnabled) saveNewOrder();
+                    setIsReorderEnabled(!isReorderEnabled);
+                  }
+                }}
+              >
                 {isReorderEnabled && (
-                  <span style={{ float: 'right', fontSize: '10px', color: '#6366f1' }}>Double-click to save</span>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      zIndex: 1,
+                      cursor: 'move',
+                      background: 'transparent'
+                    }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      if (!hasSubmitted) {
+                        saveNewOrder();
+                        setIsReorderEnabled(false);
+                      }
+                    }}
+                  />
                 )}
+                {!isReorderEnabled && q.type === 'line' ? null : (
+                  <div className="question-header" style={{ marginBottom: '0.5rem', position: 'relative', zIndex: 2 }}>
+                    <span className="question-number" style={{ fontSize: '11px' }}>
+                      Question {i + 1}
+                    </span>
+                    {isReorderEnabled && (
+                      <span style={{ float: 'right', fontSize: '10px', color: '#6366f1' }}>Double-click to save</span>
+                    )}
+                  </div>
+                )}
+                {/* Always show heading unless it's the default placeholder for a line type */}
+                {q.type !== 'line' && !(q.type === 'line' && (q.question === 'Type your question here....' || !q.question)) && (
+                  <h3 className="question-text" style={{
+                    fontSize: '1.1rem',
+                    marginBottom: '1rem',
+                    textAlign: q.headingAlignment || 'start',
+                    width: '100%',
+                    display: 'block'
+                  }}>
+                    {q.question}
+                  </h3>
+                )}
+
+                {q.mediaUrl && (
+                  <div className="question-media" style={{ marginBottom: '1rem', textAlign: 'center', background: '#f9fafb', padding: '10px', borderRadius: '8px' }}>
+                    {q.mediaType === 'Image' && <img src={q.mediaUrl} alt="Question Media" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '8px', objectFit: 'contain' }} />}
+                    {q.mediaType === 'Video' && <video src={q.mediaUrl} controls style={{ maxWidth: '100%', borderRadius: '8px' }} />}
+                    {q.mediaType === 'Audio' && <audio src={q.mediaUrl} controls style={{ width: '100%' }} />}
+                  </div>
+                )}
+
+                {renderQuestion(q, q.originalIndex)}
               </div>
-              <h3 className="question-text" style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{q.question}</h3>
-
-              {q.mediaUrl && (
-                <div className="question-media" style={{ marginBottom: '1rem', textAlign: 'center', background: '#f9fafb', padding: '10px', borderRadius: '8px' }}>
-                  {q.mediaType === 'Image' && <img src={q.mediaUrl} alt="Question Media" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '8px', objectFit: 'contain' }} />}
-                  {q.mediaType === 'Video' && <video src={q.mediaUrl} controls style={{ maxWidth: '100%', borderRadius: '8px' }} />}
-                  {q.mediaType === 'Audio' && <audio src={q.mediaUrl} controls style={{ width: '100%' }} />}
-                </div>
-              )}
-
-              {renderQuestion(q, q.originalIndex)}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
 
         <div style={{ padding: '1rem 2rem' }}>
           <button type="submit" className="btn-primary" disabled={submitting} style={{ width: '100%', padding: '1rem', borderRadius: '12px', fontSize: '16px', fontWeight: '700' }}>

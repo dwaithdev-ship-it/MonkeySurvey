@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { responseAPI } from './services/api';
+import { responseAPI, surveyAPI } from './services/api';
 import { offlineSync } from './utils/offlineSync';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -15,11 +15,43 @@ import './App.css';
 
 const getMostRecentSurveyId = () => {
   const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
-  if (localSurveys.length > 0) {
-    return localSurveys[0].id || 1;
-  }
-  return 1;
+  // Prefer a published survey from cache, then any survey
+  const published = localSurveys.find(s => s.status === 'Published' || s.status === 'active');
+  const target = published || localSurveys[0];
+  if (target) return target._id || target.id || '6997e719071aea1670643e21';
+  return '6997e719071aea1670643e21';
 };
+
+// Redirect component that fetches the latest published survey and navigates there
+function PublishedSurveyRedirect() {
+  const [ready, setReady] = useState(false);
+  const [surveyId, setSurveyId] = useState(getMostRecentSurveyId());
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await surveyAPI.getAll();
+        if (res.success && res.data?.surveys?.length > 0) {
+          // Backend already returns only active/published for non-admin users
+          const first = res.data.surveys[0];
+          const id = first._id || first.id;
+          // Update localStorage so other components stay in sync
+          const cached = JSON.parse(localStorage.getItem('local_surveys') || '[]');
+          if (!cached.find(s => (s._id || s.id) === id)) {
+            localStorage.setItem('local_surveys', JSON.stringify([first, ...cached]));
+          }
+          setSurveyId(id);
+        }
+      } catch (e) {
+        console.warn('Could not fetch published survey, using cached ID', e);
+      }
+      setReady(true);
+    })();
+  }, []);
+
+  if (!ready) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', color: '#666' }}>Loading survey...</div>;
+  return <Navigate to={`/take-survey/${surveyId}`} replace />;
+}
 
 function PrivateRoute({ children }) {
   const token = localStorage.getItem('token');
@@ -33,7 +65,7 @@ function AdminRoute({ children }) {
   const location = useLocation();
 
   if (!token) return <Navigate to="/login" state={{ from: location }} />;
-  if (user.role !== 'admin') return <Navigate to={`/take-survey/${getMostRecentSurveyId()}`} />;
+  if (user.role !== 'admin') return <Navigate to="/survey-redirect" />;
 
   return children;
 }
@@ -70,7 +102,7 @@ function App() {
         <Routes>
           <Route path="/login" element={
             isAuthenticated ? (
-              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to={`/take-survey/${getMostRecentSurveyId()}`} />
+              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/survey-redirect" />
             ) : <Login />
           } />
           <Route path="/register" element={<Register />} />
@@ -138,22 +170,30 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route
-            path="/users"
+          <Route path="/users"
             element={
               <AdminRoute>
                 <UsersPage />
               </AdminRoute>
             }
           />
+          {/* Published Survey Redirect for non-admin users */}
+          <Route
+            path="/survey-redirect"
+            element={
+              <PrivateRoute>
+                <PublishedSurveyRedirect />
+              </PrivateRoute>
+            }
+          />
           <Route path="/" element={
             isAuthenticated ? (
-              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to={`/take-survey/${getMostRecentSurveyId()}`} />
+              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/survey-redirect" />
             ) : <Navigate to="/login" />
           } />
           <Route path="*" element={
             isAuthenticated ? (
-              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to={`/take-survey/${getMostRecentSurveyId()}`} />
+              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/survey-redirect" />
             ) : <Navigate to="/login" />
           } />
         </Routes>

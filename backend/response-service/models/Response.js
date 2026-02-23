@@ -20,7 +20,9 @@ const responseSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  userName: String, // Extracted user name
+  userName: String, // Surveyor's name/ID (person who logged in)
+  respondentName: String, // Name of the person being surveyed
+  respondentPhone: String, // Phone of the person being surveyed
   parliament: String,
   municipality: String,
   ward_num: String,
@@ -30,6 +32,9 @@ const responseSchema = new mongoose.Schema({
     latitude: Number,
     longitude: Number
   },
+  assembly: String,
+  mandal: String,
+  village_or_street: String,
   answers: [answerSchema],
   metadata: {
     userAgent: String,
@@ -45,7 +50,8 @@ const responseSchema = new mongoose.Schema({
   completedAt: Date
 }, {
   timestamps: true,
-  collection: 'msr_responses' // Set specific collection name
+  collection: 'msr_responses', // Set specific collection name
+  strict: false // Allow dynamic fields like Question_5, Question_6 etc.
 });
 
 responseSchema.index({ surveyId: 1 });

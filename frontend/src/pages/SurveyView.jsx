@@ -3,6 +3,7 @@ import Layout from './layout';
 import './surveyview.css';
 import './Questionnaire.css';
 import { useParams, useNavigate } from 'react-router-dom';
+import { surveyAPI } from '../services/api';
 
 const SurveyView = () => {
   const { surveyId } = useParams();
@@ -55,7 +56,9 @@ const SurveyView = () => {
     isLocationMandatory: false,
     thankYouDuration: 20,
     welcomeImageName: '',
-    thankYouImageName: ''
+    welcomeImageData: '',
+    thankYouImageName: '',
+    thankYouImageData: ''
   });
 
   const [isEditMode, setIsEditMode] = useState(false);
@@ -66,6 +69,67 @@ const SurveyView = () => {
   const [cascadeSources, setCascadeSources] = useState(['Select']);
   const [selectedCascadeSource, setSelectedCascadeSource] = useState('Select');
   const [currentCascadeId, setCurrentCascadeId] = useState(null);
+  const [editingMediaQuestion, setEditingMediaQuestion] = useState(null);
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, question: null });
+  const [widthMenuId, setWidthMenuId] = useState(null);
+
+  useEffect(() => {
+    const handleClick = () => {
+      setContextMenu(prev => ({ ...prev, visible: false }));
+      setWidthMenuId(null);
+    };
+    window.addEventListener('click', handleClick);
+    return () => window.removeEventListener('click', handleClick);
+  }, []);
+
+  const handleContextMenu = (e, q) => {
+    e.preventDefault();
+    setContextMenu({
+      visible: true,
+      x: e.pageX,
+      y: e.pageY,
+      question: q
+    });
+  };
+
+  const renderMediaToolbox = (q) => {
+    return (
+      <div
+        className="media-toolbox"
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const url = e.dataTransfer.getData('text/plain');
+          if (url && (url.startsWith('http') || url.startsWith('data:image'))) {
+            updateQuestion(q.id, 'mediaUrl', url);
+            updateQuestion(q.id, 'mediaType', 'Image');
+          }
+        }}
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          setEditingMediaQuestion(q);
+        }}
+        title="Drag & Drop Web URL here | Double Click to Edit/Crop"
+      >
+        {q.mediaUrl ? (
+          <div className="media-preview-mini">
+            {q.mediaType === 'Image' && <img src={q.mediaUrl} alt="Quick Preview" style={{ maxHeight: '80px', borderRadius: '4px' }} />}
+            {q.mediaType === 'Video' && <div className="video-placeholder-mini">🎬 Video</div>}
+            {q.mediaType === 'Audio' && <div className="audio-placeholder-mini">🎵 Audio</div>}
+            <div className="toolbox-overlay-hint">DBL Click to Edit/Crop</div>
+          </div>
+        ) : (
+          <div className="media-toolbox-empty">
+            <span>📷 Drag Web URL or Double Click</span>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const standardItems = [
     { icon: 'T', label: 'Text Block', isTextIcon: true },
@@ -91,6 +155,7 @@ const SurveyView = () => {
     { icon: '📈', label: 'Net Promoter Score' },
     { icon: '||||', label: 'Barcode Scanner' },
     { icon: '📍', label: 'Map Coordinates (GPS)' },
+    { icon: '―', label: 'Line' },
   ];
 
   const advanceItems = [
@@ -124,25 +189,85 @@ const SurveyView = () => {
     { icon: 'H', label: 'Pseudo Header', isTextIcon: true },
   ];
 
-  // Load surveys from localStorage on mount
+  const reverseMapType = (type) => {
+    if (!type) return 'Singleline Text Input';
+    const t = type.toLowerCase().trim();
+    if (t === 'dropdown') return 'Drop Down';
+    if (t === 'radio') return 'Radio Button';
+    if (t === 'checkbox') return 'Check Box';
+    if (t === 'text') return 'Singleline Text Input';
+    if (t === 'textarea') return 'Multiline Text Input';
+    if (t === 'number') return 'Numeric Input';
+    if (t === 'rating') return 'Rating';
+    if (t === 'date') return 'Date';
+    if (t === 'signature') return 'Signature';
+    if (t === 'photo') return 'Photo Capture';
+    if (t === 'video') return 'Record Video';
+    if (t === 'audio') return 'Record Audio';
+    if (t === 'cascade') return 'Cascade Options';
+    if (t === 'ranking') return 'Ranking';
+    if (t === 'nsec') return 'NSEC';
+    if (t === 'sec') return 'SEC';
+    if (t === 'rural sec') return 'Rural SEC';
+    if (t === 'pseudo-header' || t === 'pseudo header') return 'Pseudo Header';
+    if (t === 'line') return 'Line';
+    return type;
+  };
+
+  // Load surveys from backend on mount, fall back to localStorage
   useEffect(() => {
-    const storedSurveys = localStorage.getItem('local_surveys');
-    if (storedSurveys) {
+    const loadSurveys = async () => {
       try {
-        const parsed = JSON.parse(storedSurveys);
-        setSurveys(parsed);
+        const res = await surveyAPI.getAll();
+        if (res.success && res.data?.surveys) {
+          const backendSurveys = res.data.surveys.map(s => {
+            const adaptedQuestions = (s.questions || []).map(q => ({
+              ...q,
+              title: q.title || q.question || q.text || 'Type your question here....',
+              type: reverseMapType(q.type),
+              options: Array.isArray(q.options)
+                ? q.options.map(o => typeof o === 'object' ? (o.label || o.value) : o).join('\n')
+                : q.options || ''
+            }));
+            return {
+              ...s,
+              id: s._id || s.id,
+              name: s.title || s.name,
+              date: s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : '',
+              type: s.surveyType || s.type || 'app',
+              status: s.status === 'active' || s.status === 'Published' ? 'Published' : 'UnPublished',
+              questions: adaptedQuestions,
+              pages: s.pages || [1]
+            };
+          });
+          setSurveys(backendSurveys);
+          localStorage.setItem('local_surveys', JSON.stringify(backendSurveys));
+          return;
+        }
       } catch (e) {
-        console.error('Failed to parse surveys from localStorage', e);
+        console.warn('Failed to load surveys from backend, using localStorage', e);
       }
-    }
+      // Fallback: localStorage
+      const storedSurveys = localStorage.getItem('local_surveys');
+      if (storedSurveys) {
+        try {
+          const parsed = JSON.parse(storedSurveys);
+          setSurveys(parsed);
+        } catch (e) {
+          console.error('Failed to parse surveys from localStorage', e);
+        }
+      }
+    };
+    loadSurveys();
   }, []);
 
   // Load survey from URL if surveyId exists
   useEffect(() => {
     if (surveyId && surveys.length > 0 && !isEditMode) {
       const survey = surveys.find(s =>
-        s.id === parseInt(surveyId) ||
-        s.name.toLowerCase().replace(/\s+/g, '-') === surveyId
+        (s.id && s.id.toString() === surveyId) ||
+        (s._id && s._id.toString() === surveyId) ||
+        (s.name && s.name.toLowerCase().replace(/\s+/g, '-') === surveyId)
       );
       if (survey) {
         // Set edit mode directly without navigating (we're already at the right URL)
@@ -161,7 +286,9 @@ const SurveyView = () => {
           isLocationMandatory: survey.isLocationMandatory || false,
           thankYouDuration: survey.thankYouDuration || 20,
           welcomeImageName: survey.welcomeImageName || '',
-          thankYouImageName: survey.thankYouImageName || ''
+          welcomeImageData: survey.welcomeImageData || '',
+          thankYouImageName: survey.thankYouImageName || '',
+          thankYouImageData: survey.thankYouImageData || ''
         });
         setShowDetailedCreate(true);
         setCurrentSurvey(survey);
@@ -194,111 +321,197 @@ const SurveyView = () => {
     e.dataTransfer.setData("questionType", JSON.stringify(qType));
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const qData = e.dataTransfer.getData("questionType");
-    if (qData) {
-      const q = JSON.parse(qData);
-      const newQuestion = {
-        id: Date.now(),
-        type: q.label,
-        icon: q.icon,
-        isTextIcon: q.isTextIcon,
-        title: q.label === 'Text Block' ? '' : 'Type your question here....',
-        description: '',
-        displayTitle: '',
-        variableName: '',
-        formula: '',
-        defaultValue: '',
-        mediaType: 'Include Media Type',
-        mediaUrl: '',
-        mediaFileName: '',
-        optionMedia: {}, // New field for images per option
-        suffix: '',
-        limitFrom: '',
-        limitTo: '',
-        required: true,
-        displayInSurvey: true,
-        validationPattern: '',
-        validationMessage: '',
-        includeInPdf: false,
-        includeInCrossTab: false,
-        precision: (q.label === 'Decimal Input' || q.label === 'Decimal Grid') ? '2' : '',
-        codeValues: Array(10).fill({ code: '', from: '', to: '' }),
-        options: '',
-        hiddenOptions: '',
-        orientation: 'Vertical',
-        numColumns: '1',
-        randomizeOptions: false,
-        imageGroup: '',
-        isOtherTextOptional: false,
-        enableTextSearch: false,
-        checkAllOptions: '',
-        startLabel: '',
-        midLabel: '',
-        endLabel: '',
-        displayAs: 'Numbers',
-        numRatings: '5',
-        minDate: '',
-        maxDate: '',
-        currentDateAsAnswer: false,
-        minTimeHH: '',
-        minTimeMM: '',
-        maxTimeHH: '',
-        maxTimeMM: '',
-        currentTimeAsAnswer: false,
-        currentDateTimeAsAnswer: false,
-        disallowManualEntry: false,
-        preventDuplicateLocationCapture: false,
-        page: currentPage,
-        layout: 'Horizontal',
-        randomizeRowOptions: false,
-        randomizeColumnOptions: false,
-        minQuestionsRequired: '',
-        rowOptions: '',
-        columnOptions: '',
-        hiddenColumnOptions: '',
-        rowOptionWidth: '',
-        forwardRowFrom: '',
-        forwardRowType: '',
-        forwardRowAlwaysShow: '',
-        forwardColumnFrom: '',
-        forwardColumnType: '',
-        forwardColumnAlwaysShow: '',
-        forwardQuestionFrom: '',
-        forwardQuestionType: '',
-        forwardQuestionAlwaysShow: '',
-        uniqueOptions: '',
-        displayAsGridTablet: false,
-        exportRawData: false,
-        nsecHouseholdTitle: '',
-        nsecAgricultureTitle: '',
-        nsecEducationTitle: '',
-        nsecGradeTitle: '',
-        secOccupationTitle: '',
-        secEducationTitle: '',
-        secGradeTitle: '',
-        secEduVariableName: '',
-        ruralWallTitle: '',
-        ruralRoofTitle: '',
-        ruralHouseTypeTitle: '',
-        ruralEducationTitle: '',
-        ruralGradeTitle: '',
-        ruralWallOptions: '',
-        ruralRoofOptions: '',
-        cascadeDataSource: '',
-        cascadeQuestionType: 'Dropdown',
-        cascadeAllRequired: true,
-        cascadeLevels: []
-      };
+  const handleMoveDragStart = (e, qId) => {
+    e.dataTransfer.setData("moveQuestionId", qId.toString());
+  };
 
-      if (q.label === 'Phone Number') {
-        newQuestion.limitFrom = '1000000000';
-        newQuestion.limitTo = '9999999999';
-      }
+  const createQuestionObject = (qLabel, qIcon, qIsTextIcon) => {
+    const newQuestion = {
+      id: Date.now(),
+      type: qLabel,
+      icon: qIcon,
+      isTextIcon: qIsTextIcon,
+      title: qLabel === 'Text Block' ? '' : 'Type your question here....',
+      description: '',
+      displayTitle: '',
+      variableName: '',
+      formula: '',
+      defaultValue: '',
+      mediaType: 'Include Media Type',
+      mediaUrl: '',
+      mediaFileName: '',
+      optionMedia: {},
+      suffix: '',
+      limitFrom: '',
+      limitTo: '',
+      required: true,
+      displayInSurvey: true,
+      validationPattern: '',
+      validationMessage: '',
+      includeInPdf: false,
+      includeInCrossTab: false,
+      precision: (qLabel === 'Decimal Input' || qLabel === 'Decimal Grid') ? '2' : '',
+      codeValues: Array(10).fill({ code: '', from: '', to: '' }),
+      options: '',
+      hiddenOptions: '',
+      alignment: 'start',
+      headingAlignment: 'start',
+      orientation: 'Vertical',
+      numColumns: '1',
+      randomizeOptions: false,
+      imageGroup: '',
+      isOtherTextOptional: false,
+      enableTextSearch: false,
+      checkAllOptions: '',
+      startLabel: '',
+      midLabel: '',
+      endLabel: '',
+      displayAs: 'Numbers',
+      numRatings: '5',
+      minDate: '',
+      maxDate: '',
+      currentDateAsAnswer: false,
+      minTimeHH: '',
+      minTimeMM: '',
+      maxTimeHH: '',
+      maxTimeMM: '',
+      currentTimeAsAnswer: false,
+      currentDateTimeAsAnswer: false,
+      disallowManualEntry: false,
+      preventDuplicateLocationCapture: false,
+      page: currentPage,
+      layout: 'Horizontal',
+      randomizeRowOptions: false,
+      randomizeColumnOptions: false,
+      minQuestionsRequired: '',
+      rowOptions: '',
+      columnOptions: '',
+      hiddenColumnOptions: '',
+      rowOptionWidth: '',
+      forwardRowFrom: '',
+      forwardRowType: '',
+      forwardRowAlwaysShow: '',
+      forwardColumnFrom: '',
+      forwardColumnType: '',
+      forwardColumnAlwaysShow: '',
+      forwardQuestionFrom: '',
+      forwardQuestionType: '',
+      forwardQuestionAlwaysShow: '',
+      uniqueOptions: '',
+      displayAsGridTablet: false,
+      exportRawData: false,
+      nsecHouseholdTitle: '',
+      nsecAgricultureTitle: '',
+      nsecEducationTitle: '',
+      nsecGradeTitle: '',
+      secOccupationTitle: '',
+      secEducationTitle: '',
+      secGradeTitle: '',
+      secEduVariableName: '',
+      ruralWallTitle: '',
+      ruralRoofTitle: '',
+      ruralHouseTypeTitle: '',
+      ruralEducationTitle: '',
+      ruralGradeTitle: '',
+      ruralWallOptions: '',
+      ruralRoofOptions: '',
+      cascadeDataSource: '',
+      cascadeQuestionType: 'Dropdown',
+      cascadeAllRequired: true,
+      cascadeLevels: [],
+      width: '100%'
+    };
 
-      setQuestions(prev => [...prev, newQuestion]);
+    if (qLabel === 'Phone Number') {
+      newQuestion.limitFrom = '1000000000';
+      newQuestion.limitTo = '9999999999';
     }
+
+    return newQuestion;
+  };
+
+  const handleDrop = (e, targetQId = null) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const moveQId = e.dataTransfer.getData("moveQuestionId");
+    const qData = e.dataTransfer.getData("questionType");
+
+    if (moveQId) {
+      const draggedId = parseFloat(moveQId);
+      if (draggedId === targetQId) return;
+
+      const newQuestions = [...questions];
+      const draggedIdx = newQuestions.findIndex(q => q.id === draggedId);
+
+      if (draggedIdx > -1) {
+        const [movedItem] = newQuestions.splice(draggedIdx, 1);
+        const targetIdx = targetQId
+          ? newQuestions.findIndex(q => q.id === targetQId)
+          : newQuestions.length;
+
+        newQuestions.splice(targetIdx, 0, movedItem);
+        setQuestions(newQuestions);
+      }
+    } else if (qData) {
+      const q = JSON.parse(qData);
+      const newQuestion = createQuestionObject(q.label, q.icon, q.isTextIcon);
+
+      const newQuestions = [...questions];
+      if (targetQId) {
+        const targetIdx = newQuestions.findIndex(qi => qi.id === targetQId);
+        newQuestions.splice(targetIdx, 0, newQuestion);
+      } else {
+        newQuestions.push(newQuestion);
+      }
+      setQuestions(newQuestions);
+    }
+  };
+
+  const moveQuestionInList = (id, action) => {
+    // Filter questions by current page to get reliable local indices
+    const pageQs = questions.filter(q => (q.page || 1) === currentPage);
+    const qIndexInPage = pageQs.findIndex(q => q.id === id);
+    if (qIndexInPage === -1) return;
+
+    const globalIndex = questions.findIndex(q => q.id === id);
+    let newQuestions = [...questions];
+
+    if (action === 'up' && qIndexInPage > 0) {
+      const prevQ = pageQs[qIndexInPage - 1];
+      const prevGlobalIndex = questions.findIndex(q => q.id === prevQ.id);
+      // Swap items at their global positions
+      [newQuestions[globalIndex], newQuestions[prevGlobalIndex]] = [newQuestions[prevGlobalIndex], newQuestions[globalIndex]];
+    } else if (action === 'down' && qIndexInPage < pageQs.length - 1) {
+      const nextQ = pageQs[qIndexInPage + 1];
+      const nextGlobalIndex = questions.findIndex(q => q.id === nextQ.id);
+      [newQuestions[globalIndex], newQuestions[nextGlobalIndex]] = [newQuestions[nextGlobalIndex], newQuestions[globalIndex]];
+    } else if (action === 'top') {
+      const firstQInPage = pageQs[0];
+      const firstGlobalIndexInPage = questions.findIndex(q => q.id === firstQInPage.id);
+      const [item] = newQuestions.splice(globalIndex, 1);
+      newQuestions.splice(firstGlobalIndexInPage, 0, item);
+    } else if (action === 'bottom') {
+      const lastQInPage = pageQs[pageQs.length - 1];
+      const lastGlobalIndexInPage = questions.findIndex(q => q.id === lastQInPage.id);
+      const [item] = newQuestions.splice(globalIndex, 1);
+      newQuestions.splice(lastGlobalIndexInPage, 0, item);
+    }
+
+    setQuestions(newQuestions);
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  // Place current question beside the previous question at a given fraction width
+  const placeBesidePrevious = (id, widthVal) => {
+    const pageQs = questions.filter(q => (q.page || 1) === currentPage);
+    const idx = pageQs.findIndex(q => q.id === id);
+    if (idx === -1) return;
+    setQuestions(prev => prev.map(q => {
+      if (q.id === id) return { ...q, width: widthVal };
+      if (idx > 0 && q.id === pageQs[idx - 1].id) return { ...q, width: widthVal };
+      return q;
+    }));
+    setWidthMenuId(null);
   };
 
   const execCommand = (command, value = null) => {
@@ -440,6 +653,19 @@ const SurveyView = () => {
     );
   };
 
+  const renderAlignmentSelector = (q) => {
+    return (
+      <div className="form-row">
+        <label>Heading Alignment</label>
+        <div className="alignment-group">
+          <label><input type="radio" checked={q.headingAlignment === 'start'} onChange={() => updateQuestion(q.id, 'headingAlignment', 'start')} /> Start</label>
+          <label><input type="radio" checked={q.headingAlignment === 'center'} onChange={() => updateQuestion(q.id, 'headingAlignment', 'center')} /> Middle</label>
+          <label><input type="radio" checked={q.headingAlignment === 'end'} onChange={() => updateQuestion(q.id, 'headingAlignment', 'end')} /> End</label>
+        </div>
+      </div>
+    );
+  };
+
   const renderMediaTypeSelector = (q) => {
     return (
       <div className="form-row">
@@ -547,7 +773,11 @@ const SurveyView = () => {
       isLocationMandatory: surveyForm.isLocationMandatory,
       thankYouDuration: surveyForm.thankYouDuration,
       welcomeImageName: surveyForm.welcomeImageName,
-      thankYouImageName: surveyForm.thankYouImageName
+      welcomeImageData: surveyForm.welcomeImageData,
+      thankYouImageName: surveyForm.thankYouImageName,
+      thankYouImageData: surveyForm.thankYouImageData,
+      questions: questions,
+      pages: pages
     };
 
     if (isEditMode && editingSurveyId) {
@@ -643,7 +873,9 @@ const SurveyView = () => {
       isLocationMandatory: survey.isLocationMandatory || false,
       thankYouDuration: survey.thankYouDuration || 20,
       welcomeImageName: survey.welcomeImageName || '',
-      thankYouImageName: survey.thankYouImageName || ''
+      welcomeImageData: survey.welcomeImageData || '',
+      thankYouImageName: survey.thankYouImageName || '',
+      thankYouImageData: survey.thankYouImageData || ''
     });
     setShowDetailedCreate(true);
 
@@ -654,20 +886,33 @@ const SurveyView = () => {
     setShowQuestionnaire(true);
   };
 
-  const toggleStatus = (id, currentStatus) => {
+  const toggleStatus = async (id, currentStatus) => {
     if (currentStatus === 'UnPublished') {
+      // Ask to publish
       setSelectedSurveyId(id);
       setSyncOnMobile(false);
       setShowConfirmPopup(true);
     } else {
+      // Unpublish directly
+      try {
+        await surveyAPI.unpublish(id);
+      } catch (e) {
+        console.warn('Unpublish API failed, updating locally', e);
+      }
       setSurveys(surveys.map(s => s.id === id ? { ...s, status: 'UnPublished' } : s));
+      localStorage.setItem('local_surveys', JSON.stringify(surveys.map(s => s.id === id ? { ...s, status: 'UnPublished' } : s)));
     }
   };
 
-  const confirmPublish = () => {
+  const confirmPublish = async () => {
     if (!syncOnMobile) return;
-
+    try {
+      await surveyAPI.publish(selectedSurveyId);
+    } catch (e) {
+      console.warn('Publish API failed, updating locally', e);
+    }
     setSurveys(surveys.map(s => s.id === selectedSurveyId ? { ...s, status: 'Published' } : s));
+    localStorage.setItem('local_surveys', JSON.stringify(surveys.map(s => s.id === selectedSurveyId ? { ...s, status: 'Published' } : s)));
     setShowConfirmPopup(false);
   };
 
@@ -682,6 +927,27 @@ const SurveyView = () => {
   const closeQuestionnaire = () => {
     setShowQuestionnaire(false);
     setCurrentSurvey(null);
+  };
+
+  const saveQuestionnaire = async () => {
+    if (!currentSurvey) return;
+    try {
+      const id = currentSurvey.id || currentSurvey._id;
+      // Convert options back to array objects if needed by backend, 
+      // but backend currently accepts Mixed questions so we'll send as is.
+      // TakeSurvey.jsx adapts it for display, but here we want to preserve the builder format.
+      const res = await surveyAPI.update(id, {
+        questions,
+        pages
+      });
+      if (res.success) {
+        alert('Questionnaire saved successfully!');
+        setSurveys(prev => prev.map(s => (s.id === id || s._id === id) ? { ...s, questions, pages } : s));
+      }
+    } catch (e) {
+      console.error('Failed to save questionnaire', e);
+      alert('Failed to save questionnaire to server.');
+    }
   };
 
   const openCascadePopup = (qId) => {
@@ -826,7 +1092,7 @@ const SurveyView = () => {
               <h2>Questionnaire : {currentSurvey?.name || ''}</h2>
             </div>
             <div className="header-toolbar">
-              <button className="toolbar-btn teal">Questionnaire</button>
+              <button className="toolbar-btn teal" onClick={saveQuestionnaire}>Save Changes</button>
               <button className="toolbar-btn">ReSequence</button>
               <button className="toolbar-btn">Conditional Display</button>
               <button className="toolbar-btn">Page Expression</button>
@@ -896,21 +1162,50 @@ const SurveyView = () => {
                     <p>Drop your Question here...</p>
                   </div>
                 ) : (
-                  <div className="questions-list">
+                  <div className="questions-list" style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
                     {questions.filter(q => (q.page || 1) === currentPage).map((q) => (
-                      <div key={q.id} className="question-item-expanded">
+                      <div
+                        key={q.id}
+                        id={`q-card-${q.id}`}
+                        className="question-item-expanded"
+                        style={{
+                          width: q.width === '100%' ? '100%' : `calc(${q.width || '100%'} - 15px)`,
+                          flex: q.width === '100%' ? '0 0 100%' : `0 0 calc(${q.width || '100%'} - 15px)`,
+                          transition: 'width 0.3s ease'
+                        }}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, q.id)}
+                        onContextMenu={(e) => handleContextMenu(e, q)}
+                      >
                         <div className="q-card-header">
                           <div className="header-left">
-                            <span className="drag-handle">≡</span>
+                            <span
+                              className="drag-handle"
+                              draggable
+                              onDragStart={(e) => handleMoveDragStart(e, q.id)}
+                            >
+                              ≡
+                            </span>
                             <span className={`q-icon-box small ${q.isTextIcon ? 'text-icon' : ''}`}>{q.icon}</span>
                             {q.type === 'Text Block' ? null : (
-                              <input
-                                type="text"
-                                className="q-header-input"
-                                value={q.title}
-                                placeholder="Type your question here...."
-                                onChange={(e) => updateQuestion(q.id, 'title', e.target.value)}
-                              />
+                              <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                                {q.type === 'Line' && (
+                                  <hr style={{
+                                    border: 'none',
+                                    borderTop: (q.isBold ? '5px' : '2px') + ' solid #e5e7eb',
+                                    margin: '0 0 8px 0',
+                                    width: '100%'
+                                  }} />
+                                )}
+                                <input
+                                  type="text"
+                                  className="q-header-input"
+                                  value={q.title}
+                                  style={{ textAlign: q.headingAlignment || 'start' }}
+                                  placeholder="Type your question here...."
+                                  onChange={(e) => updateQuestion(q.id, 'title', e.target.value)}
+                                />
+                              </div>
                             )}
                           </div>
                           <div className="header-right">
@@ -930,6 +1225,80 @@ const SurveyView = () => {
                             >
                               {q.displayInSurvey ? '👁️' : '🚫'}
                             </span>
+                            {/* Width fraction dropdown */}
+                            {(() => {
+                              const pageQs = questions.filter(qi => (qi.page || 1) === currentPage);
+                              const qIdxInPage = pageQs.findIndex(qi => qi.id === q.id);
+                              const isFirst = qIdxInPage === 0;
+                              const isBeside = q.width && q.width !== '100%';
+                              return (
+                                <div style={{ position: 'relative', display: 'inline-block' }}>
+                                  <span
+                                    className="action-btn"
+                                    title={isFirst ? "Cannot place first question beside another" : "Set width fraction"}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!isFirst) setWidthMenuId(widthMenuId === q.id ? null : q.id);
+                                    }}
+                                    style={{
+                                      opacity: isFirst ? 0.3 : 1,
+                                      cursor: isFirst ? 'not-allowed' : 'pointer',
+                                      fontSize: '11px',
+                                      padding: '2px 6px',
+                                      background: isBeside ? 'rgba(99,102,241,0.2)' : 'transparent',
+                                      borderRadius: '4px',
+                                      border: isBeside ? '1px solid #6366f1' : '1px solid #ccc',
+                                      fontWeight: 600,
+                                      color: isBeside ? '#6366f1' : 'inherit',
+                                      userSelect: 'none',
+                                    }}
+                                  >
+                                    {isBeside ? q.width : '▦'}
+                                  </span>
+                                  {widthMenuId === q.id && (
+                                    <div
+                                      onClick={e => e.stopPropagation()}
+                                      style={{
+                                        position: 'absolute', top: '110%', right: 0, zIndex: 9999,
+                                        background: '#fff', border: '1px solid #e5e7eb',
+                                        borderRadius: '8px', boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                                        minWidth: '130px', padding: '6px 0',
+                                      }}
+                                    >
+                                      {[{ label: '½  (1/2)', val: '50%' }, { label: '⅓  (1/3)', val: '33.33%' }, { label: '¼  (1/4)', val: '25%' }].map(opt => (
+                                        <div
+                                          key={opt.val}
+                                          onClick={() => placeBesidePrevious(q.id, opt.val)}
+                                          style={{
+                                            padding: '7px 14px', cursor: 'pointer',
+                                            background: q.width === opt.val ? '#eef2ff' : 'transparent',
+                                            color: q.width === opt.val ? '#4f46e5' : '#1f2937',
+                                            fontWeight: q.width === opt.val ? 700 : 400,
+                                            fontSize: '13px',
+                                          }}
+                                          onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                          onMouseLeave={e => e.currentTarget.style.background = q.width === opt.val ? '#eef2ff' : 'transparent'}
+                                        >
+                                          {opt.label}
+                                        </div>
+                                      ))}
+                                      <div style={{ borderTop: '1px solid #e5e7eb', margin: '4px 0' }} />
+                                      <div
+                                        onClick={() => placeBesidePrevious(q.id, '100%')}
+                                        style={{
+                                          padding: '7px 14px', cursor: 'pointer',
+                                          color: '#6b7280', fontSize: '13px',
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                      >
+                                        ↩ Full width
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             <span
                               className="action-btn"
                               title="Duplicate Question"
@@ -943,6 +1312,7 @@ const SurveyView = () => {
 
                         {!q.collapsed && (
                           <div className="q-card-body">
+                            {renderMediaToolbox(q)}
                             {q.type === 'Text Block' && (
                               <div className="text-block-editor">
                                 <div className="editor-toolbar">
@@ -1265,6 +1635,7 @@ const SurveyView = () => {
                                   />
                                 </div>
                                 {renderMediaTypeSelector(q)}
+                                {renderAlignmentSelector(q)}
                                 <div className="form-row">
                                   <label>Number of ratings</label>
                                   <input
@@ -1280,6 +1651,47 @@ const SurveyView = () => {
                                     type="checkbox"
                                     checked={q.required}
                                     onChange={(e) => updateQuestion(q.id, 'required', e.target.checked)}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {q.type === 'Line' && (
+                              <div className="question-form">
+                                <div className="form-row">
+                                  <label>Description</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Type help information for question here...."
+                                    value={q.description}
+                                    onChange={(e) => updateQuestion(q.id, 'description', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Display Title</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Display Title"
+                                    value={q.displayTitle}
+                                    onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
+                                  />
+                                </div>
+                                <div className="form-row">
+                                  <label>Variable Name</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Define variable name"
+                                    value={q.variableName}
+                                    onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
+                                  />
+                                </div>
+                                {renderAlignmentSelector(q)}
+                                <div className="form-row-compact">
+                                  <label>Bold Line</label>
+                                  <input
+                                    type="checkbox"
+                                    checked={q.isBold}
+                                    onChange={(e) => updateQuestion(q.id, 'isBold', e.target.checked)}
                                   />
                                 </div>
                               </div>
@@ -1315,6 +1727,7 @@ const SurveyView = () => {
                                   />
                                 </div>
                                 {renderMediaTypeSelector(q)}
+                                {renderAlignmentSelector(q)}
                                 <div className="form-row-compact">
                                   <label>Is Question Required?</label>
                                   <input
@@ -1457,6 +1870,7 @@ const SurveyView = () => {
                                   />
                                 </div>
                                 {renderMediaTypeSelector(q)}
+                                {renderAlignmentSelector(q)}
                                 <div className="form-row">
                                   <label>Minimum Date</label>
                                   <div className="input-with-icon">
@@ -2283,6 +2697,7 @@ const SurveyView = () => {
                                   />
                                 </div>
                                 {renderMediaTypeSelector(q)}
+                                {renderAlignmentSelector(q)}
                                 <div className="form-row align-start">
                                   <label>Options</label>
                                   <div className="input-column">
@@ -2388,6 +2803,7 @@ const SurveyView = () => {
                                   />
                                 </div>
                                 {renderMediaTypeSelector(q)}
+                                {renderAlignmentSelector(q)}
                                 <div className="form-row align-start">
                                   <label>Options</label>
                                   <div className="input-column">
@@ -2542,6 +2958,7 @@ const SurveyView = () => {
                                     onChange={(e) => updateQuestion(q.id, 'variableName', e.target.value)}
                                   />
                                 </div>
+                                {renderAlignmentSelector(q)}
                                 <div className="form-row">
                                   <label>Limit Value between</label>
                                   <div className="limit-inputs">
@@ -2698,6 +3115,7 @@ const SurveyView = () => {
                                     onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
                                   />
                                 </div>
+                                {renderAlignmentSelector(q)}
                                 {renderMediaTypeSelector(q)}
                                 <div className="form-row align-start">
                                   <label>Row Options (One per line)</label>
@@ -4115,6 +4533,7 @@ const SurveyView = () => {
                                     onChange={(e) => updateQuestion(q.id, 'displayTitle', e.target.value)}
                                   />
                                 </div>
+                                {renderAlignmentSelector(q)}
                                 <div className="form-row">
                                   <label>Variable Name</label>
                                   <input
@@ -4552,7 +4971,20 @@ const SurveyView = () => {
                     type="file"
                     ref={welcomeImgRef}
                     style={{ display: 'none' }}
-                    onChange={(e) => setSurveyForm({ ...surveyForm, welcomeImageName: e.target.files[0]?.name })}
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setSurveyForm(prev => ({
+                            ...prev,
+                            welcomeImageName: file.name,
+                            welcomeImageData: reader.result
+                          }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
                   />
                   <div className="image-preview-box" onClick={() => welcomeImgRef.current.click()} style={{ cursor: 'pointer' }}>
                     <div className="upload-overlay">📁 {surveyForm.welcomeImageName || 'Choose file'}</div>
@@ -4568,7 +5000,20 @@ const SurveyView = () => {
                     type="file"
                     ref={thankYouImgRef}
                     style={{ display: 'none' }}
-                    onChange={(e) => setSurveyForm({ ...surveyForm, thankYouImageName: e.target.files[0]?.name })}
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setSurveyForm(prev => ({
+                            ...prev,
+                            thankYouImageName: file.name,
+                            thankYouImageData: reader.result
+                          }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
                   />
                   <div className="thank-you-preview-box" onClick={() => thankYouImgRef.current.click()} style={{ cursor: 'pointer' }}>
                     {surveyForm.thankYouImageName || 'Thank You'}
@@ -4684,7 +5129,7 @@ const SurveyView = () => {
           <table className="survey-table">
             <thead>
               <tr>
-                <th>#</th><th>Name</th><th>Questionnaire</th><th>Web URL</th><th>Responses</th><th>Status</th><th>Actions</th>
+                <th>#</th><th>Name</th><th>Questionnaire</th><th>Web URL</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -4715,7 +5160,9 @@ const SurveyView = () => {
                               isLocationMandatory: survey.isLocationMandatory || false,
                               thankYouDuration: survey.thankYouDuration || 20,
                               welcomeImageName: survey.welcomeImageName || '',
-                              thankYouImageName: survey.thankYouImageName || ''
+                              welcomeImageData: survey.welcomeImageData || '',
+                              thankYouImageName: survey.thankYouImageName || '',
+                              thankYouImageData: survey.thankYouImageData || ''
                             });
                             setShowDetailedCreate(true);
                             setShowQuestionnaire(false);
@@ -4764,7 +5211,6 @@ const SurveyView = () => {
                       🌐
                     </span>
                   </td>
-                  <td className="center">{survey.responses}</td>
                   <td className="center">
                     <button
                       className={survey.status === 'Published' ? 'status-btn publish' : 'status-btn unpublish'}
@@ -4891,6 +5337,168 @@ const SurveyView = () => {
         </div>
       )}
 
+
+      {editingMediaQuestion && (
+        <div className="modal-overlay">
+          <div className="media-edit-modal">
+            <div className="modal-header">
+              <h3>Media & Crop Tool</h3>
+              <button className="close-btn" onClick={() => setEditingMediaQuestion(null)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group-vertical">
+                <label>Media Web URL</label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <input
+                    type="text"
+                    className="cascade-select"
+                    style={{ flex: 1 }}
+                    value={editingMediaQuestion.mediaUrl || ''}
+                    onChange={(e) => updateQuestion(editingMediaQuestion.id, 'mediaUrl', e.target.value)}
+                    placeholder="Paste image/video/audio URL here..."
+                  />
+                  <button className="q-cyan-btn" onClick={() => {
+                    updateQuestion(editingMediaQuestion.id, 'mediaUrl', '');
+                    setEditingMediaQuestion({ ...editingMediaQuestion, mediaUrl: '' });
+                  }}>Clear</button>
+                </div>
+              </div>
+
+              <div className="crop-tools-container" style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                <button className="btn-cascade cyan" onClick={() => alert('Crop tool activated! Select area to crop.')}>✂️ Crop Question Media</button>
+                <button className="btn-cascade teal" onClick={() => alert('Drag & Place mode: Use mouse to position media on card.')}>📍 Drag & Place</button>
+                <button className="btn-cascade save" onClick={() => alert('Position Fixed!')}>🔒 Fix Position</button>
+              </div>
+
+              <div className="media-preview-large" style={{
+                minHeight: '200px',
+                border: '1px solid #eee',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#fcfcfc',
+                overflow: 'hidden',
+                position: 'relative'
+              }}>
+                {editingMediaQuestion.mediaUrl ? (
+                  editingMediaQuestion.mediaType === 'Video' ? (
+                    <video src={editingMediaQuestion.mediaUrl} controls style={{ maxWidth: '100%' }} />
+                  ) : editingMediaQuestion.mediaType === 'Audio' ? (
+                    <audio src={editingMediaQuestion.mediaUrl} controls />
+                  ) : (
+                    <img
+                      src={editingMediaQuestion.mediaUrl}
+                      alt="Preview"
+                      style={{ maxWidth: '100%', cursor: 'crosshair' }}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://via.placeholder.com/400x200?text=Invalid+Media+URL';
+                      }}
+                    />
+                  )
+                ) : (
+                  <div style={{ color: '#999', textAlign: 'center' }}>
+                    <p style={{ fontSize: '40px', marginBottom: '10px' }}>📷</p>
+                    <p>No media preview available.<br />Drop a URL into the toolbox or paste it above.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="modal-footer" style={{ borderTop: '1px solid #eee', marginTop: '20px', paddingTop: '15px' }}>
+              <button className="btn-modal cancel" onClick={() => setEditingMediaQuestion(null)}>Close Tool</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {contextMenu.visible && (
+        <div
+          className="q-context-menu"
+          style={{
+            top: contextMenu.y,
+            left: contextMenu.x,
+            position: 'absolute',
+            zIndex: 9999
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="ctx-item" onClick={() => {
+            updateQuestion(contextMenu.question.id, 'collapsed', false);
+            setContextMenu({ ...contextMenu, visible: false });
+            setTimeout(() => {
+              const el = document.getElementById(`q-card-${contextMenu.question.id}`);
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+          }}>
+            <span>✏️</span> Edit Question
+          </div>
+
+          <div className="ctx-item has-submenu">
+            <span>📏</span> Change Width
+            <div className="ctx-submenu">
+              <div className="ctx-item" onClick={() => { updateQuestion(contextMenu.question.id, 'width', '25%'); setContextMenu({ ...contextMenu, visible: false }); }}>25% Width</div>
+              <div className="ctx-item" onClick={() => { updateQuestion(contextMenu.question.id, 'width', '50%'); setContextMenu({ ...contextMenu, visible: false }); }}>50% Width</div>
+              <div className="ctx-item" onClick={() => { updateQuestion(contextMenu.question.id, 'width', '75%'); setContextMenu({ ...contextMenu, visible: false }); }}>75% Width</div>
+              <div className="ctx-item" onClick={() => { updateQuestion(contextMenu.question.id, 'width', '100%'); setContextMenu({ ...contextMenu, visible: false }); }}>Full Width (100%)</div>
+            </div>
+          </div>
+
+          <div className="ctx-item has-submenu">
+            <span>📊</span> Align Heading
+            <div className="ctx-submenu">
+              <div className="ctx-item" onClick={() => { updateQuestion(contextMenu.question.id, 'headingAlignment', 'start'); setContextMenu({ ...contextMenu, visible: false }); }}>Align Left</div>
+              <div className="ctx-item" onClick={() => { updateQuestion(contextMenu.question.id, 'headingAlignment', 'center'); setContextMenu({ ...contextMenu, visible: false }); }}>Align Center</div>
+              <div className="ctx-item" onClick={() => { updateQuestion(contextMenu.question.id, 'headingAlignment', 'end'); setContextMenu({ ...contextMenu, visible: false }); }}>Align Right</div>
+            </div>
+          </div>
+
+          <div className="ctx-separator"></div>
+
+          <div className="ctx-item" onClick={() => {
+            duplicateQuestion(contextMenu.question.id);
+            setContextMenu({ ...contextMenu, visible: false });
+          }}>
+            <span>📄</span> Duplicate
+          </div>
+
+          <div className="ctx-item has-submenu">
+            <span>↕️</span> Move Question
+            <div className="ctx-submenu">
+              <div className="ctx-item" onClick={() => moveQuestionInList(contextMenu.question.id, 'up')}>Move Up</div>
+              <div className="ctx-item" onClick={() => moveQuestionInList(contextMenu.question.id, 'down')}>Move Down</div>
+              <div className="ctx-separator"></div>
+              <div className="ctx-item" onClick={() => moveQuestionInList(contextMenu.question.id, 'top')}>Move to Top</div>
+              <div className="ctx-item" onClick={() => moveQuestionInList(contextMenu.question.id, 'bottom')}>Move to Bottom</div>
+            </div>
+          </div>
+
+          <div className="ctx-separator"></div>
+
+          <div className="ctx-item" onClick={() => {
+            updateQuestion(contextMenu.question.id, 'collapsed', false);
+            setContextMenu({ ...contextMenu, visible: false });
+            setTimeout(() => {
+              const el = document.getElementById(`q-card-${contextMenu.question.id}`);
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Attempt to find layout/orientation radio
+                const layoutRadio = el.querySelector('input[name^="orientation"]');
+                if (layoutRadio) layoutRadio.focus();
+              }
+            }, 100);
+          }}>
+            <span>⚙️</span> Layout Settings
+          </div>
+
+          <div className="ctx-item delete" onClick={() => {
+            removeQuestion(contextMenu.question.id);
+            setContextMenu({ ...contextMenu, visible: false });
+          }}>
+            <span>🗑️</span> Delete Question
+          </div>
+        </div>
+      )}
 
     </Layout>
   );

@@ -48,7 +48,11 @@ const questionSchema = new mongoose.Schema({
 const surveySchema = new mongoose.Schema({
   title: {
     type: String,
-    required: true
+    required: false
+  },
+  name: {
+    type: String,
+    required: false
   },
   description: String,
   createdBy: {
@@ -58,13 +62,28 @@ const surveySchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'active', 'closed', 'archived'],
+    enum: ['draft', 'active', 'closed', 'archived', 'UnPublished', 'Published'],
     default: 'draft'
   },
+  type: String,
+  surveyType: String,
   category: String,
   tags: [String],
   startDate: Date,
   endDate: Date,
+  headerText: String,
+  theme: String,
+  layoutType: String,
+  accessPin: String,
+  loopSurvey: Boolean,
+  pdfShowAnswered: Boolean,
+  backgroundLocation: Boolean,
+  isLocationMandatory: Boolean,
+  thankYouDuration: Number,
+  welcomeImageName: String,
+  welcomeImageData: String,
+  thankYouImageName: String,
+  thankYouImageData: String,
   settings: {
     anonymous: {
       type: Boolean,
@@ -93,7 +112,8 @@ const surveySchema = new mongoose.Schema({
     primaryColor: String,
     backgroundColor: String
   },
-  questions: [questionSchema],
+  questions: [mongoose.Schema.Types.Mixed],
+  pages: [mongoose.Schema.Types.Mixed],
   responseCount: {
     type: Number,
     default: 0
@@ -103,7 +123,8 @@ const surveySchema = new mongoose.Schema({
     default: 0
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  strict: false // Allow other fields
 });
 
 // Indexes

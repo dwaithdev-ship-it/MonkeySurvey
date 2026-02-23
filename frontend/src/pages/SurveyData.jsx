@@ -15,6 +15,7 @@ const SurveyData = () => {
     const [responses, setResponses] = useState([]);
     const [loadingResponses, setLoadingResponses] = useState(false);
     const [filteredSurveys, setFilteredSurveys] = useState([]);
+    const [selectedSurvey, setSelectedSurvey] = useState(null);
     const [admins, setAdmins] = useState([]);
     const [selectedAdmin, setSelectedAdmin] = useState(null);
     const [emailScheduleEnabled, setEmailScheduleEnabled] = useState(false);
@@ -122,29 +123,96 @@ const SurveyData = () => {
         }
     }, [searchTerm, surveys]);
 
-    const fetchResponses = async (surveyId) => {
+    const fetchResponses = async (surveyOriginalId) => {
         try {
             setLoadingResponses(true);
-            let res = await responseAPI.getAll({ surveyId, limit: 100 });
+            setViewingResponsesFor(surveyOriginalId);
 
-            // Fallback for prototype data: if primary ID returns 0 but we know records exist under '1'
-            if (res.success && res.data.responses.length === 0) {
-                const fallbackRes = await responseAPI.getAll({ surveyId: "1", limit: 100 });
-                if (fallbackRes.success && fallbackRes.data.responses.length > 0) {
-                    res = fallbackRes;
-                }
+            let searchId = surveyOriginalId;
+            const survey = surveys.find(s => (s._id || s.id).toString() === surveyOriginalId.toString());
+            const displayTitle = survey ? (survey.title || survey.name) : "";
+
+            // Map to specific IDs requested by user
+            if (displayTitle.includes("MSR Survey")) searchId = "1";
+            if (displayTitle.includes("Prajābhiprāya")) searchId = "2";
+
+            // 1. Fetch the survey details (always use the real ID for survey-service)
+            const sRes = await surveyAPI.getById(surveyOriginalId);
+            if (sRes.success) {
+                setSelectedSurvey(sRes.data);
             }
+
+            // 2. Fetch all responses (use mapped searchId for response-service)
+            let res = await responseAPI.getAll({ surveyId: searchId, limit: 1000 });
 
             if (res.success) {
                 setResponses(res.data.responses);
-                setViewingResponsesFor(surveyId);
             }
         } catch (error) {
             console.error("Error fetching responses:", error);
-            alert("No responses found for this survey.");
+            alert("Error fetching records for this survey.");
         } finally {
             setLoadingResponses(false);
         }
+    };
+
+    const getAnswerValue = (response, qId, qType, qIndex) => {
+        if (!response) return "";
+
+        const qIdStr = String(qId || '').toLowerCase();
+
+        // --- 1. SEARCH BY ID (Most Accurate) ---
+        if (response.answers && Array.isArray(response.answers)) {
+            const ans = response.answers.find(a => String(a.questionId).toLowerCase() === qIdStr);
+            if (ans && ans.value !== undefined && ans.value !== null && ans.value !== "") {
+                return formatAns(ans.value, qType);
+            }
+        }
+
+        // --- 2. SEARCH BY Question_N (Flattened Key) ---
+        // Try qId match: "q23" -> Question_23
+        if (qIdStr.startsWith('q')) {
+            const num = qIdStr.replace('q', '');
+            if (response[`Question_${num}`] !== undefined && response[`Question_${num}`] !== "") {
+                return formatAns(response[`Question_${num}`], qType);
+            }
+        }
+        // Try index match: index 0 -> Question_1
+        const indexKey = `Question_${qIndex + 1}`;
+        if (response[indexKey] !== undefined && response[indexKey] !== "") {
+            return formatAns(response[indexKey], qType);
+        }
+
+        // --- 3. SEARCH BY POSITION (Answers Array) ---
+        if (response.answers?.[qIndex]) {
+            const ans = response.answers[qIndex];
+            if (ans && ans.value !== undefined && ans.value !== null && ans.value !== "") {
+                return formatAns(ans.value, qType);
+            }
+        }
+
+        // --- 4. FALLBACK TO TOP-LEVEL FIELDS (For common mapping questions) ---
+        // Usually Q1-Q4 for both MSR and Prajab map to these:
+        if (qIndex === 0) return response.parliament || response.respondentName || "";
+        if (qIndex === 1) return response.municipality || response.assembly || "";
+        if (qIndex === 2) return response.ward_num || response.mandal || "";
+        if (qIndex === 3) return response.village_or_street || "";
+
+        return "";
+    };
+
+    const formatAns = (val, type) => {
+        if (val === undefined || val === null) return "";
+        const t = String(type || '').toLowerCase();
+
+        if (t.includes('grid') && typeof val === 'object') {
+            return Object.entries(val).map(([k, v]) => `${k}: ${v}`).join(", ");
+        }
+        if (Array.isArray(val)) {
+            if (val.length === 0) return "";
+            return val.join(", ");
+        }
+        return String(val);
     };
 
     const fetchSurveysWithCounts = async () => {
@@ -157,31 +225,28 @@ const SurveyData = () => {
                 const surveysWithCounts = await Promise.all(
                     fetchedSurveys.map(async (survey) => {
                         try {
-                            const sId = (survey._id || survey.id).toString();
-                            const countRes = await responseAPI.getAll({ surveyId: sId, limit: 1 });
-
-                            // fallback logic for prototype: if count is 0 but global total > 0, 
-                            // check if survey matches row 1 of the list for display
-                            let count = countRes.success ? countRes.data.pagination.total : 0;
-                            const globalTotal = countRes.success ? countRes.data.pagination.globalTotal : 0;
-
-                            // If zero for this ID, but we have global records, check for "1" as fallback
-                            if (count === 0 && globalTotal > 0) {
-                                const fallbackRes = await responseAPI.getAll({ surveyId: "1", limit: 1 });
-                                if (fallbackRes.success && fallbackRes.data.pagination.total > 0) {
-                                    count = fallbackRes.data.pagination.total;
-                                }
-                            }
+                            const originalId = (survey._id || survey.id).toString();
+                            let searchId = originalId;
 
                             // Rename specifically for the client request
-                            let displayTitle = survey.title;
+                            let displayTitle = survey.title || survey.name || "";
                             if (displayTitle.includes("MSR Municipal")) {
                                 displayTitle = "MSR Survey";
                             }
 
+                            // Map to specific IDs requested by user
+                            if (displayTitle.includes("MSR Survey")) searchId = "1";
+                            if (displayTitle.includes("Prajābhiprāya")) searchId = "2";
+
+                            const countRes = await responseAPI.getAll({ surveyId: searchId, limit: 1 });
+
+                            let count = countRes.success ? countRes.data.pagination.total : 0;
+
                             return {
                                 ...survey,
                                 title: displayTitle,
+                                searchId: searchId, // Response search ID (1 or 2)
+                                originalId: originalId, // Mongo ID (hidden)
                                 responseCount: count,
                                 lastResponseAt: countRes.success && countRes.data.responses.length > 0
                                     ? new Date(countRes.data.responses[0].createdAt).toLocaleString()
@@ -215,22 +280,38 @@ const SurveyData = () => {
     };
 
     const exportToCSV = () => {
-        if (responses.length === 0) return;
+        if (responses.length === 0 || !selectedSurvey) return;
 
-        const headers = ["Timestamp", "User", "Parliament", "Municipality", "Ward", "మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?", "Maps Link"];
+        const questions = selectedSurvey.questions || [];
+        const headers = [
+            "Timestamp",
+            "Surveyor",
+            "Respondent Name",
+            "Respondent Phone",
+            "Parliament",
+            "Municipality / Assembly",
+            "Ward / Mandal",
+            "Village / Street",
+            ...questions.map((q, idx) => q.question || q.text || q.title || q.label || `Question ${idx + 1}`),
+            "Maps Link"
+        ];
+
         const rows = responses.map(r => [
             new Date(r.createdAt).toLocaleString(),
             r.userName || 'Anonymous',
+            r.respondentName || '',
+            r.respondentPhone || '',
             r.parliament || '',
-            r.municipality || '',
-            r.ward_num || '',
-            r.Question_1 || '',
-            r.googleMapsLink || ''
+            r.municipality || r.assembly || '',
+            r.ward_num || r.mandal || '',
+            r.village_or_street || '',
+            ...questions.map((q, idx) => getAnswerValue(r, q.id || q._id, q.type, idx)),
+            r.googleMapsLink || (r.location?.latitude ? `https://www.google.com/maps?q=${r.location.latitude},${r.location.longitude}` : (r.latitude ? `https://www.google.com/maps?q=${r.latitude},${r.longitude}` : ''))
         ]);
 
         let csvContent = "data:text/csv;charset=utf-8,"
-            + headers.join(",") + "\n"
-            + rows.map(e => e.join(",")).join("\n");
+            + headers.map(h => `"${h}"`).join(",") + "\n"
+            + rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
 
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
@@ -266,31 +347,49 @@ const SurveyData = () => {
                                 <thead>
                                     <tr>
                                         <th>Timestamp</th>
-                                        <th>User Name</th>
+                                        <th>Surveyor</th>
+                                        <th>Respondent Name</th>
+                                        <th>Respondent Phone</th>
                                         <th>Parliament</th>
-                                        <th>Municipality</th>
-                                        <th>Ward Num</th>
-                                        <th>మీ వార్డు కౌన్సిలర్ గా ఏ పార్టీ అభ్యర్థి గెలవాలనుకుంటున్నారు?</th>
+                                        <th>Assembly</th>
+                                        <th>Mandal</th>
+                                        <th>Village/Street</th>
+                                        {selectedSurvey?.questions?.map((q, idx) => (
+                                            <th key={q._id || q.id || idx}>
+                                                {q.question || q.text || q.title || q.label || `Question ${idx + 1}`}
+                                            </th>
+                                        ))}
                                         <th>Location (Link)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {loadingResponses ? (
-                                        <tr><td colSpan="7" className="loading-cell">Loading records...</td></tr>
+                                        <tr><td colSpan={9 + (selectedSurvey?.questions?.length || 0)} className="loading-cell">Loading records...</td></tr>
                                     ) : responses.length === 0 ? (
-                                        <tr><td colSpan="7" className="empty-cell">No records found for this survey.</td></tr>
+                                        <tr><td colSpan={9 + (selectedSurvey?.questions?.length || 0)} className="empty-cell">No records found for this survey.</td></tr>
                                     ) : (
                                         responses.map((resp, idx) => (
                                             <tr key={resp._id || idx}>
                                                 <td>{new Date(resp.createdAt).toLocaleString()}</td>
-                                                <td>{resp.userName}</td>
-                                                <td>{resp.parliament}</td>
-                                                <td>{resp.municipality}</td>
-                                                <td>{resp.ward_num}</td>
-                                                <td>{resp.Question_1}</td>
+                                                <td>{resp.userName || 'Anonymous'}</td>
+                                                <td>{resp.respondentName || '-'}</td>
+                                                <td>{resp.respondentPhone || '-'}</td>
+                                                <td>{resp.parliament || '-'}</td>
+                                                <td>{(resp.municipality || resp.assembly) || '-'}</td>
+                                                <td>{(resp.ward_num || resp.mandal) || '-'}</td>
+                                                <td>{resp.village_or_street || '-'}</td>
+                                                {selectedSurvey?.questions?.map((q, qIdx) => (
+                                                    <td key={q._id || q.id || qIdx}>
+                                                        {getAnswerValue(resp, q.id || q._id, q.type, qIdx)}
+                                                    </td>
+                                                ))}
                                                 <td>
                                                     {resp.googleMapsLink ? (
                                                         <a href={resp.googleMapsLink} target="_blank" rel="noreferrer" className="map-link">View Map</a>
+                                                    ) : (resp.location && resp.location.latitude && resp.location.longitude) ? (
+                                                        <a href={`https://www.google.com/maps?q=${resp.location.latitude},${resp.location.longitude}`} target="_blank" rel="noreferrer" className="map-link">View Map</a>
+                                                    ) : (resp.latitude && resp.longitude) ? (
+                                                        <a href={`https://www.google.com/maps?q=${resp.latitude},${resp.longitude}`} target="_blank" rel="noreferrer" className="map-link">View Map</a>
                                                     ) : 'N/A'}
                                                 </td>
                                             </tr>
@@ -421,7 +520,7 @@ const SurveyData = () => {
                                                     <div className="response-status">
                                                         <button
                                                             className="link-style-btn"
-                                                            onClick={() => fetchResponses((survey._id || survey.id).toString())}
+                                                            onClick={() => fetchResponses(survey.originalId || (survey._id || survey.id).toString())}
                                                             title="Click to view records"
                                                         >
                                                             {survey.responseCount}

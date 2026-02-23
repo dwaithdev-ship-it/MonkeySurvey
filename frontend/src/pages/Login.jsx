@@ -62,10 +62,10 @@ const Login = () => {
             }));
           }
 
-          const from = location.state?.from?.pathname || (authData.user.role === 'admin' ? "/dashboard" : "/take-survey/1");
+          const from = location.state?.from?.pathname || (authData.user.role === 'admin' ? "/dashboard" : "/take-survey/6997e719071aea1670643e21");
           navigate(from);
         } else {
-          const from = location.state?.from?.pathname || "/take-survey/1";
+          const from = location.state?.from?.pathname || "/take-survey/6997e719071aea1670643e21";
           navigate(from);
         }
       } else {
@@ -95,7 +95,7 @@ const Login = () => {
           localStorage.setItem("token", offlineResult.data.token);
           localStorage.setItem("user", JSON.stringify(offlineResult.data.user));
 
-          const from = location.state?.from?.pathname || (offlineResult.data.user.role === 'admin' ? "/dashboard" : "/take-survey/1");
+          const from = location.state?.from?.pathname || (offlineResult.data.user.role === 'admin' ? "/dashboard" : "/take-survey/6997e719071aea1670643e21");
           navigate(from);
           return;
         } else {
@@ -116,7 +116,7 @@ const Login = () => {
         console.log("Server error but offline cache matched. Logging in via cache.");
         localStorage.setItem("token", secondaryOfflineCheck.data.token);
         localStorage.setItem("user", JSON.stringify(secondaryOfflineCheck.data.user));
-        const from = location.state?.from?.pathname || (secondaryOfflineCheck.data.user.role === 'admin' ? "/dashboard" : "/take-survey/1");
+        const from = location.state?.from?.pathname || (secondaryOfflineCheck.data.user.role === 'admin' ? "/dashboard" : "/take-survey/6997e719071aea1670643e21");
         navigate(from);
         return;
       }
