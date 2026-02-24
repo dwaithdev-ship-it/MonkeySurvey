@@ -70,6 +70,112 @@ function AdminRoute({ children }) {
   return children;
 }
 
+function AppRoutes() {
+  const location = useLocation();
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAuthenticated = !!localStorage.getItem('token');
+
+  return (
+    <Routes>
+      <Route path="/login" element={
+        isAuthenticated ? (
+          user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/survey-redirect" />
+        ) : <Login />
+      } />
+      <Route path="/register" element={<Register />} />
+      <Route
+        path="/dashboard"
+        element={
+          <PrivateRoute>
+            <Dashboard />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/surveys"
+        element={
+          <AdminRoute>
+            <SurveyView />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/surveys/:surveyId"
+        element={
+          <AdminRoute>
+            <SurveyView />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/survey/:surveyId"
+        element={
+          <AdminRoute>
+            <SurveyView />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/take-survey/:surveyId"
+        element={
+          <PrivateRoute>
+            <TakeSurvey />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/analytics/:surveyId"
+        element={
+          <AdminRoute>
+            <SurveyAnalytics />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/data"
+        element={
+          <AdminRoute>
+            <SurveyData />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <PrivateRoute>
+            <Profile />
+          </PrivateRoute>
+        }
+      />
+      <Route path="/users"
+        element={
+          <AdminRoute>
+            <UsersPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/survey-redirect"
+        element={
+          <PrivateRoute>
+            <PublishedSurveyRedirect />
+          </PrivateRoute>
+        }
+      />
+      <Route path="/" element={
+        isAuthenticated ? (
+          user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/survey-redirect" />
+        ) : <Navigate to="/login" />
+      } />
+      <Route path="*" element={
+        isAuthenticated ? (
+          user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/survey-redirect" />
+        ) : <Navigate to="/login" />
+      } />
+    </Routes>
+  );
+}
+
 function App() {
   useEffect(() => {
     const runSync = async () => {
@@ -82,9 +188,8 @@ function App() {
     };
 
     window.addEventListener('online', runSync);
-    runSync(); // Check on load/mount
+    runSync();
 
-    // Periodic check every 5 minutes in case 'online' event is missed
     const interval = setInterval(runSync, 5 * 60 * 1000);
 
     return () => {
@@ -93,110 +198,10 @@ function App() {
     };
   }, []);
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAuthenticated = !!localStorage.getItem('token');
-
   return (
     <div className="app">
       <Router>
-        <Routes>
-          <Route path="/login" element={
-            isAuthenticated ? (
-              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/survey-redirect" />
-            ) : <Login />
-          } />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/surveys"
-            element={
-              <AdminRoute>
-                <SurveyView />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/surveys/:surveyId"
-            element={
-              <AdminRoute>
-                <SurveyView />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/survey/:surveyId"
-            element={
-              <AdminRoute>
-                <SurveyView />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/take-survey/:surveyId"
-            element={
-              <PrivateRoute>
-                <TakeSurvey />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/analytics/:surveyId"
-            element={
-              <AdminRoute>
-                <SurveyAnalytics />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/data"
-            element={
-              <AdminRoute>
-                <SurveyData />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <PrivateRoute>
-                <Profile />
-              </PrivateRoute>
-            }
-          />
-          <Route path="/users"
-            element={
-              <AdminRoute>
-                <UsersPage />
-              </AdminRoute>
-            }
-          />
-          {/* Published Survey Redirect for non-admin users */}
-          <Route
-            path="/survey-redirect"
-            element={
-              <PrivateRoute>
-                <PublishedSurveyRedirect />
-              </PrivateRoute>
-            }
-          />
-          <Route path="/" element={
-            isAuthenticated ? (
-              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/survey-redirect" />
-            ) : <Navigate to="/login" />
-          } />
-          <Route path="*" element={
-            isAuthenticated ? (
-              user.role === 'admin' ? <Navigate to="/dashboard" /> : <Navigate to="/survey-redirect" />
-            ) : <Navigate to="/login" />
-          } />
-        </Routes>
+        <AppRoutes />
       </Router>
     </div>
   );

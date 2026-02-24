@@ -2177,6 +2177,7 @@ export default function TakeSurvey() {
               fontSize: '1.1rem',
               marginBottom: '1rem',
               textAlign: question.headingAlignment || 'start',
+              fontWeight: question.isBold ? '800' : '600',
               width: '100%',
               display: 'block'
             }}>
@@ -2297,7 +2298,7 @@ export default function TakeSurvey() {
                     }}
                   />
                 )}
-                {!isReorderEnabled && q.type === 'line' ? null : (
+                {!isReorderEnabled && (q.type === 'line' || q.type === 'text-block') ? null : (
                   <div className="question-header" style={{ marginBottom: '0.5rem', position: 'relative', zIndex: 2 }}>
                     <span className="question-number" style={{ fontSize: '11px' }}>
                       Question {i + 1}
@@ -2307,12 +2308,13 @@ export default function TakeSurvey() {
                     )}
                   </div>
                 )}
-                {/* Always show heading unless it's the default placeholder for a line type */}
-                {q.type !== 'line' && !(q.type === 'line' && (q.question === 'Type your question here....' || !q.question)) && (
+                {/* Always show heading unless it's the default placeholder for a line type or it's a text block */}
+                {q.type !== 'line' && q.type !== 'text-block' && !(q.type === 'line' && (q.question === 'Type your question here....' || !q.question)) && (
                   <h3 className="question-text" style={{
                     fontSize: '1.1rem',
                     marginBottom: '1rem',
                     textAlign: q.headingAlignment || 'start',
+                    fontWeight: q.isBold ? '800' : '600',
                     width: '100%',
                     display: 'block'
                   }}>

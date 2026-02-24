@@ -186,7 +186,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
       });
     }
 
-    console.log('User found:', user._id, user.roles);
+    console.log('User found:', user._id, user.role);
 
     // Verify password
     console.log('Verifying password...');

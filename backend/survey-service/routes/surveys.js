@@ -59,9 +59,9 @@ router.get('/', authMiddleware, async (req, res) => {
     }
     if (category) query.category = category;
 
-    // Non-admin users can only see published (active) surveys
+    // Non-admin users can only see published (active/Published) surveys
     if (req.user.role !== 'admin') {
-      query.status = 'active'; // Force only published surveys for non-admins, regardless of query param
+      query.status = { $in: ['active', 'Published'] };
     }
 
     const skip = (page - 1) * limit;

@@ -467,3 +467,15 @@
     gap: 0.4rem !important;
   }
 }
+.text-block-content {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #374151;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  width: 100%;
+}
+
+.text-block-content p {
+  margin-bottom: 1rem;
+}
