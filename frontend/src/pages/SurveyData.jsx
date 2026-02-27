@@ -286,28 +286,31 @@ const SurveyData = () => {
         const headers = [
             "Timestamp",
             "Surveyor",
+            "Surveyor Phone",
+            "Parliament",
+            "Assembly",
+            "Mandal",
             "Respondent Name",
             "Respondent Phone",
-            "Parliament",
-            "Municipality / Assembly",
-            "Ward / Mandal",
             "Village / Street",
-            ...questions.map((q, idx) => q.question || q.text || q.title || q.label || `Question ${idx + 1}`),
+            ...questions.slice(6).map((q, idx) => q.question || q.text || q.title || q.label || `Question ${idx + 7}`),
             "Maps Link"
         ];
 
         const rows = responses.map(r => [
             new Date(r.createdAt).toLocaleString(),
             r.userName || 'Anonymous',
-            r.respondentName || '',
-            r.respondentPhone || '',
-            r.parliament || '',
-            r.municipality || r.assembly || '',
-            r.ward_num || r.mandal || '',
-            r.village_or_street || '',
-            ...questions.map((q, idx) => getAnswerValue(r, q.id || q._id, q.type, idx)),
+            r.userPhone || '',
+            r.parliament || getAnswerValue(r, 'parliament') || '',
+            r.assembly || getAnswerValue(r, 'assembly') || '',
+            r.mandal || getAnswerValue(r, 'mandal') || '',
+            r.respondentName || getAnswerValue(r, 'respondentName') || '',
+            r.respondentPhone || getAnswerValue(r, 'respondentPhone') || '',
+            r.village_or_street || getAnswerValue(r, 'village_or_street') || '',
+            ...questions.slice(6).map((q, idx) => getAnswerValue(r, q.id || q._id, q.type, idx + 6)),
             r.googleMapsLink || (r.location?.latitude ? `https://www.google.com/maps?q=${r.location.latitude},${r.location.longitude}` : (r.latitude ? `https://www.google.com/maps?q=${r.latitude},${r.longitude}` : ''))
         ]);
+
 
         let csvContent = "data:text/csv;charset=utf-8,"
             + headers.map(h => `"${h}"`).join(",") + "\n"
@@ -348,15 +351,16 @@ const SurveyData = () => {
                                     <tr>
                                         <th>Timestamp</th>
                                         <th>Surveyor</th>
-                                        <th>Respondent Name</th>
-                                        <th>Respondent Phone</th>
+                                        <th>Surveyor Phone</th>
                                         <th>Parliament</th>
                                         <th>Assembly</th>
                                         <th>Mandal</th>
+                                        <th>Respondent Name</th>
+                                        <th>Respondent Phone</th>
                                         <th>Village/Street</th>
-                                        {selectedSurvey?.questions?.map((q, idx) => (
+                                        {selectedSurvey?.questions?.slice(6).map((q, idx) => (
                                             <th key={q._id || q.id || idx}>
-                                                {q.question || q.text || q.title || q.label || `Question ${idx + 1}`}
+                                                {q.question || q.text || q.title || q.label || `Question ${idx + 7}`}
                                             </th>
                                         ))}
                                         <th>Location (Link)</th>
@@ -372,15 +376,16 @@ const SurveyData = () => {
                                             <tr key={resp._id || idx}>
                                                 <td>{new Date(resp.createdAt).toLocaleString()}</td>
                                                 <td>{resp.userName || 'Anonymous'}</td>
-                                                <td>{resp.respondentName || '-'}</td>
-                                                <td>{resp.respondentPhone || '-'}</td>
-                                                <td>{resp.parliament || '-'}</td>
-                                                <td>{(resp.municipality || resp.assembly) || '-'}</td>
-                                                <td>{(resp.ward_num || resp.mandal) || '-'}</td>
-                                                <td>{resp.village_or_street || '-'}</td>
-                                                {selectedSurvey?.questions?.map((q, qIdx) => (
+                                                <td>{resp.userPhone || '-'}</td>
+                                                <td>{resp.parliament || getAnswerValue(resp, 'parliament') || '-'}</td>
+                                                <td>{resp.assembly || getAnswerValue(resp, 'assembly') || '-'}</td>
+                                                <td>{resp.mandal || getAnswerValue(resp, 'mandal') || '-'}</td>
+                                                <td>{resp.respondentName || getAnswerValue(resp, 'respondentName') || '-'}</td>
+                                                <td>{resp.respondentPhone || getAnswerValue(resp, 'respondentPhone') || '-'}</td>
+                                                <td>{resp.village_or_street || getAnswerValue(resp, 'village_or_street') || '-'}</td>
+                                                {selectedSurvey?.questions?.slice(6).map((q, qIdx) => (
                                                     <td key={q._id || q.id || qIdx}>
-                                                        {getAnswerValue(resp, q.id || q._id, q.type, qIdx)}
+                                                        {getAnswerValue(resp, q.id || q._id, q.type, qIdx + 6)}
                                                     </td>
                                                 ))}
                                                 <td>
@@ -528,13 +533,13 @@ const SurveyData = () => {
                                                         {survey.lastResponseAt && <span className="last-at">{survey.lastResponseAt}</span>}
                                                     </div>
                                                 </td>
-                                                <td><button className="table-icon-btn"><i className="icon-crosstab"></i>📑</button></td>
+                                                <td><button className="table-icon-btn" onClick={() => navigate(`/crosstab/${survey._id || survey.id}`)}>📑</button></td>
                                                 <td><button className="table-icon-btn" onClick={() => navigate(`/analytics/${survey._id || survey.id}`)}>📊</button></td>
                                                 <td><button className="table-icon-btn">⏲️</button></td>
-                                                <td><button className="table-icon-btn">📄</button></td>
-                                                <td><button className="table-icon-btn">📋</button></td>
-                                                <td><button className="table-icon-btn">🗺️</button></td>
-                                                <td><button className="table-icon-btn">📝</button></td>
+                                                <td><button className="table-icon-btn" onClick={() => navigate(`/daily-report/${survey._id || survey.id}`)}>📄</button></td>
+                                                <td><button className="table-icon-btn" onClick={() => navigate(`/summary-report/${survey._id || survey.id}`)}>📋</button></td>
+                                                <td><button className="table-icon-btn" onClick={() => navigate(`/spatial-report/${survey._id || survey.id}`)}>🗺️</button></td>
+                                                <td><button className="table-icon-btn" onClick={() => navigate(`/scoring-report/${survey._id || survey.id}`)}>📝</button></td>
                                             </tr>
                                         ))
                                     )}

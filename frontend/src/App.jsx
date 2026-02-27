@@ -11,6 +11,14 @@ import SurveyAnalytics from './pages/SurveyAnalytics';
 import SurveyData from './pages/SurveyData';
 import Profile from './pages/Profile';
 import UsersPage from './pages/UsersPage';
+import CrossTab from './pages/CrossTab';
+import DailyReport from './pages/DailyReport';
+import SummaryReport from './pages/SummaryReport';
+import SpatialReport from './pages/SpatialReport';
+import ScoringReport from './pages/ScoringReport';
+import ThemesPage from './pages/ThemesPage';
+import DevicesPage from './pages/DevicesPage';
+import HelpGuide from './pages/HelpGuide';
 import './App.css';
 
 const getMostRecentSurveyId = () => {
@@ -128,6 +136,78 @@ function AppRoutes() {
         element={
           <AdminRoute>
             <SurveyAnalytics />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/crosstab/:surveyId"
+        element={
+          <AdminRoute>
+            <CrossTab />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/daily-report/:surveyId"
+        element={
+          <AdminRoute>
+            <DailyReport />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/summary-report/:surveyId"
+        element={
+          <AdminRoute>
+            <SummaryReport />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/spatial-report/:surveyId"
+        element={
+          <AdminRoute>
+            <SpatialReport />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/scoring-report/:surveyId"
+        element={
+          <AdminRoute>
+            <ScoringReport />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/themes"
+        element={
+          <AdminRoute>
+            <ThemesPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/users"
+        element={
+          <AdminRoute>
+            <UsersPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/devices"
+        element={
+          <AdminRoute>
+            <DevicesPage />
+          </AdminRoute>
+        }
+      />
+      <Route
+        path="/help-guide"
+        element={
+          <AdminRoute>
+            <HelpGuide />
           </AdminRoute>
         }
       />

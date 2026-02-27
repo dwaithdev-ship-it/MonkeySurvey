@@ -1,302 +1,322 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { surveyAPI, responseAPI } from '../services/api';
-import './Dashboard.css';
+import Layout from './layout';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement
+} from 'chart.js';
+import { Bar, Pie, Doughnut } from 'react-chartjs-2';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+import './CrossTab.css'; // Reusing some base styles
 
-export default function SurveyAnalytics() {
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  PointElement,
+  LineElement,
+  ChartDataLabels
+);
+
+const SurveyAnalytics = () => {
   const { surveyId } = useParams();
   const navigate = useNavigate();
   const [survey, setSurvey] = useState(null);
-  const [responses, setResponses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportData, setReportData] = useState(null);
+
+  // Filters
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedQuestionId, setSelectedQuestionId] = useState('');
+  const [chartType, setChartType] = useState('column'); // column, bar, pie, doughnut
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    fetchData();
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSurveyDetails();
   }, [surveyId]);
 
-  const fetchData = async () => {
+  const fetchSurveyDetails = async () => {
     try {
-      console.log('Fetching analytics for survey:', surveyId);
-
-      const [surveyRes, responsesRes] = await Promise.all([
-        surveyAPI.getById(surveyId),
-        responseAPI.getAll({ surveyId })
-      ]);
-
-      console.log('Survey response:', surveyRes);
-      console.log('Responses response:', responsesRes);
-
-      if (surveyRes.success) {
-        setSurvey(surveyRes.data);
-      }
-
-      if (responsesRes.success) {
-        console.log('Setting responses:', responsesRes.data.responses);
-        setResponses(responsesRes.data.responses || []);
+      setLoading(true);
+      const res = await surveyAPI.getById(surveyId);
+      if (res.success) {
+        setSurvey(res.data);
+        if (res.data.questions && res.data.questions.length > 0) {
+          const firstQ = res.data.questions.find(q => !['text-block', 'line', 'pseudo-header'].includes(q.type));
+          if (firstQ) setSelectedQuestionId(firstQ._id || firstQ.id);
+        }
       }
     } catch (err) {
-      console.error('Failed to load data:', err);
-      setError(err.error?.message || err.message || 'Failed to load analytics');
+      console.error("Failed to fetch survey:", err);
+      alert("Error loading survey details.");
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateQuestionStats = (question) => {
-    const questionId = question._id;
-    const stats = {};
-    let totalAnswers = 0;
-
-    responses.forEach(response => {
-      const answer = response.answers?.find(a => a.questionId === questionId);
-      if (answer && answer.value) {
-        if (Array.isArray(answer.value)) {
-          // Checkbox - multiple values
-          answer.value.forEach(val => {
-            stats[val] = (stats[val] || 0) + 1;
-            totalAnswers++;
-          });
-        } else {
-          stats[answer.value] = (stats[answer.value] || 0) + 1;
-          totalAnswers++;
-        }
-      }
-    });
-
-    return { stats, totalAnswers };
-  };
-
-  const renderQuestionAnalytics = (question, index) => {
-    const { stats, totalAnswers } = calculateQuestionStats(question);
-
-    if (['multiple_choice', 'checkbox', 'dropdown'].includes(question.type)) {
-      return (
-        <div key={question._id} className="analytics-question">
-          <div className="analytics-question-header">
-            <h3>Q{index + 1}: {question.question}</h3>
-            <span className="response-count">{totalAnswers} responses</span>
-          </div>
-
-          <div className="analytics-chart">
-            {question.options?.map(option => {
-              const count = stats[option.value] || 0;
-              const percentage = totalAnswers > 0 ? (count / totalAnswers * 100).toFixed(1) : 0;
-
-              return (
-                <div key={option._id} className="chart-bar-container">
-                  <div className="chart-label">
-                    <span>{option.label}</span>
-                    <span className="chart-value">{count} ({percentage}%)</span>
-                  </div>
-                  <div className="chart-bar-wrapper">
-                    <div
-                      className="chart-bar"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    } else if (['text', 'textarea'].includes(question.type)) {
-      const textAnswers = responses
-        .map(r => r.answers?.find(a => a.questionId === question._id))
-        .filter(a => a && a.value);
-
-      return (
-        <div key={question._id} className="analytics-question">
-          <div className="analytics-question-header">
-            <h3>Q{index + 1}: {question.question}</h3>
-            <span className="response-count">{textAnswers.length} responses</span>
-          </div>
-
-          <div className="text-responses">
-            {textAnswers.length > 0 ? (
-              textAnswers.map((answer, idx) => (
-                <div key={idx} className="text-response-item">
-                  <p>"{answer.value}"</p>
-                </div>
-              ))
-            ) : (
-              <p className="no-responses">No responses yet</p>
-            )}
-          </div>
-        </div>
-      );
-    } else if (question.type === 'rating') {
-      const ratings = Object.keys(stats).map(Number).sort((a, b) => a - b);
-      const avgRating = ratings.length > 0
-        ? (ratings.reduce((sum, rating) => sum + (rating * stats[rating]), 0) / totalAnswers).toFixed(1)
-        : 0;
-
-      return (
-        <div key={question._id} className="analytics-question">
-          <div className="analytics-question-header">
-            <h3>Q{index + 1}: {question.question}</h3>
-            <span className="response-count">{totalAnswers} responses</span>
-          </div>
-
-          <div className="rating-summary">
-            <div className="avg-rating">
-              <span className="rating-value">{avgRating}</span>
-              <span className="rating-label">Average Rating</span>
-            </div>
-
-            <div className="rating-distribution">
-              {[1, 2, 3, 4, 5].map(star => (
-                <div key={star} className="rating-bar-container">
-                  <span>{star} ⭐</span>
-                  <div className="chart-bar-wrapper">
-                    <div
-                      className="chart-bar"
-                      style={{
-                        width: `${totalAnswers > 0 ? ((stats[star] || 0) / totalAnswers * 100) : 0}%`
-                      }}
-                    />
-                  </div>
-                  <span>{stats[star] || 0}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
+  const handleApplyFilters = async () => {
+    if (!selectedQuestionId) {
+      alert("Please select a field or question.");
+      return;
     }
 
-    return null;
+    try {
+      setReportLoading(true);
+      const params = {
+        surveyId,
+        questionId: selectedQuestionId,
+        startDate,
+        endDate
+      };
+      const res = await responseAPI.getAnalytics(params);
+      if (res.success) {
+        setReportData(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to generate analytics:", err);
+      alert("Error generating analytics.");
+    } finally {
+      setReportLoading(false);
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="dashboard">
-        <nav className="navbar">
-          <div className="nav-brand">
-            <h2>BodhaSurvey</h2>
-          </div>
-        </nav>
-        <div className="dashboard-content">
-          <div className="loading">Loading analytics...</div>
-        </div>
-      </div>
-    );
-  }
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: chartType === 'bar' ? 'y' : 'x',
+    plugins: {
+      legend: {
+        display: ['pie', 'doughnut'].includes(chartType),
+        position: 'right'
+      },
+      datalabels: {
+        color: '#fff',
+        font: { weight: 'bold' },
+        formatter: (value, ctx) => {
+          const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+          const pct = ((value / total) * 100).toFixed(1);
+          return `${value} (${pct}%)`;
+        },
+        display: (ctx) => ctx.dataset.data[ctx.dataIndex] > 0
+      }
+    }
+  };
 
-  if (error || !survey) {
-    return (
-      <div className="dashboard">
-        <nav className="navbar">
-          <div className="nav-brand">
-            <h2>BodhaSurvey</h2>
-          </div>
-        </nav>
-        <div className="dashboard-content">
-          <div className="error-state">
-            <h3>Error</h3>
-            <p>{error || 'Survey not found'}</p>
-            <button onClick={() => navigate('/dashboard')} className="btn-primary">
-              Back to Dashboard
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const getChartData = () => {
+    if (!reportData) return null;
+
+    const sortedData = [...reportData.distribution].sort((a, b) => b.count - a.count);
+    const labels = sortedData.map(item => item.option);
+    const counts = sortedData.map(item => item.count);
+
+    const colors = [
+      '#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+      '#ec4899', '#06b6d4', '#f97316', '#14b8a6', '#475569'
+    ];
+
+    return {
+      labels,
+      datasets: [{
+        label: 'Responses',
+        data: counts,
+        backgroundColor: colors.slice(0, labels.length),
+        borderRadius: chartType === 'column' || chartType === 'bar' ? 6 : 0
+      }]
+    };
+  };
+
+  const exportToExcel = () => {
+    if (!reportData || !window.XLSX) return;
+    const wb = window.XLSX.utils.book_new();
+    const sheetData = [
+      ["Option / Value", "Responses", "Percentage"]
+    ];
+
+    reportData.distribution.forEach(item => {
+      const pct = ((item.count / reportData.totalResponses) * 100).toFixed(1) + '%';
+      sheetData.push([item.option, item.count, pct]);
+    });
+
+    sheetData.push(["Total", reportData.totalResponses, "100%"]);
+
+    const ws = window.XLSX.utils.aoa_to_sheet(sheetData);
+    window.XLSX.utils.book_append_sheet(wb, ws, "Analytics Report");
+    window.XLSX.writeFile(wb, `analytics_${survey.title}_${new Date().getTime()}.xlsx`);
+  };
+
+  const exportChartImage = () => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return;
+    const url = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `chart_${survey.title}.png`;
+    link.href = url;
+    link.click();
+  };
+
+  const pinToDashboard = () => {
+    const pins = JSON.parse(localStorage.getItem('dashboard_pins') || '[]');
+    const newPin = {
+      id: Date.now(),
+      surveyId,
+      surveyTitle: survey.title,
+      questionId: selectedQuestionId,
+      questionText: survey.questions.find(q => (q._id || q.id) === selectedQuestionId)?.question || selectedQuestionId,
+      chartType,
+      pinnedAt: new Date().toISOString()
+    };
+    localStorage.setItem('dashboard_pins', JSON.stringify([...pins, newPin]));
+    alert("Report pinned to dashboard!");
+  };
+
+  if (loading) return <Layout user={user || {}}><div className="loading-state">Loading survey details...</div></Layout>;
 
   return (
-    <div className="dashboard">
-      <nav className="navbar">
-        <div className="nav-brand">
-          <h2>BodhaSurvey</h2>
+    <Layout user={user || {}}>
+      <div className="crosstab-container">
+        <div className="crosstab-header">
+          <button className="back-btn" onClick={() => navigate('/data')}>← Back to Surveys</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2>Survey Analytics: <span className="survey-highlight">{survey?.title}</span></h2>
+            <div className="chart-controls">
+              <span style={{ fontSize: '14px', color: '#64748b' }}>Chart Type:</span>
+              <select value={chartType} onChange={e => setChartType(e.target.value)} className="chart-type-select">
+                <option value="column">Column Chart</option>
+                <option value="bar">Bar Chart</option>
+                <option value="pie">Pie Chart</option>
+                <option value="doughnut">Doughnut Chart</option>
+              </select>
+              <button className="pin-btn" onClick={pinToDashboard} title="Pin to Dashboard">Pin to Dashboard</button>
+            </div>
+          </div>
         </div>
-        <div className="nav-actions">
-          <button onClick={() => navigate('/dashboard')} className="btn-secondary">
-            Back to Dashboard
+
+        <div className="filters-panel">
+          <div className="filter-group">
+            <label>Date Range</label>
+            <div className="date-inputs">
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+              <span>to</span>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <label>Select Question / Field</label>
+            <select value={selectedQuestionId} onChange={e => setSelectedQuestionId(e.target.value)}>
+              <option value="">-- Choose --</option>
+              <optgroup label="Metadata Fields">
+                <option value="parliament">Parliament</option>
+                <option value="assembly">Assembly</option>
+                <option value="mandal">Mandal</option>
+                <option value="userName">Surveyor</option>
+              </optgroup>
+              <optgroup label="Survey Questions">
+                {survey?.questions?.filter(q => !['text-block', 'line', 'pseudo-header'].includes(q.type)).map((q, idx) => (
+                  <option key={q._id || q.id} value={q._id || q.id}>
+                    Q{idx + 1}: {q.question || q.text || q.title}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
+
+          <button className="apply-btn" onClick={handleApplyFilters} disabled={reportLoading}>
+            {reportLoading ? 'Analyzing...' : 'Refresh Analytics'}
           </button>
         </div>
-      </nav>
 
-      <div className="dashboard-content">
-        <div className="analytics-container">
-          <div className="analytics-header">
-            <div>
-              <h1>{survey.title} - Analytics</h1>
-              {survey.description && <p className="survey-description">{survey.description}</p>}
-            </div>
+        {!reportData ? (
+          <div className="empty-report-state">
+            <div className="empty-icon">📊</div>
+            <h3>No data available for selected criteria</h3>
+            <p>Please select a question and click refresh to see the visualization.</p>
           </div>
-
-          <div className="analytics-summary">
-            <div className="summary-card">
-              <div className="summary-value">{responses.length}</div>
-              <div className="summary-label">Total Responses</div>
-            </div>
-            <div className="summary-card">
-              <div className="summary-value">{survey.questions?.length || 0}</div>
-              <div className="summary-label">Total Questions</div>
-            </div>
-            <div className="summary-card">
-              <div className="summary-value">
-                {survey.completionRate ? `${Math.round(survey.completionRate * 100)}%` : '0%'}
+        ) : (
+          <div className="report-content">
+            <div className="report-summary">
+              <div className="summary-card">
+                <span className="card-label">Total Responses</span>
+                <span className="card-value">{reportData.totalResponses}</span>
               </div>
-              <div className="summary-label">Completion Rate</div>
-            </div>
-            <div className="summary-card">
-              <div className="summary-value">{survey.status.toUpperCase()}</div>
-              <div className="summary-label">Status</div>
-            </div>
-          </div>
-
-          <div className="analytics-questions">
-            <h2>Question Results</h2>
-            {survey.questions && survey.questions.length > 0 ? (
-              survey.questions.map((question, index) =>
-                renderQuestionAnalytics(question, index)
-              )
-            ) : (
-              <p>No questions in this survey</p>
-            )}
-          </div>
-
-          <div className="individual-responses">
-            <h2>Individual Responses ({responses.length})</h2>
-            {responses.length > 0 ? (
-              <div className="responses-table">
-                {responses.map((response, idx) => (
-                  <div key={response._id} className="response-card">
-                    <div className="response-header">
-                      <strong>Response #{idx + 1}</strong>
-                      <span className="response-date">
-                        {new Date(response.submittedAt || response.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="response-answers">
-                      {response.answers?.map((answer, qIdx) => {
-                        const question = survey.questions.find(q => q._id === answer.questionId);
-                        if (!question) return null;
-
-                        return (
-                          <div key={qIdx} className="response-answer">
-                            <div className="answer-question">{question.question}</div>
-                            <div className="answer-value">
-                              {Array.isArray(answer.value)
-                                ? answer.value.join(', ')
-                                : answer.value}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+              <div className="summary-actions">
+                <button className="export-action-btn xls" onClick={exportToExcel}>Export XLSX</button>
+                <button className="export-action-btn csv" style={{ backgroundColor: '#6366f1' }} onClick={exportChartImage}>Export Image</button>
               </div>
-            ) : (
-              <p className="no-responses">No responses yet</p>
-            )}
+            </div>
+
+            <div className="analytics-visualization-card">
+              <div className="chart-container" style={{ height: '400px', position: 'relative' }}>
+                {chartType === 'column' || chartType === 'bar' ? (
+                  <Bar data={getChartData()} options={chartOptions} />
+                ) : chartType === 'pie' ? (
+                  <Pie data={getChartData()} options={chartOptions} />
+                ) : (
+                  <Doughnut data={getChartData()} options={chartOptions} />
+                )}
+              </div>
+            </div>
+
+            <div className="group-table-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
+              <h3 className="group-title">Frequency Distribution</h3>
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Option / Value</th>
+                    <th>Responses</th>
+                    <th>Percent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportData.distribution.sort((a, b) => b.count - a.count).map((item, idx) => (
+                    <tr key={idx}>
+                      <td className="ans-label">{item.option || 'N/A'}</td>
+                      <td className="ans-count">{item.count}</td>
+                      <td className="ans-pct">
+                        <div className="pct-bar-wrapper">
+                          <div className="pct-bar" style={{ width: `${(item.count / reportData.totalResponses * 100)}%` }}></div>
+                          <span>{(item.count / reportData.totalResponses * 100).toFixed(1)}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="total-row">
+                    <td>Total</td>
+                    <td>{reportData.totalResponses}</td>
+                    <td>100%</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
-    </div>
+    </Layout>
   );
-}
+};
+
+export default SurveyAnalytics;

@@ -1,0 +1,180 @@
+.devices-page-container {
+    padding: 24px;
+    background-color: #f8fafc;
+    min-height: calc(100vh - 64px); /* assuming 64px header */
+}
+
+.devices-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.title-section h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 8px 0;
+}
+
+.title-section p {
+    color: #64748b;
+    margin: 0;
+    font-size: 14px;
+}
+
+.devices-controls {
+    margin-bottom: 20px;
+}
+
+.search-input {
+    width: 300px;
+    padding: 10px 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.search-input:focus {
+    border-color: #3b82f6;
+}
+
+.devices-table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+
+.devices-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.devices-table th {
+    background-color: #f8fafc;
+    padding: 16px;
+    font-weight: 600;
+    color: #475569;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.devices-table td {
+    padding: 16px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #334155;
+    font-size: 14px;
+}
+
+.devices-table tr:last-child td {
+    border-bottom: none;
+}
+
+.devices-table tr:hover {
+    background-color: #f1f5f9;
+}
+
+.device-id-cell {
+    font-family: inherit;
+    font-size: 13px;
+    color: #64748b;
+}
+
+/* Badges */
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.status-badge.inactive {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.platform-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    background-color: #e0e7ff;
+    color: #3730a3;
+    text-transform: capitalize;
+}
+
+.platform-badge.web {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+.platform-badge.android {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.platform-badge.ios {
+    background-color: #f3e8ff;
+    color: #6b21a8;
+}
+
+/* Action Buttons */
+.actions-cell {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    background: transparent;
+}
+
+.action-btn.toggle {
+    border: 1px solid;
+}
+
+.action-btn.deactivate {
+    color: #ef4444;
+    border-color: #fecaca;
+    background-color: #fef2f2;
+}
+
+.action-btn.deactivate:hover {
+    background-color: #fee2e2;
+}
+
+.action-btn.activate {
+    color: #10b981;
+    border-color: #a7f3d0;
+    background-color: #ecfdf5;
+}
+
+.action-btn.activate:hover {
+    background-color: #d1fae5;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px !important;
+    color: #64748b;
+    font-style: italic;
+}

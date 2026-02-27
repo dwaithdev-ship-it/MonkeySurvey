@@ -1,0 +1,217 @@
+{
+  "_id": "6997f46b258c26569b115fc5",
+  "surveyId": "6997e719071aea1670643e21",
+  "userId": "697cafa3c18a062b52610e9f",
+  "userName": "పురుషుడు",
+  "parliament": "",
+  "municipality": "Visakhapatnam",
+  "ward_num": "3",
+  "googleMapsLink": "https://www.google.com/maps?q=17.3843,78.4583",
+  "location": {
+    "latitude": 17.3843,
+    "longitude": 78.4583,
+    "method": "ip"
+  },
+  "answers": [
+    {
+      "questionId": "1771396378116",
+      "value": ""
+    },
+    {
+      "questionId": "1771396435749",
+      "value": [
+        "Visakhapatnam",
+        "Bhimili",
+        "Bheemunipatnam"
+      ]
+    },
+    {
+      "questionId": "1771489550332",
+      "value": "3"
+    },
+    {
+      "questionId": "1771489360294",
+      "value": "గ్రామం"
+    },
+    {
+      "questionId": "1771407959528",
+      "value": "3"
+    },
+    {
+      "questionId": "1771410865531",
+      "value": "3"
+    },
+    {
+      "questionId": "1771414287545",
+      "value": "పురుషుడు"
+    },
+    {
+      "questionId": "1771414319688",
+      "value": "18–25"
+    },
+    {
+      "questionId": "1771414407081",
+      "value": "కార్మిక,కూలి,ఉధోగం,వ్యాపారం,కులవృత్తి,వ్యవసాయం,నిరుద్యోగం,గృహిణి,విద్యార్ధి,వృద్ధులు,ఇతర"
+    },
+    {
+      "questionId": "1771414471137",
+      "value": "ప్రాథమిక"
+    },
+    {
+      "questionId": "1771414631522",
+      "value": "SC"
+    },
+    {
+      "questionId": "1771414693528",
+      "value": "హిందూ"
+    },
+    {
+      "questionId": "1771414736137",
+      "value": "పేద"
+    },
+    {
+      "questionId": "1771477037922",
+      "value": ""
+    },
+    {
+      "questionId": "1771417967126",
+      "value": "Whatsapp"
+    },
+    {
+      "questionId": "1771418087390",
+      "value": "బాగాలేదు"
+    },
+    {
+      "questionId": "1771418319494",
+      "value": "బాగాలేదు"
+    },
+    {
+      "questionId": "1771418390422",
+      "value": "బాగాలేదు"
+    },
+    {
+      "questionId": "1771418436758",
+      "value": "అమలుపరచడం లేదు"
+    },
+    {
+      "questionId": "1771418475887",
+      "value": "చంద్రబాబు హయాంలో మంచి జరిగింది"
+    },
+    {
+      "questionId": "1771472748273",
+      "value": "చంద్రబాబు"
+    },
+    {
+      "questionId": "1771472834905",
+      "value": "జగన్"
+    },
+    {
+      "questionId": "1771472927969",
+      "value": "చంద్రబాబు"
+    },
+    {
+      "questionId": "1771473002577",
+      "value": "వాలంటీర్ వ్యవస్థ ఉన్నప్పుడే బాగుంది"
+    },
+    {
+      "questionId": "1771473065464",
+      "value": "ఇతరులు"
+    },
+    {
+      "questionId": "1771473276041",
+      "value": "కాంగ్రెస్"
+    },
+    {
+      "questionId": "1771473399864",
+      "value": "అందుబాటులో ఉన్నారు"
+    },
+    {
+      "questionId": "1771473527113",
+      "value": "కుందూరు నాగార్జున రెడ్డి"
+    },
+    {
+      "questionId": "1771488162919",
+      "value": ""
+    },
+    {
+      "questionId": "1771488244910",
+      "value": "వేస్తున్నారు"
+    },
+    {
+      "questionId": "1771488634710",
+      "value": "అభివృద్ధి"
+    },
+    {
+      "questionId": "1771488683934",
+      "value": "బాగున్నాయి"
+    },
+    {
+      "questionId": "1771488740846",
+      "value": "అందుతున్నాయి"
+    },
+    {
+      "questionId": "1771488790871",
+      "value": "బాగున్నాయి"
+    },
+    {
+      "questionId": "1771488842398",
+      "value": "బాగున్నాయి"
+    },
+    {
+      "questionId": "1771488915303",
+      "value": "బాగుంది"
+    }
+  ],
+  "metadata": {
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+    "ipAddress": "::1"
+  },
+  "isComplete": true,
+  "submittedAt": "2026-02-20T05:43:07.237Z",
+  "createdAt": "2026-02-20T05:43:07.290Z",
+  "updatedAt": "2026-02-20T05:43:07.290Z",
+  "__v": 0,
+  "Question_1": "",
+  "Question_10": "ప్రాథమిక",
+  "Question_11": "SC",
+  "Question_12": "హిందూ",
+  "Question_13": "పేద",
+  "Question_14": "",
+  "Question_15": "Whatsapp",
+  "Question_16": "బాగాలేదు",
+  "Question_17": "బాగాలేదు",
+  "Question_18": "బాగాలేదు",
+  "Question_19": "అమలుపరచడం లేదు",
+  "Question_2": [
+    "Visakhapatnam",
+    "Bhimili",
+    "Bheemunipatnam"
+  ],
+  "Question_20": "చంద్రబాబు హయాంలో మంచి జరిగింది",
+  "Question_21": "చంద్రబాబు",
+  "Question_22": "జగన్",
+  "Question_23": "చంద్రబాబు",
+  "Question_24": "వాలంటీర్ వ్యవస్థ ఉన్నప్పుడే బాగుంది",
+  "Question_25": "ఇతరులు",
+  "Question_26": "కాంగ్రెస్",
+  "Question_27": "అందుబాటులో ఉన్నారు",
+  "Question_28": "కుందూరు నాగార్జున రెడ్డి",
+  "Question_29": "",
+  "Question_3": "3",
+  "Question_30": "వేస్తున్నారు",
+  "Question_31": "అభివృద్ధి",
+  "Question_32": "బాగున్నాయి",
+  "Question_33": "అందుతున్నాయి",
+  "Question_34": "బాగున్నాయి",
+  "Question_35": "బాగున్నాయి",
+  "Question_36": "బాగుంది",
+  "Question_4": "గ్రామం",
+  "Question_5": "3",
+  "Question_6": "3",
+  "Question_7": "పురుషుడు",
+  "Question_8": "18–25",
+  "Question_9": "కార్మిక,కూలి,ఉధోగం,వ్యాపారం,కులవృత్తి,వ్యవసాయం,నిరుద్యోగం,గృహిణి,విద్యార్ధి,వృద్ధులు,ఇతర",
+  "assembly": "Visakhapatnam",
+  "mandal": "3",
+  "village_or_street": "గ్రామం"
+}

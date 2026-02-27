@@ -60,7 +60,8 @@ app.get('/', (req, res) => {
       surveys: '/surveys/*',
       responses: '/responses/*',
       analytics: '/analytics/*',
-      notifications: '/notifications/*'
+      notifications: '/notifications/*',
+      themes: '/api/survey-theme/*'
     }
   });
 });
@@ -112,6 +113,11 @@ app.use('/ai', createProxyMiddleware({
 }));
 
 app.use('/parl-cons', createProxyMiddleware({
+  target: SERVICES.SURVEY,
+  ...proxyOptions
+}));
+
+app.use('/api/survey-theme', createProxyMiddleware({
   target: SERVICES.SURVEY,
   ...proxyOptions
 }));

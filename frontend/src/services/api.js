@@ -173,6 +173,8 @@ export const userAPI = {
   updateMSRUser: (id, data) => api.put(`/users/msr-users/${id}`, data),
   updateMSRStatus: (id, isActive) => api.patch(`/users/msr-users/${id}/status`, { isActive }),
   updateMSRPassword: (id, password) => api.patch(`/users/msr-users/${id}/password`, { password }),
+  getDevices: () => api.get('/users/devices'),
+  updateDeviceStatus: (deviceId, isActive) => api.patch(`/users/devices/${deviceId}/status`, { isActive }),
 };
 
 // Survey Service APIs
@@ -193,6 +195,11 @@ export const responseAPI = {
   submit: (data) => api.post('/responses', data),
   savePartial: (data) => api.post('/responses/partial', data),
   getAll: (params) => api.get('/responses', { params }),
+  getCrosstab: (params) => api.get('/responses/crosstab', { params }),
+  getAnalytics: (params) => api.get('/responses/analytics', { params }),
+  getDailyReport: (params) => api.get('/responses/daily-report', { params }),
+  getSummaryReport: (params) => api.get('/responses/summary-report', { params }),
+  getSpatialReport: (params) => api.get('/responses/spatial-report', { params }),
 };
 
 // ParlCons APIs (hosted on survey service)
@@ -203,6 +210,13 @@ export const parlConsAPI = {
   getHierarchyParliaments: () => api.get('/parl-cons/hierarchy/parliaments'),
   getAssemblies: (parl) => api.get(`/parl-cons/hierarchy/assemblies/${parl}`),
   getMandals: (parl, assembly) => api.get(`/parl-cons/hierarchy/mandals/${parl}/${assembly}`),
+};
+
+// Theme Service API
+export const themeAPI = {
+  getTheme: (surveyId) => api.get(`/api/survey-theme/${surveyId}`),
+  getAllThemes: () => api.get(`/api/survey-theme`),
+  saveTheme: (data) => api.post(`/api/survey-theme`, data)
 };
 
 export default api;

@@ -1,0 +1,669 @@
+{
+  "_id": "6997e719071aea1670643e21",
+  "title": "Prajābhiprāya సేకరణ – 2026",
+  "description": "Public Opinion Survey 2026",
+  "status": "active",
+  "settings": {
+    "anonymous": false,
+    "multipleSubmissions": false,
+    "showResults": true,
+    "requireLogin": false,
+    "randomizeQuestions": false
+  },
+  "questions": [
+    {
+      "type": "dropdown",
+      "question": "Parliamentary Constituency",
+      "required": true,
+      "options": [],
+      "order": 1
+    },
+    {
+      "type": "dropdown",
+      "question": "Assembly Constituency",
+      "required": true,
+      "options": [],
+      "order": 2
+    },
+    {
+      "type": "dropdown",
+      "question": "Mandal",
+      "required": true,
+      "options": [],
+      "order": 3
+    },
+    {
+      "type": "text",
+      "question": "గ్రామం / స్ట్రీట్",
+      "required": true,
+      "options": [],
+      "order": 4
+    },
+    {
+      "type": "radio",
+      "question": "ప్రాంతం",
+      "required": false,
+      "options": [
+        {
+          "label": "గ్రామం",
+          "value": "Village"
+        },
+        {
+          "label": "మున్సిపాలిటీ",
+          "value": "Municipality"
+        },
+        {
+          "label": "నగరం",
+          "value": "City"
+        },
+        {
+          "label": "మండల కేంద్రం",
+          "value": "Mandal HQ"
+        }
+      ],
+      "order": 5
+    },
+    {
+      "type": "text",
+      "question": "ఓటరు పేరు",
+      "required": false,
+      "options": [],
+      "order": 6
+    },
+    {
+      "type": "text",
+      "question": "ఫోన్ నంబర్",
+      "required": false,
+      "options": [],
+      "order": 7
+    },
+    {
+      "type": "radio",
+      "question": "వృత్తి",
+      "required": false,
+      "options": [
+        {
+          "label": "కార్మిక",
+          "value": "Labor"
+        },
+        {
+          "label": "కూలి",
+          "value": "Coolie"
+        },
+        {
+          "label": "ఉద్యోగం",
+          "value": "Job"
+        },
+        {
+          "label": "వ్యాపారం",
+          "value": "Business"
+        },
+        {
+          "label": "కులవృత్తి",
+          "value": "Caste Profession"
+        },
+        {
+          "label": "వ్యవసాయం",
+          "value": "Agriculture"
+        },
+        {
+          "label": "నిరుద్యోగం",
+          "value": "Unemployed"
+        },
+        {
+          "label": "గృహిణి",
+          "value": "Housewife"
+        },
+        {
+          "label": "విద్యార్థి",
+          "value": "Student"
+        },
+        {
+          "label": "వృద్ధులు",
+          "value": "Elderly"
+        },
+        {
+          "label": "ఇతర",
+          "value": "Other"
+        }
+      ],
+      "order": 8
+    },
+    {
+      "type": "radio",
+      "question": "లింగం",
+      "required": false,
+      "options": [
+        {
+          "label": "పురుషుడు",
+          "value": "Male"
+        },
+        {
+          "label": "స్త్రీ",
+          "value": "Female"
+        }
+      ],
+      "order": 9
+    },
+    {
+      "type": "radio",
+      "question": "వయస్సు",
+      "required": false,
+      "options": [
+        {
+          "label": "18–25",
+          "value": "18-25"
+        },
+        {
+          "label": "26–40",
+          "value": "26-40"
+        },
+        {
+          "label": "41–59",
+          "value": "41-59"
+        },
+        {
+          "label": "60+",
+          "value": "60+"
+        }
+      ],
+      "order": 10
+    },
+    {
+      "type": "radio",
+      "question": "విద్య",
+      "required": false,
+      "options": [
+        {
+          "label": "నిరక్షరాస్యుడు",
+          "value": "Illiterate"
+        },
+        {
+          "label": "ప్రాథమిక",
+          "value": "Primary"
+        },
+        {
+          "label": "పదవ తరగతి",
+          "value": "10th"
+        },
+        {
+          "label": "ఇంటర్",
+          "value": "Inter"
+        },
+        {
+          "label": "డిగ్రీ",
+          "value": "Degree"
+        }
+      ],
+      "order": 11
+    },
+    {
+      "type": "radio",
+      "question": "సామాజిక వర్గం",
+      "required": false,
+      "options": [
+        {
+          "label": "SC",
+          "value": "SC"
+        },
+        {
+          "label": "ST",
+          "value": "ST"
+        },
+        {
+          "label": "BC",
+          "value": "BC"
+        },
+        {
+          "label": "OC",
+          "value": "OC"
+        }
+      ],
+      "order": 12
+    },
+    {
+      "type": "radio",
+      "question": "మతం",
+      "required": false,
+      "options": [
+        {
+          "label": "హిందూ",
+          "value": "Hindu"
+        },
+        {
+          "label": "ముస్లిం",
+          "value": "Muslim"
+        },
+        {
+          "label": "క్రైస్తవ",
+          "value": "Christian"
+        },
+        {
+          "label": "ఇతర",
+          "value": "Other"
+        }
+      ],
+      "order": 13
+    },
+    {
+      "type": "radio",
+      "question": "ఆర్థిక పరిస్థితి",
+      "required": false,
+      "options": [
+        {
+          "label": "పేద",
+          "value": "Poor"
+        },
+        {
+          "label": "మధ్య తరగతి",
+          "value": "Middle Class"
+        },
+        {
+          "label": "ధనిక",
+          "value": "Rich"
+        }
+      ],
+      "order": 14
+    },
+    {
+      "type": "checkbox",
+      "question": "సోషల్ మీడియా మీరు ఏం చూస్తారు?",
+      "required": false,
+      "options": [
+        {
+          "label": "Youtube",
+          "value": "Youtube"
+        },
+        {
+          "label": "Facebook",
+          "value": "Facebook"
+        },
+        {
+          "label": "Instagram",
+          "value": "Instagram"
+        },
+        {
+          "label": "Whatsapp",
+          "value": "Whatsapp"
+        },
+        {
+          "label": "ఇతర",
+          "value": "Other"
+        }
+      ],
+      "order": 15
+    },
+    {
+      "type": "radio",
+      "question": "మీ ఎమ్మెల్యే పనితీరు ఎలా ఉంది?",
+      "required": false,
+      "options": [
+        {
+          "label": "బాగుంది",
+          "value": "Good"
+        },
+        {
+          "label": "బాగోలేదు",
+          "value": "Bad"
+        }
+      ],
+      "order": 16
+    },
+    {
+      "type": "radio",
+      "question": "చంద్రబాబు ప్రభుత్వం పనితీరు ఎలా ఉంది?",
+      "required": false,
+      "options": [
+        {
+          "label": "బాగుంది",
+          "value": "Good"
+        },
+        {
+          "label": "బాగోలేదు",
+          "value": "Bad"
+        }
+      ],
+      "order": 17
+    },
+    {
+      "type": "radio",
+      "question": "చంద్రబాబు ప్రభుత్వం పనితీరు ఎలా ఉంది?",
+      "required": false,
+      "options": [
+        {
+          "label": "బాగుంది",
+          "value": "Good"
+        },
+        {
+          "label": "బాగాలేదు",
+          "value": "Bad"
+        }
+      ],
+      "order": 18
+    },
+    {
+      "type": "radio",
+      "question": "డిప్యూటీ సీఎం పవన్ కళ్యాణ్ పనితీరు ఎట్ల ఉంది?",
+      "required": false,
+      "options": [
+        {
+          "label": "బాగుంది",
+          "value": "Good"
+        },
+        {
+          "label": "బాగాలేదు",
+          "value": "Bad"
+        }
+      ],
+      "order": 19
+    },
+    {
+      "type": "radio",
+      "question": "ఎన్నికల ముందు సూపర్ 6/7 పథకాలు హామీ ఇచ్చినట్లుగానే అమలుపరుస్తున్నాయా?",
+      "required": false,
+      "options": [
+        {
+          "label": "అమలుపరుస్తున్నాయి",
+          "value": "Yes"
+        },
+        {
+          "label": "అమలుపరచడం లేదు",
+          "value": "No"
+        }
+      ],
+      "order": 20
+    },
+    {
+      "type": "radio",
+      "question": "చంద్రబాబు, జగన్ ప్రభుత్వాల్లో ఎవరి హయాంలో మీకు మంచి జరిగింది?",
+      "required": false,
+      "options": [
+        {
+          "label": "చంద్రబాబు హయాంలో మంచి జరిగింది",
+          "value": "CBN"
+        },
+        {
+          "label": "జగన్ హయాంలో మంచి జరిగింది",
+          "value": "Jagan"
+        }
+      ],
+      "order": 21
+    },
+    {
+      "type": "radio",
+      "question": "రోడ్లు ఎలా ఉన్నాయి?",
+      "required": false,
+      "options": [
+        {
+          "label": "వేస్తున్నారు",
+          "value": "Laying"
+        },
+        {
+          "label": "వేయడం లేదు",
+          "value": "Not Laying"
+        }
+      ],
+      "order": 22
+    },
+    {
+      "type": "radio",
+      "question": "ఉద్యోగ / ఉపాధి అవకాశాలు ఎలా ఉన్నాయి?",
+      "required": false,
+      "options": [
+        {
+          "label": "అభివృద్ధి ఉంది",
+          "value": "Improved"
+        },
+        {
+          "label": "అభివృద్ధి లేదు",
+          "value": "Not Improved"
+        }
+      ],
+      "order": 23
+    },
+    {
+      "type": "radio",
+      "question": "శాంతిభద్రతలు ఎలా ఉన్నాయి?",
+      "required": false,
+      "options": [
+        {
+          "label": "బాగున్నాయి",
+          "value": "Good"
+        },
+        {
+          "label": "బాగాలేదు",
+          "value": "Bad"
+        }
+      ],
+      "order": 24
+    },
+    {
+      "type": "radio",
+      "question": "పంటలకు గిట్టుబాటు ధరలు అందుతున్నాయా?",
+      "required": false,
+      "options": [
+        {
+          "label": "అందుతున్నాయి",
+          "value": "Yes"
+        },
+        {
+          "label": "అందటం లేదు",
+          "value": "No"
+        }
+      ],
+      "order": 25
+    },
+    {
+      "type": "radio",
+      "question": "పాఠశాలలు ఎలా ఉన్నాయి?",
+      "required": false,
+      "options": [
+        {
+          "label": "బాగున్నాయి",
+          "value": "Good"
+        },
+        {
+          "label": "బాగాలేదు",
+          "value": "Bad"
+        }
+      ],
+      "order": 26
+    },
+    {
+      "type": "radio",
+      "question": "ఆరోగ్య కేంద్రాలు ఎలా ఉన్నాయి?",
+      "required": false,
+      "options": [
+        {
+          "label": "బాగున్నాయి",
+          "value": "Good"
+        },
+        {
+          "label": "బాగాలేదు",
+          "value": "Bad"
+        }
+      ],
+      "order": 27
+    },
+    {
+      "type": "radio",
+      "question": "ఆరోగ్యశ్రీ అమలు ఎలా ఉంది?",
+      "required": false,
+      "options": [
+        {
+          "label": "బాగుంది",
+          "value": "Good"
+        },
+        {
+          "label": "బాగాలేదు",
+          "value": "Bad"
+        }
+      ],
+      "order": 28
+    },
+    {
+      "type": "radio",
+      "question": "ముఖ్యమంత్రిగా ఎవరైతే మీ జీవితాలు బాగుంటాయని అనుకుంటున్నారు?",
+      "required": false,
+      "options": [
+        {
+          "label": "పవన్ కళ్యాణ్",
+          "value": "Pawan Kalyan"
+        },
+        {
+          "label": "జగన్",
+          "value": "Jagan"
+        },
+        {
+          "label": "చంద్రబాబు",
+          "value": "Chandrababu"
+        },
+        {
+          "label": "ఇతరులు",
+          "value": "Others"
+        }
+      ],
+      "order": 29
+    },
+    {
+      "type": "radio",
+      "question": "సంక్షేమ పథకాలు ఎవరి హయాంలో బాగా అమలయ్యాయి?",
+      "required": false,
+      "options": [
+        {
+          "label": "చంద్రబాబు",
+          "value": "Chandrababu"
+        },
+        {
+          "label": "జగన్",
+          "value": "Jagan"
+        }
+      ],
+      "order": 30
+    },
+    {
+      "type": "radio",
+      "question": "అభివృద్ధి కార్యక్రమాలు ఎవరి హయాంలో బాగా జరిగాయి?",
+      "required": false,
+      "options": [
+        {
+          "label": "జగన్",
+          "value": "Jagan"
+        },
+        {
+          "label": "చంద్రబాబు",
+          "value": "Chandrababu"
+        }
+      ],
+      "order": 31
+    },
+    {
+      "type": "radio",
+      "question": "ప్రభుత్వ సేవలు ఎప్పుడు బాగున్నాయి?",
+      "required": false,
+      "options": [
+        {
+          "label": "వాలంటీర్ వ్యవస్థ ఉన్నప్పుడే బాగుంది",
+          "value": "With Volunteers"
+        },
+        {
+          "label": "తీసివేసాక ఇప్పుడు బాగుంది",
+          "value": "After Removal"
+        },
+        {
+          "label": "అప్పుడు, ఇప్పుడు తేడా లేదు",
+          "value": "No Difference"
+        }
+      ],
+      "order": 32
+    },
+    {
+      "type": "radio",
+      "question": "మీరు గత ఎన్నికల్లో ఏ పార్టీకి ఓటు వేశారు?",
+      "required": false,
+      "options": [
+        {
+          "label": "టీడీపీ/జనసేన/బీజేపీ కూటమి",
+          "value": "Alliance"
+        },
+        {
+          "label": "వైఎస్ఆర్సీపీ",
+          "value": "YSRCP"
+        },
+        {
+          "label": "కాంగ్రెస్",
+          "value": "Congress"
+        },
+        {
+          "label": "ఇతరులు",
+          "value": "Others"
+        }
+      ],
+      "order": 33
+    },
+    {
+      "type": "radio",
+      "question": "ఇప్పటికిప్పుడు ఎన్నికలు జరిగితే ఏ పార్టీ గెలిచే అవకాశం ఉంది?",
+      "required": false,
+      "options": [
+        {
+          "label": "టీడీపీ/జనసేన/బీజేపీ కూటమి",
+          "value": "Alliance"
+        },
+        {
+          "label": "వైఎస్ఆర్సీపీ",
+          "value": "YSRCP"
+        },
+        {
+          "label": "కాంగ్రెస్",
+          "value": "Congress"
+        },
+        {
+          "label": "ఇతరులు",
+          "value": "Others"
+        }
+      ],
+      "order": 34
+    },
+    {
+      "type": "radio",
+      "question": "వైఎస్ఆర్సీపీ అసెంబ్లీ నియోజకవర్గ ఇంచార్జ్ అందుబాటులో ఉన్నారా?",
+      "required": false,
+      "options": [
+        {
+          "label": "అందుబాటులో ఉన్నారు",
+          "value": "Available"
+        },
+        {
+          "label": "అందుబాటులో లేరు",
+          "value": "Not Available"
+        }
+      ],
+      "order": 35
+    },
+    {
+      "type": "radio",
+      "question": "కందుకూరు నాగార్జున రెడ్డి, ఇన్నా రాంబాబులలో భవిష్యత్తు ఇంచార్జ్ ఎవరంటే బాగుంటారు?",
+      "required": false,
+      "options": [
+        {
+          "label": "కందుకూరు నాగార్జున రెడ్డి",
+          "value": "Kandukuru Nagarjuna Reddy"
+        },
+        {
+          "label": "అన్న రాంబాబు",
+          "value": "Anna Rambabu"
+        }
+      ],
+      "order": 36
+    }
+  ],
+  "createdBy": "69696bef3010e3900e282d62",
+  "createdAt": "2026-02-20T04:46:17.092Z",
+  "updatedAt": "2026-02-23T08:58:16.007Z",
+  "__v": 1,
+  "completionRate": 0,
+  "pages": [],
+  "responseCount": 0,
+  "tags": []
+}

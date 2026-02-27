@@ -4,10 +4,26 @@ import "./Dashboard.css";
 
 import logo from "../assets/logo.png";
 
-const Layout = ({ user = {}, children }) => {
+const Layout = ({ user: propUser, children }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [showDownloads, setShowDownloads] = useState(false);
+    const [internalUser] = useState(() => {
+        if (!propUser) {
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+                try {
+                    return JSON.parse(storedUser);
+                } catch (e) {
+                    console.error("Failed to parse user from local storage", e);
+                }
+            }
+        }
+        return null;
+    });
+
+    // Final user object
+    const user = propUser || internalUser || {};
 
     // Default values if user object is incomplete
     const userName = user.firstName || user.name || "User";
@@ -79,7 +95,7 @@ const Layout = ({ user = {}, children }) => {
                                     <span>Surveys</span>
                                 </li>
                                 <li
-                                    className={location.pathname === '/data' ? 'active' : ''}
+                                    className={(location.pathname === '/data' || location.pathname.startsWith('/crosstab') || location.pathname.startsWith('/analytics') || location.pathname.startsWith('/daily-report') || location.pathname.startsWith('/summary-report') || location.pathname.startsWith('/spatial-report') || location.pathname.startsWith('/scoring-report')) ? 'active' : ''}
                                     onClick={() => navigate('/data')}
                                 >
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
@@ -103,11 +119,17 @@ const Layout = ({ user = {}, children }) => {
                                 <span>Home</span>
                             </li>
                         )}
-                        <li>
+                        <li
+                            className={location.pathname === '/themes' ? 'active' : ''}
+                            onClick={() => navigate('/themes')}
+                        >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                             <span>Themes</span>
                         </li>
-                        <li>
+                        <li 
+                            className={location.pathname === '/devices' ? 'active' : ''}
+                            onClick={() => navigate('/devices')}
+                        >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
                             <span>Devices</span>
                         </li>
@@ -119,7 +141,10 @@ const Layout = ({ user = {}, children }) => {
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                             <span>Support</span>
                         </li>
-                        <li>
+                        <li
+                            className={location.pathname === '/help-guide' ? 'active' : ''}
+                            onClick={() => navigate('/help-guide')}
+                        >
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                             <span>Help Guide</span>
                         </li>

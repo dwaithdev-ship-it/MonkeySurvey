@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { surveyAPI, responseAPI, parlConsAPI } from '../services/api';
+import { surveyAPI, responseAPI, parlConsAPI, themeAPI } from '../services/api';
 import { offlineSync } from '../utils/offlineSync';
 import logo from '../assets/logo.png';
 import './TakeSurvey.css';
@@ -15,6 +15,7 @@ export default function TakeSurvey() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [responseCount, setResponseCount] = useState(0);
+  const [surveyTheme, setSurveyTheme] = useState(null);
 
   // Batch Holding States
   const [isHeaderLocked, setIsHeaderLocked] = useState(false);
@@ -23,8 +24,6 @@ export default function TakeSurvey() {
   const [municipalities, setMunicipalities] = useState([]);
 
   const [location, setLocation] = useState(null);
-  const [isReorderEnabled, setIsReorderEnabled] = useState(false);
-  const [draggedQuestionIndex, setDraggedQuestionIndex] = useState(null);
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
   useEffect(() => {
@@ -40,13 +39,16 @@ export default function TakeSurvey() {
           setLocation({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-            method: 'gps'
+            method: 'gps',
+            accuracy: position.coords.accuracy
           });
         },
-        async () => {
+        async (error) => {
+          console.warn("GPS failed, falling back to IP location. Reason:", error.message);
           await getIPLocation();
         },
-        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+        // Force high accuracy hardware GPS lock instead of IP/Cell-tower estimation
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       getIPLocation();
@@ -231,70 +233,6 @@ export default function TakeSurvey() {
     return [];
   };
 
-  const saveNewOrder = async () => {
-    if (!survey || !survey._id) return;
-
-    try {
-      // Show some visual indication or just proceed
-      console.log('Saving new question order...');
-
-      // We need to send the original types if possible, or ensure the backend handles adapted ones
-      // Looking at adaptSurveyData, we have originalType. Let's use it if available.
-      const questionsToSave = survey.questions.map(q => ({
-        ...q,
-        type: q.originalType || q.type // Favor original type for backend compatibility
-      }));
-
-      const response = await surveyAPI.update(surveyId, { questions: questionsToSave });
-
-      if (response.success) {
-        // Update local_surveys cache
-        const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
-        const index = localSurveys.findIndex(s => (s._id || s.id) == surveyId);
-        if (index > -1) {
-          localSurveys[index].questions = questionsToSave;
-          localStorage.setItem('local_surveys', JSON.stringify(localSurveys));
-        }
-        console.log('Order saved successfully');
-      } else {
-        console.warn('Failed to save order to server, but state is updated locally');
-      }
-    } catch (err) {
-      console.error('Error saving question order:', err);
-    }
-  };
-
-  const handleDragStart = (e, index) => {
-    if (hasSubmitted || !isReorderEnabled) return;
-    setDraggedQuestionIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    // Add a ghost image or just styling
-    e.currentTarget.style.opacity = '0.5';
-  };
-
-  const handleDragEnd = (e) => {
-    e.currentTarget.style.opacity = '1';
-    setDraggedQuestionIndex(null);
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e, dropIndex) => {
-    e.preventDefault();
-    if (hasSubmitted || !isReorderEnabled || draggedQuestionIndex === null || draggedQuestionIndex === dropIndex) return;
-
-    setSurvey(prev => {
-      if (!prev || !prev.questions) return prev;
-      const newQuestions = [...prev.questions];
-      const [draggedItem] = newQuestions.splice(draggedQuestionIndex, 1);
-      newQuestions.splice(dropIndex, 0, draggedItem);
-      return { ...prev, questions: newQuestions };
-    });
-    setDraggedQuestionIndex(null);
-  };
 
   const adaptSurveyData = (source, id) => {
     if (!source) return null;
@@ -346,10 +284,15 @@ export default function TakeSurvey() {
   };
 
   const fetchSurvey = async () => {
+    let finalActualSurveyId = surveyId;
+
     try {
       const response = await surveyAPI.getById(surveyId);
       if (response.success) {
-        const adapted = adaptSurveyData(response.data, surveyId);
+        const actualSurveyId = response.data._id || response.data.id || surveyId;
+        finalActualSurveyId = actualSurveyId;
+
+        const adapted = adaptSurveyData(response.data, actualSurveyId);
         setSurvey(adapted);
         const initializedAnswers = initializeAnswers(adapted);
         setupBatchAndAnswers(adapted, initializedAnswers);
@@ -357,7 +300,7 @@ export default function TakeSurvey() {
         try {
           const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
           const currentUserName = storedUser.name || storedUser.firstName;
-          const resData = await responseAPI.getAll({ surveyId, limit: 1, userName: currentUserName });
+          const resData = await responseAPI.getAll({ surveyId: actualSurveyId, limit: 1, userName: currentUserName });
           if (resData.success) {
             setResponseCount(resData.data.pagination.total || 0);
           }
@@ -367,18 +310,19 @@ export default function TakeSurvey() {
 
         // Cache for offline
         const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
-        const index = localSurveys.findIndex(s => (s._id || s.id) == surveyId);
-        if (index > -1) localSurveys[index] = { ...response.data, id: surveyId };
-        else localSurveys.push({ ...response.data, id: surveyId });
+        const index = localSurveys.findIndex(s => (s._id || s.id) == surveyId || s._id == actualSurveyId);
+        if (index > -1) localSurveys[index] = { ...response.data, id: actualSurveyId };
+        else localSurveys.push({ ...response.data, id: actualSurveyId });
         localStorage.setItem('local_surveys', JSON.stringify(localSurveys));
       } else {
-        throw new Error('Survey not found');
+        throw new Error('Survey not found on server');
       }
     } catch (err) {
       console.warn('API fetch failed, checking fallback:', err);
       const localSurveys = JSON.parse(localStorage.getItem('local_surveys') || '[]');
       let found = localSurveys.find(s =>
         (s.id && s.id.toString() === surveyId.toString()) ||
+        (s._id && s._id.toString() === surveyId.toString()) ||
         (s.name && s.name.toLowerCase().replace(/\s+/g, '-') === surveyId.toString())
       );
 
@@ -399,7 +343,10 @@ export default function TakeSurvey() {
       }
 
       if (found) {
-        const adapted = adaptSurveyData(found, surveyId);
+        const actualSurveyId = found._id || found.id || surveyId;
+        finalActualSurveyId = actualSurveyId;
+
+        const adapted = adaptSurveyData(found, actualSurveyId);
         setSurvey(adapted);
         const initializedAnswers = initializeAnswers(adapted);
         setupBatchAndAnswers(adapted, initializedAnswers);
@@ -407,6 +354,17 @@ export default function TakeSurvey() {
         setError('Survey not found. Please verify the URL.');
       }
     } finally {
+      // Regardless of where it came from, try fetching the theme universally
+      if (finalActualSurveyId) {
+        try {
+          const themeRes = await themeAPI.getTheme(finalActualSurveyId);
+          if (themeRes.success && themeRes.data) {
+            setSurveyTheme(themeRes.data);
+          }
+        } catch (themeErr) {
+          console.warn('Failed to fetch active survey theme:', themeErr);
+        }
+      }
       setLoading(false);
     }
   };
@@ -676,10 +634,17 @@ export default function TakeSurvey() {
     // Check for duplicate submission
     const canSubmitMultiple = survey?.settings?.multipleSubmissions !== false && survey?.multipleSubmissions !== false;
 
-    if (!canSubmitMultiple && responseCount > 0) {
-      alert("You have already submitted this survey. Multiple submissions are disabled for this survey.");
-      console.log("Blocking submission due to multipleSubmissions restriction");
-      return;
+    if (!canSubmitMultiple) {
+      const hasLocallySubmitted = localStorage.getItem(`submitted_${survey?._id || survey?.id || surveyId}`);
+      
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const isAnonymous = !storedUser._id && !storedUser.id;
+
+      if (hasLocallySubmitted || (!isAnonymous && responseCount > 0)) {
+        alert("You have already submitted this survey. Multiple submissions are disabled for this survey.");
+        console.log("Blocking submission due to multipleSubmissions restriction");
+        return;
+      }
     }
     console.log("Passing multiple submissions check");
 
@@ -2204,8 +2169,51 @@ export default function TakeSurvey() {
   if (loading) return <div className="take-survey-container"><div className="loading">Loading Survey...</div></div>;
 
   return (
-    <div className="take-survey-container">
-      <div className="survey-header-section" style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'white', borderBottom: '1px solid #e5e7eb', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
+    <div className={`take-survey-container layout-${surveyTheme?.layoutType || 'mobile'}`}>
+      {surveyTheme && (
+        <style dangerouslySetInnerHTML={{
+          __html: `
+          .take-survey-container {
+             background-color: ${surveyTheme.bodyBackgroundColor || '#FFFFFF'} !important;
+             color: ${surveyTheme.bodyTextColor || '#444444'} !important;
+             background-image: ${surveyTheme.formBackgroundImage ? `url(${surveyTheme.formBackgroundImage})` : 'none'} !important;
+             background-size: cover;
+             background-attachment: fixed;
+             min-height: 100vh;
+          }
+          .survey-header-section {
+             background-color: ${surveyTheme.headerBackgroundColor || '#FFFFFF'} !important;
+             color: ${surveyTheme.headerTextColor || '#000000'} !important;
+          }
+          .survey-header-section h1 {
+             color: ${surveyTheme.headerTextColor || '#111827'} !important;
+          }
+          .question-block {
+             background-color: ${surveyTheme.groupBackgroundColor || '#ffffff'} !important;
+             color: ${surveyTheme.groupTextColor || '#000000'} !important;
+          }
+          .question-text, .question-number {
+             color: ${surveyTheme.groupTextColor || '#111827'} !important;
+          }
+          .answer-input, .textarea-input, .dropdown-input {
+             color: ${surveyTheme.inputTextColor || '#444444'} !important;
+          }
+          .survey-form .btn-primary {
+             background-color: ${surveyTheme.bodyIconColor || '#09C1D8'} !important;
+             color: #FFFFFF !important;
+          }
+          /* Custom layout overrides */
+          .layout-desktop .questions-flex-container {
+             max-width: 1200px;
+             margin: 0 auto;
+          }
+          .layout-tablet .questions-flex-container {
+             max-width: 800px;
+             margin: 0 auto;
+          }
+        `}} />
+      )}
+      <div className="survey-header-section" style={{ position: 'sticky', top: 0, zIndex: 1000, borderBottom: '1px solid #e5e7eb', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '10px' }}>
           <div className="survey-logo-wrapper" style={{ margin: 0, flex: '0 0 auto' }}>
             <img src={survey?.branding?.logo || logo} alt="Logo" className="survey-logo" style={{ maxHeight: '45px' }} />
@@ -2245,67 +2253,23 @@ export default function TakeSurvey() {
           boxSizing: 'border-box'
         }}>
           {getDisplayQuestions(survey?.questions).map((q, i) => {
-            const isDragging = draggedQuestionIndex === q.originalIndex;
-
             return (
               <div
                 key={q._id || q.id}
-                className={`question-block ${isReorderEnabled ? 'reorder-active' : ''}`}
+                className="question-block"
                 style={{
                   padding: '1rem 2rem',
-                  marginBottom: '0.5rem',
-                  cursor: (isReorderEnabled && !hasSubmitted) ? 'move' : 'default',
-                  border: isReorderEnabled ? '2px dashed #6366f1' : 'none',
-                  opacity: isDragging ? 0.4 : 1,
-                  transition: 'all 0.2s ease',
-                  position: 'relative',
-                  background: isReorderEnabled ? '#f8f9ff' : 'white',
-                  flex: isReorderEnabled ? '0 0 48%' : `0 0 ${q.width || '100%'}`,
-                  width: isReorderEnabled ? '48%' : (q.width || '100%'),
-                  minWidth: isReorderEnabled ? '300px' : 'none',
+                  marginBottom: '10.5px',
+                  flex: `0 0 ${q.width || '100%'}`,
+                  width: q.width || '100%',
                   boxSizing: 'border-box'
                 }}
-                draggable={isReorderEnabled && !hasSubmitted}
-                onDragStart={(e) => handleDragStart(e, q.originalIndex)}
-                onDragEnd={handleDragEnd}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, q.originalIndex)}
-                onDoubleClick={() => {
-                  if (!hasSubmitted) {
-                    if (isReorderEnabled) saveNewOrder();
-                    setIsReorderEnabled(!isReorderEnabled);
-                  }
-                }}
               >
-                {isReorderEnabled && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      zIndex: 1,
-                      cursor: 'move',
-                      background: 'transparent'
-                    }}
-                    onDoubleClick={(e) => {
-                      e.stopPropagation();
-                      if (!hasSubmitted) {
-                        saveNewOrder();
-                        setIsReorderEnabled(false);
-                      }
-                    }}
-                  />
-                )}
-                {!isReorderEnabled && (q.type === 'line' || q.type === 'text-block') ? null : (
+                {(q.type !== 'line' && q.type !== 'text-block') && (
                   <div className="question-header" style={{ marginBottom: '0.5rem', position: 'relative', zIndex: 2 }}>
                     <span className="question-number" style={{ fontSize: '11px' }}>
                       Question {i + 1}
                     </span>
-                    {isReorderEnabled && (
-                      <span style={{ float: 'right', fontSize: '10px', color: '#6366f1' }}>Double-click to save</span>
-                    )}
                   </div>
                 )}
                 {/* Always show heading unless it's the default placeholder for a line type or it's a text block */}

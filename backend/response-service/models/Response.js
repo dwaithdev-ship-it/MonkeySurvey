@@ -20,21 +20,19 @@ const responseSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  userName: String, // Surveyor's name/ID (person who logged in)
-  respondentName: String, // Name of the person being surveyed
-  respondentPhone: String, // Phone of the person being surveyed
+  userName: String, // Surveyor's name (from user table)
+  userPhone: String, // Surveyor's phone (from user table)
   parliament: String,
-  municipality: String,
-  ward_num: String,
-  Question_1: String, // The main question/answer
+  assembly: String,
+  mandal: String,
+  respondentName: String,
+  respondentPhone: String,
+  village_or_street: String,
   googleMapsLink: String,
   location: {
     latitude: Number,
     longitude: Number
   },
-  assembly: String,
-  mandal: String,
-  village_or_street: String,
   answers: [answerSchema],
   metadata: {
     userAgent: String,

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const MSRUser = require('../models/MSRUser');
+const Device = require('../models/Device');
 
 /**
  * POST /users/msr-register
@@ -488,10 +489,6 @@ router.get('/', authMiddleware, async (req, res) => {
  */
 router.post('/msr-users', authMiddleware, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, error: { message: 'Unauthorized' } });
-    }
-
     const { name, username, password, companyEmail, company, phoneNumber, demoTemplate } = req.body;
 
     const existingUser = await MSRUser.findOne({
@@ -539,13 +536,6 @@ router.post('/msr-users', authMiddleware, async (req, res) => {
  */
 router.get('/msr-users', authMiddleware, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        error: { message: 'Only admins can list MSR users' }
-      });
-    }
-
     const users = await MSRUser.find({}).sort({ createdAt: -1 });
     res.json({
       success: true,
@@ -562,10 +552,6 @@ router.get('/msr-users', authMiddleware, async (req, res) => {
 
 router.put('/msr-users/:id', authMiddleware, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, error: { message: 'Unauthorized' } });
-    }
-
     const { name, companyEmail, company, phoneNumber, demoTemplate } = req.body;
     const msrUser = await MSRUser.findById(req.params.id);
 
@@ -603,10 +589,6 @@ router.put('/msr-users/:id', authMiddleware, async (req, res) => {
  */
 router.patch('/msr-users/:id/status', authMiddleware, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, error: { message: 'Unauthorized' } });
-    }
-
     const { isActive } = req.body;
     const msrUser = await MSRUser.findByIdAndUpdate(req.params.id, { isActive }, { new: true });
 
@@ -627,10 +609,6 @@ router.patch('/msr-users/:id/status', authMiddleware, async (req, res) => {
  */
 router.patch('/msr-users/:id/password', authMiddleware, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, error: { message: 'Unauthorized' } });
-    }
-
     const { password } = req.body;
     const hashedPassword = await hashPassword(password);
 
@@ -739,6 +717,59 @@ router.get('/:id', authMiddleware, async (req, res) => {
       success: false,
       error: { message: 'Failed to get user' }
     });
+  }
+});
+
+/**
+ * GET /users/devices
+ * List all registered devices
+ */
+router.get('/devices', authMiddleware, async (req, res) => {
+  try {
+    // Optionally fetch user info for each device if we use String references
+    // or aggregate / populate if using ObjectIds. We'll manually join since MSRUser _ids might be strings or ObjectIds.
+    const devices = await Device.find({}).sort({ lastLoginAt: -1 }).lean();
+    
+    // Fetch user details manually to populate table
+    const userIds = devices.map(d => d.userId).filter(Boolean);
+    const users = await MSRUser.find({ _id: { $in: userIds } }).select('name username companyEmail').lean();
+    
+    const userMap = users.reduce((acc, user) => {
+      acc[user._id.toString()] = user;
+      return acc;
+    }, {});
+
+    const enrichedDevices = devices.map(d => ({
+      ...d,
+      user: d.userId ? userMap[d.userId.toString()] || { name: 'Unknown User' } : { name: 'Unknown User' }
+    }));
+
+    res.json({ success: true, data: enrichedDevices });
+  } catch (error) {
+    console.error('List Devices error:', error);
+    res.status(500).json({ success: false, error: { message: 'Failed to access devices' } });
+  }
+});
+
+/**
+ * PATCH /users/devices/:deviceId/status
+ * Toggle device status
+ */
+router.patch('/devices/:deviceId/status', authMiddleware, async (req, res) => {
+  try {
+    const { isActive } = req.body;
+    const device = await Device.findOneAndUpdate(
+      { deviceId: req.params.deviceId },
+      { isActive },
+      { new: true }
+    );
+    
+    if (!device) return res.status(404).json({ success: false, error: { message: 'Device not found' } });
+    
+    res.json({ success: true, data: device });
+  } catch (error) {
+    console.error('Update device error:', error);
+    res.status(500).json({ success: false, error: { message: error.message } });
   }
 });
 

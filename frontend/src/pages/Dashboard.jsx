@@ -31,6 +31,76 @@ ChartJS.register(
   ChartDataLabels
 );
 
+const PinnedChartItem = ({ pin, onRemove }) => {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await responseAPI.getAnalytics({
+          surveyId: pin.surveyId,
+          questionId: pin.questionId
+        });
+        if (res.success) {
+          setData(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch pin data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [pin]);
+
+  if (loading) return <div className="pinned-chart-card loading">Loading...</div>;
+  if (!data) return null;
+
+  const sortedData = [...data.distribution].sort((a, b) => b.count - a.count).slice(0, 10);
+  const chartData = {
+    labels: sortedData.map(item => item.option),
+    datasets: [{
+      label: 'Responses',
+      data: sortedData.map(item => item.count),
+      backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
+    }]
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: pin.chartType === 'bar' ? 'y' : 'x',
+    plugins: {
+      legend: { display: ['pie', 'doughnut'].includes(pin.chartType) },
+      datalabels: {
+        color: '#444',
+        anchor: 'end',
+        align: 'end',
+        formatter: (val) => {
+          const total = data.totalResponses;
+          return `${((val / total) * 100).toFixed(0)}%`;
+        }
+      }
+    }
+  };
+
+  return (
+    <div className="pinned-chart-card">
+      <div className="pinned-chart-header">
+        <div>
+          <h4>{pin.surveyTitle}</h4>
+          <p>{pin.questionText}</p>
+        </div>
+        <button className="remove-pin-btn" onClick={() => onRemove(pin.id)}>✕</button>
+      </div>
+      <div className="pinned-chart-body">
+        {pin.chartType === 'pie' ? <Pie data={chartData} options={options} /> : <Bar data={chartData} options={options} />}
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const [user, setUser] = useState({
     firstName: "Admin",
@@ -40,6 +110,7 @@ const Dashboard = () => {
   const [responses, setResponses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [chartType, setChartType] = useState('column');
+  const [pins, setPins] = useState([]);
   const [filters, setFilters] = useState({
     parliament: true,
     municipality: true,
@@ -88,8 +159,17 @@ const Dashboard = () => {
       navigate("/login");
     }
 
+    const storedPins = JSON.parse(localStorage.getItem('dashboard_pins') || '[]');
+    setPins(storedPins);
+
     fetchInitialData();
   }, [navigate]);
+
+  const removePin = (id) => {
+    const newPins = pins.filter(p => p.id !== id);
+    setPins(newPins);
+    localStorage.setItem('dashboard_pins', JSON.stringify(newPins));
+  };
 
   const fetchInitialData = async () => {
     try {
@@ -371,55 +451,13 @@ const Dashboard = () => {
     // XML-based XLS template for better compatibility than simple CSV
     let xlsContent = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head>
-        <meta charset="UTF-8">
-        <!--[if gte mso 9]>
-        <xml>
-          <x:ExcelWorkbook>
-            <x:ExcelWorksheets>
-              <x:ExcelWorksheet>
-                <x:Name>Ward Statistics</x:Name>
-                <x:WorksheetOptions>
-                  <x:DisplayGridlines/>
-                </x:WorksheetOptions>
-              </x:ExcelWorksheet>
-            </x:ExcelWorksheets>
-          </x:ExcelWorkbook>
-        </xml>
-        <![endif]-->
-      </head>
+      <head><meta charset="UTF-8"></head>
       <body>
         <table>
-          <thead>
-            <tr>
-              <th>Parliament</th>
-              <th>Municipality</th>
-              <th>Ward Number</th>
-              <th>BJP</th>
-              <th>Congress</th>
-              <th>BRS</th>
-              <th>Others</th>
-              <th>Total Responses</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${wardStatsData.map(row => `
-              <tr>
-                <td>${row.parliament}</td>
-                <td>${row.municipality}</td>
-                <td>${row.ward}</td>
-                <td>${row.bjp}</td>
-                <td>${row.congress}</td>
-                <td>${row.brs}</td>
-                <td>${row.others}</td>
-                <td>${row.total}</td>
-              </tr>
-            `).join('')}
-          </tbody>
+          <thead><tr><th>Parliament</th><th>Municipality</th><th>Ward Number</th><th>BJP</th><th>Congress</th><th>BRS</th><th>Others</th><th>Total Responses</th></tr></thead>
+          <tbody>${wardStatsData.map(row => `<tr><td>${row.parliament}</td><td>${row.municipality}</td><td>${row.ward}</td><td>${row.bjp}</td><td>${row.congress}</td><td>${row.brs}</td><td>${row.others}</td><td>${row.total}</td></tr>`).join('')}</tbody>
         </table>
-      </body>
-      </html>
-    `;
+      </body></html>`;
 
     const blob = new Blob([xlsContent], { type: 'application/vnd.ms-excel' });
     const url = URL.createObjectURL(blob);
@@ -451,6 +489,17 @@ const Dashboard = () => {
       </div>
 
       <div className="dashboard-analytics">
+        {pins.length > 0 && (
+          <div className="pinned-reports-section">
+            <h3 className="section-title">📌 Pinned Reports</h3>
+            <div className="pinned-grid">
+              {pins.map(pin => (
+                <PinnedChartItem key={pin.id} pin={pin} onRemove={removePin} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* DROPDOWN FILTERS */}
         <div className="controls-panel dropdown-filters-panel">
           <div className="dropdown-group">
@@ -503,7 +552,7 @@ const Dashboard = () => {
                     checked={filters[key]}
                     onChange={() => handleFilterChange(key)}
                   />
-                  {key.charAt(0).toUpperCase() + key.slice(1).replace('_', ' ')}
+                  {key.charAt(0).toUpperCase() + key.slice(1).replace('_num', ' Number')}
                 </label>
               ))}
             </div>
@@ -512,15 +561,9 @@ const Dashboard = () => {
           <div className="control-group">
             <h3>Chart Type</h3>
             <div className="chart-type-group">
-              {['column', 'bar', 'pie'].map(type => (
-                <button
-                  key={type}
-                  className={`chart-type-btn ${chartType === type ? 'active' : ''}`}
-                  onClick={() => setChartType(type)}
-                >
-                  {type.charAt(0).toUpperCase() + type.slice(1)} Chart
-                </button>
-              ))}
+              <button className={`chart-type-btn ${chartType === 'column' ? 'active' : ''}`} onClick={() => setChartType('column')}>Column</button>
+              <button className={`chart-type-btn ${chartType === 'bar' ? 'active' : ''}`} onClick={() => setChartType('bar')}>Bar</button>
+              <button className={`chart-type-btn ${chartType === 'pie' ? 'active' : ''}`} onClick={() => setChartType('pie')}>Pie</button>
             </div>
           </div>
         </div>
@@ -529,8 +572,8 @@ const Dashboard = () => {
         <div className="chart-display-container">
           {loading ? (
             <div className="no-data-msg">Loading data...</div>
-          ) : chartData.labels.length === 0 ? (
-            <div className="no-data-msg">Select at least one metric to see the chart.</div>
+          ) : responses.length === 0 ? (
+            <div className="no-data-msg">No data available for the current selection.</div>
           ) : (
             <div className="chart-wrapper">
               {chartType === 'pie' ? (
@@ -578,7 +621,7 @@ const Dashboard = () => {
               </thead>
               <tbody>
                 {wardStatsData.length === 0 ? (
-                  <tr><td colSpan="8" className="empty-cell">No data available for the current selection.</td></tr>
+                  <tr><td colSpan="8" className="empty-cell">No data available.</td></tr>
                 ) : (
                   wardStatsData.map((row) => (
                     <tr key={`${row.parliament}-${row.municipality}-${row.ward}`}>

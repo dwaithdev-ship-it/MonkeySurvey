@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const surveyRoutes = require('./routes/surveys');
 const parlConsRoutes = require('./routes/parlCons');
+const themeRoutes = require('./routes/themes');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -34,6 +35,7 @@ app.use(limiter);
 // Routes
 app.use('/surveys', surveyRoutes);
 app.use('/parl-cons', parlConsRoutes);
+app.use('/api/survey-theme', themeRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
