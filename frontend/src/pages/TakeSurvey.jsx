@@ -5,6 +5,8 @@ import { offlineSync } from '../utils/offlineSync';
 import logo from '../assets/logo.png';
 import './TakeSurvey.css';
 import SignaturePad from '../components/SignaturePad';
+import SuccessModal from '../components/SuccessModal';
+import '../components/SuccessModal.css';
 
 export default function TakeSurvey() {
   const { surveyId } = useParams();
@@ -16,6 +18,7 @@ export default function TakeSurvey() {
   const [error, setError] = useState('');
   const [responseCount, setResponseCount] = useState(0);
   const [surveyTheme, setSurveyTheme] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Batch Holding States
   const [isHeaderLocked, setIsHeaderLocked] = useState(false);
@@ -748,9 +751,17 @@ export default function TakeSurvey() {
         return false;
       });
 
-      if (missing.length > 0) {
-        console.warn("Validation failed. Missing required questions:", missing.map(q => q.question || q.id));
-        alert(`Please answer the following required questions:\n${missing.map(q => "- " + String(q.question || q.text || "Q" + (allQuestions.indexOf(q) + 1))).join('\n')}`);
+      // 3. Specific validation for Phone Number length
+      const invalidPhone = survey.questions.find(q => {
+        if (q.type === 'Phone Number') {
+          const val = currentAnswers[q._id || q.id] || '';
+          return val.length > 0 && val.length !== 10;
+        }
+        return false;
+      });
+
+      if (invalidPhone) {
+        alert(`Question "${invalidPhone.question}" must be exactly 10 digits.`);
         return;
       }
     }
@@ -832,7 +843,7 @@ export default function TakeSurvey() {
 
       console.log("Submitting payload:", payload);
       const response = await responseAPI.submit(payload);
-      console.log("Response from server:", response);
+      console.log("Server Response:", response);
 
       if (response.success) {
         // Handle Batch Logic (Legacy)
@@ -851,8 +862,10 @@ export default function TakeSurvey() {
 
         setResponseCount(prev => prev + 1);
         setHasSubmitted(true);
-        setIsReorderEnabled(false);
-        alert('Survey submitted successfully!');
+        // Replacing alert with SuccessModal with a slight delay to ensure UI stability
+        setTimeout(() => {
+          setShowSuccessModal(true);
+        }, 100);
 
         // RE-INITIALIZE 
         const freshAnswers = initializeAnswers(survey);
@@ -906,7 +919,8 @@ export default function TakeSurvey() {
         offlineSync.queueResponse(payload);
         setResponseCount(prev => prev + 1);
         setHasSubmitted(true);
-        alert('Survey saved locally (Offline). Sync will occur when online.');
+        // Show success modal even for offline
+        setShowSuccessModal(true);
 
         const freshAnswers = initializeAnswers(survey);
         setAnswers(freshAnswers);
@@ -2080,6 +2094,32 @@ export default function TakeSurvey() {
       );
     }
 
+    if (question.type === 'Phone Number') {
+      return (
+        <input
+          type="tel"
+          pattern="[0-9]{10}"
+          maxLength="10"
+          value={value}
+          onChange={(e) => {
+            const val = e.target.value.replace(/\D/g, ''); // Only digits
+            if (val.length <= 10) {
+              handleAnswerChange(qId, val);
+            }
+          }}
+          onBlur={(e) => {
+            if (e.target.value.length > 0 && e.target.value.length < 10) {
+              alert("Phone number must be exactly 10 digits.");
+            }
+          }}
+          disabled={isDisabled}
+          className="answer-input"
+          placeholder="Enter 10-digit phone number"
+          style={{ width: '100%', letterSpacing: '2px', fontWeight: 'bold' }}
+        />
+      );
+    }
+
     if (question.type === 'textarea') {
       return (
         <textarea
@@ -2307,9 +2347,18 @@ export default function TakeSurvey() {
         </div>
 
         {submitting && (
-          <div style={{ textAlign: 'center', padding: '0.5rem', color: '#6366f1', fontWeight: 'bold' }}>⌛ Submitting...</div>
+          <div className="submit-overlay">
+            <div className="submit-spinner"></div>
+            <p>Submitting your response...</p>
+          </div>
         )}
       </form>
+
+      <SuccessModal 
+        isOpen={showSuccessModal} 
+        onClose={() => setShowSuccessModal(false)} 
+        responseCount={responseCount} 
+      />
     </div>
   );
 }

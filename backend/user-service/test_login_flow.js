@@ -6,7 +6,7 @@ require('dotenv').config();
 const API_URL = 'http://localhost:3001/users'; // Directly hitting user service (mounted at /users)
 const PHONE = '9988776655';
 const PASS = 'TestPassword123!';
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey';
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://dwaithdevkalyan_db_user:Dwaithdevkalyan123@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey';
 
 async function resetUser() {
     console.log('--- RESETTING USER ---');
@@ -67,3 +67,5 @@ async function runTest() {
 }
 
 runTest();
+
+

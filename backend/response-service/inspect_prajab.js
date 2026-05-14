@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const URI = "mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey";
+const URI = "mongodb+srv://dwaithdevkalyan_db_user:Dwaithdevkalyan123@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey";
 
 async function inspectPrajab() {
     await mongoose.connect(URI);
@@ -12,3 +12,5 @@ async function inspectPrajab() {
 }
 
 inspectPrajab().catch(console.error);
+
+

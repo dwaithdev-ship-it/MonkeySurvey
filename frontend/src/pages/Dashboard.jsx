@@ -489,6 +489,37 @@ const Dashboard = () => {
       </div>
 
       <div className="dashboard-analytics">
+        <div className="stats-overview">
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: '#eef2ff', color: '#6366f1' }}>📊</div>
+            <div className="stat-info">
+              <h3>{responses.length.toLocaleString()}</h3>
+              <p>Total Responses</p>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: '#ecfdf5', color: '#10b981' }}>🗳️</div>
+            <div className="stat-info">
+              <h3>{new Set(responses.map(r => r.parliament)).size}</h3>
+              <p>Parliaments Covered</p>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: '#fffbeb', color: '#f59e0b' }}>🏘️</div>
+            <div className="stat-info">
+              <h3>{new Set(responses.map(r => r.municipality)).size}</h3>
+              <p>Municipalities</p>
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-icon" style={{ background: '#fdf2f8', color: '#ec4899' }}>📍</div>
+            <div className="stat-info">
+              <h3>{new Set(responses.map(r => r.ward_num)).size}</h3>
+              <p>Wards</p>
+            </div>
+          </div>
+        </div>
+
         {pins.length > 0 && (
           <div className="pinned-reports-section">
             <h3 className="section-title">📌 Pinned Reports</h3>

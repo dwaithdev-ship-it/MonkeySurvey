@@ -48,16 +48,11 @@ services:
     restart: always
     ports:
       - "80:80"
-      - "443:443"
     depends_on:
       - api-gateway
     networks:
       - bodhasurvey-network
-    # SSL volumes
-    volumes:
-      - /etc/letsencrypt/live/bodhasurvey.duckdns.org/fullchain.pem:/etc/nginx/ssl/server.crt:ro
-      - /etc/letsencrypt/live/bodhasurvey.duckdns.org/privkey.pem:/etc/nginx/ssl/server.key:ro
-    # API Gateway
+  # API Gateway
   api-gateway:
     build:
       context: ./backend
@@ -96,7 +91,7 @@ services:
       - "3001:3001"
     environment:
       - PORT=3001
-      - MONGODB_URI=mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey
+      - MONGODB_URI=mongodb+srv://dwaithdevkalyan_db_user:Dwaithdevkalyan123@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey
       - JWT_SECRET=change-this-in-production-secret-key-12345
       - NODE_ENV=production
     depends_on:
@@ -115,7 +110,7 @@ services:
       - "3002:3002"
     environment:
       - PORT=3002
-      - MONGODB_URI=mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey
+      - MONGODB_URI=mongodb+srv://dwaithdevkalyan_db_user:Dwaithdevkalyan123@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey
       - JWT_SECRET=change-this-in-production-secret-key-12345
       - NODE_ENV=production
     depends_on:
@@ -134,7 +129,7 @@ services:
       - "3003:3003"
     environment:
       - PORT=3003
-      - MONGODB_URI=mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey
+      - MONGODB_URI=mongodb+srv://dwaithdevkalyan_db_user:Dwaithdevkalyan123@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey
       - JWT_SECRET=change-this-in-production-secret-key-12345
       - NODE_ENV=production
     depends_on:
@@ -172,7 +167,7 @@ services:
       - "3005:3005"
     environment:
       - PORT=3005
-      - MONGODB_URI=mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey
+      - MONGODB_URI=mongodb+srv://dwaithdevkalyan_db_user:Dwaithdevkalyan123@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey
       - JWT_SECRET=change-this-in-production-secret-key-12345
       - NODE_ENV=production
     depends_on:

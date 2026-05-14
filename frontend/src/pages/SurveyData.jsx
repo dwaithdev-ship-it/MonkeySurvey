@@ -285,15 +285,9 @@ const SurveyData = () => {
         const questions = selectedSurvey.questions || [];
         const headers = [
             "Timestamp",
-            "Surveyor",
+            "Surveyor (System)",
             "Surveyor Phone",
-            "Parliament",
-            "Assembly",
-            "Mandal",
-            "Respondent Name",
-            "Respondent Phone",
-            "Village / Street",
-            ...questions.slice(6).map((q, idx) => q.question || q.text || q.title || q.label || `Question ${idx + 7}`),
+            ...questions.map((q, idx) => q.question || q.text || q.title || q.label || `Question ${idx + 1}`),
             "Maps Link"
         ];
 
@@ -301,13 +295,7 @@ const SurveyData = () => {
             new Date(r.createdAt).toLocaleString(),
             r.userName || 'Anonymous',
             r.userPhone || '',
-            r.parliament || getAnswerValue(r, 'parliament') || '',
-            r.assembly || getAnswerValue(r, 'assembly') || '',
-            r.mandal || getAnswerValue(r, 'mandal') || '',
-            r.respondentName || getAnswerValue(r, 'respondentName') || '',
-            r.respondentPhone || getAnswerValue(r, 'respondentPhone') || '',
-            r.village_or_street || getAnswerValue(r, 'village_or_street') || '',
-            ...questions.slice(6).map((q, idx) => getAnswerValue(r, q.id || q._id, q.type, idx + 6)),
+            ...questions.map((q, idx) => getAnswerValue(r, q.id || q._id, q.type, idx)),
             r.googleMapsLink || (r.location?.latitude ? `https://www.google.com/maps?q=${r.location.latitude},${r.location.longitude}` : (r.latitude ? `https://www.google.com/maps?q=${r.latitude},${r.longitude}` : ''))
         ]);
 
@@ -350,17 +338,12 @@ const SurveyData = () => {
                                 <thead>
                                     <tr>
                                         <th>Timestamp</th>
-                                        <th>Surveyor</th>
+                                        <th>Surveyor (System)</th>
                                         <th>Surveyor Phone</th>
-                                        <th>Parliament</th>
-                                        <th>Assembly</th>
-                                        <th>Mandal</th>
-                                        <th>Respondent Name</th>
-                                        <th>Respondent Phone</th>
-                                        <th>Village/Street</th>
-                                        {selectedSurvey?.questions?.slice(6).map((q, idx) => (
+                                        {/* Dynamic Question Headers */}
+                                        {selectedSurvey?.questions?.map((q, idx) => (
                                             <th key={q._id || q.id || idx}>
-                                                {q.question || q.text || q.title || q.label || `Question ${idx + 7}`}
+                                                {q.question || q.text || q.title || q.label || `Question ${idx + 1}`}
                                             </th>
                                         ))}
                                         <th>Location (Link)</th>
@@ -368,24 +351,19 @@ const SurveyData = () => {
                                 </thead>
                                 <tbody>
                                     {loadingResponses ? (
-                                        <tr><td colSpan={9 + (selectedSurvey?.questions?.length || 0)} className="loading-cell">Loading records...</td></tr>
+                                        <tr><td colSpan={4 + (selectedSurvey?.questions?.length || 0)} className="loading-cell">Loading records...</td></tr>
                                     ) : responses.length === 0 ? (
-                                        <tr><td colSpan={9 + (selectedSurvey?.questions?.length || 0)} className="empty-cell">No records found for this survey.</td></tr>
+                                        <tr><td colSpan={4 + (selectedSurvey?.questions?.length || 0)} className="empty-cell">No records found for this survey.</td></tr>
                                     ) : (
                                         responses.map((resp, idx) => (
                                             <tr key={resp._id || idx}>
                                                 <td>{new Date(resp.createdAt).toLocaleString()}</td>
                                                 <td>{resp.userName || 'Anonymous'}</td>
                                                 <td>{resp.userPhone || '-'}</td>
-                                                <td>{resp.parliament || getAnswerValue(resp, 'parliament') || '-'}</td>
-                                                <td>{resp.assembly || getAnswerValue(resp, 'assembly') || '-'}</td>
-                                                <td>{resp.mandal || getAnswerValue(resp, 'mandal') || '-'}</td>
-                                                <td>{resp.respondentName || getAnswerValue(resp, 'respondentName') || '-'}</td>
-                                                <td>{resp.respondentPhone || getAnswerValue(resp, 'respondentPhone') || '-'}</td>
-                                                <td>{resp.village_or_street || getAnswerValue(resp, 'village_or_street') || '-'}</td>
-                                                {selectedSurvey?.questions?.slice(6).map((q, qIdx) => (
+                                                {/* Dynamic Question Answers */}
+                                                {selectedSurvey?.questions?.map((q, qIdx) => (
                                                     <td key={q._id || q.id || qIdx}>
-                                                        {getAnswerValue(resp, q.id || q._id, q.type, qIdx + 6)}
+                                                        {getAnswerValue(resp, q.id || q._id, q.type, qIdx)}
                                                     </td>
                                                 ))}
                                                 <td>

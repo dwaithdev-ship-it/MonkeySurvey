@@ -56,7 +56,7 @@ const Register = () => {
     companyEmail: "",
     company: "",
     phoneNumber: "",
-    demoTemplate: "",
+    demoTemplate: "General",
   });
 
   const [error, setError] = useState("");
@@ -91,22 +91,40 @@ const Register = () => {
       if (response.success) {
         alert("Account created successfully! Please login with your phone number and password.");
         navigate("/login");
+      } else {
+        // Handle case where server returns success: false but status was 2xx
+        const msg = response.error?.message || response.message || "Registration failed. Please try again.";
+        setError(msg);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
       console.error('Registration error:', err);
 
       // Handle specific errors
-      const errorMessage = err.error?.message || err.message || "Registration failed";
+      let errorMessage = err.error?.message || err.message || "Registration failed";
+      
+      // If error is just "Registration failed", check for common causes
+      if (errorMessage === "Registration failed") {
+        if (!navigator.onLine) errorMessage = "No internet connection. Please check your network.";
+        else errorMessage = "Registration failed. This might be due to a duplicate entry or server issue.";
+      }
 
-      if (errorMessage.includes('duplicate') || errorMessage.includes('already exists')) {
+      if (errorMessage.includes('duplicate') || errorMessage.includes('already exists') || errorMessage.includes('Exists')) {
         if (errorMessage.toLowerCase().includes('phone')) {
           setError("This phone number is already registered. Please login or use a different phone number.");
+        } else if (errorMessage.toLowerCase().includes('username')) {
+          setError("This username is already taken. Please choose another one.");
+        } else if (errorMessage.toLowerCase().includes('email')) {
+          setError("This email is already registered. Please use another email.");
         } else {
-          setError("Username or email already exists. Please use different credentials.");
+          setError("Username, Email or Phone number already exists. Please check your details.");
         }
       } else {
         setError(errorMessage);
       }
+      
+      // Scroll to error message at the top of the page
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }

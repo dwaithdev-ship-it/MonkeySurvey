@@ -123,6 +123,20 @@ export default function UsersPage() {
         }
     };
 
+    const handleResetDevice = async (id, username) => {
+        if (!window.confirm(`Are you sure you want to reset the device lock and session for ${username}? This will allow them to log in from a new device.`)) return;
+        
+        try {
+            const res = await userAPI.resetDevice(id);
+            if (res.success) {
+                alert(res.message || 'Device lock reset successfully');
+            }
+        } catch (err) {
+            console.error("Failed to reset device", err);
+            alert(err?.response?.data?.error?.message || "Failed to reset device");
+        }
+    };
+
     const filteredUsers = usersList.filter(u =>
         (u.name && u.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (u.username && u.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -191,6 +205,14 @@ export default function UsersPage() {
                                             title={u.isActive ? "Deactivate User" : "Activate User"}
                                         >
                                             {u.isActive ? '🚫 Deactivate' : '✅ Activate'}
+                                        </button>
+                                        <button 
+                                            className="action-btn reset" 
+                                            onClick={() => handleResetDevice(u._id, u.username)}
+                                            title="Reset Device Lock"
+                                            style={{ backgroundColor: '#ff9800', color: 'white' }}
+                                        >
+                                            🔄 Reset Device
                                         </button>
                                     </td>
                                 </tr>

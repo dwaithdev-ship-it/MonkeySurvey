@@ -23,7 +23,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
     const frontendUrl = process.env.NODE_ENV === 'production'
       ? 'https://bodhasurvey.duckdns.org'
-      : 'http://localhost:4000';
+      : 'http://localhost:5173';
 
     res.status(201).json({
       success: true,
@@ -213,42 +213,45 @@ router.post('/:id/questions', authMiddleware, async (req, res) => {
 
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
-    const survey = await Survey.findById(req.params.id);
+    const { id } = req.params;
+
+    // Check if ID is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      // If it's a local/demo ID, just return success so the frontend can clear it
+      return res.json({
+        success: true,
+        message: 'Local survey removed from UI'
+      });
+    }
+
+    const survey = await Survey.findById(id);
 
     if (!survey) {
       return res.status(404).json({
         success: false,
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Survey not found'
-        }
+        error: { code: 'NOT_FOUND', message: 'Survey not found' }
       });
     }
 
     if (survey.createdBy.toString() !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
-        error: {
-          code: 'FORBIDDEN',
-          message: 'You do not have permission to delete this survey'
-        }
+        error: { code: 'FORBIDDEN', message: 'You do not have permission to delete this survey' }
       });
     }
 
-    await Survey.findByIdAndDelete(req.params.id);
+    await Survey.findByIdAndDelete(id);
+    console.log(`STRICT DELETE: Survey ${id} removed from database.`);
 
     res.json({
       success: true,
-      message: 'Survey deleted successfully'
+      message: 'Survey deleted successfully from server'
     });
   } catch (error) {
     console.error('Delete survey error:', error);
     res.status(500).json({
       success: false,
-      error: {
-        code: 'INTERNAL_ERROR',
-        message: 'Failed to delete survey'
-      }
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to delete survey' }
     });
   }
 });

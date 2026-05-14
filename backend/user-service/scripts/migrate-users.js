@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const LOCAL_URI = 'mongodb://localhost:27017/monkeysurvey';
-const ATLAS_URI = 'mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey';
+const ATLAS_URI = 'mongodb+srv://dwaithdevkalyan_db_user:Dwaithdevkalyan123@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey';
 
 async function migrate() {
     let localConn, atlasConn;
@@ -77,3 +77,5 @@ async function migrate() {
 }
 
 migrate();
+
+

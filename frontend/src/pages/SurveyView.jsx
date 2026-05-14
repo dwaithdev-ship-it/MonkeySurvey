@@ -3,7 +3,7 @@ import Layout from './layout';
 import './surveyview.css';
 import './Questionnaire.css';
 import { useParams, useNavigate } from 'react-router-dom';
-import { surveyAPI } from '../services/api';
+import { surveyAPI, aiAPI } from '../services/api';
 
 const SurveyView = () => {
   const { surveyId } = useParams();
@@ -14,6 +14,11 @@ const SurveyView = () => {
   const [showDetailedCreate, setShowDetailedCreate] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [showConfirmPopup, setShowConfirmPopup] = useState(false);
+  const [showAISurveyPopup, setShowAISurveyPopup] = useState(false);
+  const [aiMode, setAiMode] = useState('upload'); // 'upload' or 'text'
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiFile, setAiFile] = useState(null);
   const [showQuestionnaire, setShowQuestionnaire] = useState(false);
   const [currentSurvey, setCurrentSurvey] = useState(null);
   const [activeTab, setActiveTab] = useState('Standard');
@@ -614,6 +619,80 @@ const SurveyView = () => {
     setShowPageOptions(false);
   };
 
+  const handleAISurveyCreate = async () => {
+    if (aiMode === 'upload' && !aiFile) {
+      alert("Please upload a file first.");
+      return;
+    }
+    if (aiMode === 'text' && !aiPrompt.trim()) {
+      alert("Please describe your survey first.");
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+      let res;
+      if (aiMode === 'upload') {
+        res = await aiAPI.generateFromFile(aiFile);
+      } else {
+        res = await aiAPI.generate({ source: aiPrompt, sourceType: 'text' });
+      }
+
+      if (res.success && res.data) {
+        const aiSurvey = res.data;
+        
+        // Prepare the new survey data
+        const newSurveyData = {
+          title: aiSurvey.title,
+          description: aiSurvey.description || '',
+          surveyType: 'app',
+          layoutType: 'portrait',
+          headerText: aiSurvey.title,
+          status: 'UnPublished',
+          questions: aiSurvey.questions,
+          pages: [1]
+        };
+
+        // Call the backend to create the survey
+        const createRes = await surveyAPI.create(newSurveyData);
+        if (createRes.success) {
+          const created = createRes.data;
+          const adapted = {
+            ...created,
+            id: created.surveyId || created._id || created.id,
+            name: created.title || newSurveyData.title,
+            date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-'),
+            type: newSurveyData.surveyType || 'app',
+            status: 'UnPublished',
+            questions: newSurveyData.questions.map(q => ({
+              ...q,
+              id: q.id || Date.now() + Math.random(),
+              title: q.title || q.question || 'Type your question here....',
+              type: reverseMapType(q.type)
+            })),
+            pages: [1]
+          };
+
+          setSurveys(prev => [adapted, ...prev]);
+          setShowAISurveyPopup(false);
+          setAiFile(null);
+          
+          // Show success message with the link
+          alert(`Success! Survey created and added to your list.\n\nWeb URL: ${created.shareUrl || 'Check survey list'}`);
+          
+          // Do NOT open questionnaire automatically as per user request
+          // setCurrentSurvey(adapted);
+          // setShowQuestionnaire(true);
+        }
+      }
+    } catch (err) {
+      console.error('AI Survey Creation Failed:', err);
+      alert('Failed to generate survey from file. Please ensure the backend is running and Gemini API key is configured.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleSaveQuestionnaire = async () => {
     if (!currentSurvey) return;
 
@@ -1017,11 +1096,66 @@ const SurveyView = () => {
     setShowConfirmPopup(false);
   };
 
-  const deleteSurvey = (id) => {
-    if (window.confirm("Are you sure you want to delete this survey?")) {
-      const updatedSurveys = surveys.filter(s => s.id !== id);
-      setSurveys(updatedSurveys);
-      localStorage.setItem('local_surveys', JSON.stringify(updatedSurveys));
+  const [deleteStatus, setDeleteStatus] = useState(null);
+
+  const deleteSurvey = async (surveyId) => {
+    console.log('--- DELETE INITIATED V5.0 --- ID:', surveyId);
+    setDeleteStatus(`Deleting survey ${surveyId}...`);
+    
+    try {
+      // 1. Immediate UI filter (Optimistic)
+      setSurveys(prev => prev.filter(s => (s._id || s.id || '').toString() !== surveyId.toString()));
+      
+      // 2. Call API
+      const res = await surveyAPI.delete(surveyId);
+      console.log('V5 API Response:', res);
+      
+      if (res.success) {
+        setDeleteStatus('SUCCESS: Survey deleted. Syncing...');
+        // Clear local cache to force fresh load after reload
+        localStorage.removeItem('local_surveys');
+        localStorage.removeItem('api_cache_/surveys'); 
+      } else {
+        setDeleteStatus('ERROR: ' + (res.error?.message || 'Server rejected delete'));
+      }
+      
+      // 3. Wait 2 seconds so user sees status, then reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
+    } catch (e) {
+      console.error('V5 Fatal Error:', e);
+      setDeleteStatus('CRITICAL ERROR: ' + e.message);
+      setTimeout(() => window.location.reload(), 3000);
+    }
+  };
+
+  const duplicateSurvey = async (survey) => {
+    try {
+      const newName = `${survey.name} (Copy)`;
+      const newSurveyData = {
+        ...survey,
+        name: newName,
+        title: newName,
+        status: 'UnPublished',
+        questions: survey.questions || []
+      };
+      
+      const res = await surveyAPI.create(newSurveyData);
+      if (res.success) {
+        const created = res.data;
+        const adapted = {
+          ...newSurveyData,
+          id: created.surveyId || created._id || created.id,
+          date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
+        };
+        setSurveys(prev => [adapted, ...prev]);
+        alert('Survey duplicated successfully!');
+      }
+    } catch (e) {
+      console.error('Duplicate failed:', e);
+      alert('Failed to duplicate survey.');
     }
   };
 
@@ -5214,15 +5348,57 @@ const SurveyView = () => {
   return (
     <Layout user={user}>
       <div className="survey-view-content">
+        {deleteStatus && (
+          <div style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: deleteStatus.includes('ERROR') ? '#fee2e2' : '#dcfce7',
+            color: deleteStatus.includes('ERROR') ? '#b91c1c' : '#15803d',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+            zIndex: 9999,
+            fontWeight: 'bold',
+            border: `1px solid ${deleteStatus.includes('ERROR') ? '#f87171' : '#4ade80'}`
+          }}>
+            {deleteStatus}
+          </div>
+        )}
         <div className="survey-toolbar">
           <div className="survey-search">
-            <input type="text" placeholder="Survey Name" className="survey-input" />
-            <button className="btn primary">Search</button>
-            <button className="btn secondary">Reset</button>
+            <input 
+              type="text" 
+              placeholder="Search Survey Name..." 
+              className="survey-input" 
+              id="surveySearchInput"
+              onChange={(e) => {
+                const term = e.target.value.toLowerCase();
+                const rows = document.querySelectorAll('.survey-table tbody tr');
+                rows.forEach(row => {
+                  const name = row.querySelector('.survey-link')?.textContent.toLowerCase() || '';
+                  row.style.display = name.includes(term) ? '' : 'none';
+                });
+              }}
+            />
+            <button className="btn primary" onClick={() => {
+              const term = document.getElementById('surveySearchInput').value.toLowerCase();
+              const rows = document.querySelectorAll('.survey-table tbody tr');
+              rows.forEach(row => {
+                const name = row.querySelector('.survey-link')?.textContent.toLowerCase() || '';
+                row.style.display = name.includes(term) ? '' : 'none';
+              });
+            }}>Search</button>
+            <button className="btn secondary" onClick={() => {
+              document.getElementById('surveySearchInput').value = '';
+              document.querySelectorAll('.survey-table tbody tr').forEach(row => row.style.display = '');
+            }}>Reset</button>
           </div>
           <div className="survey-actions">
             <button className="btn outline">Help</button>
             <button className="btn outline" onClick={() => setShowCopyPopup(true)}>Copy Template</button>
+            <button className="btn primary" style={{ background: '#00bfa5' }} onClick={() => setShowAISurveyPopup(true)}>AI Survey Creation</button>
             <button className="btn primary" onClick={() => setShowCreatePopup(true)}>Create Survey</button>
           </div>
         </div>
@@ -5325,12 +5501,12 @@ const SurveyView = () => {
                       </span>
                     </div>
                   </td>
-                  <td className="center">
+                   <td className="center">
                     <span
                       style={{ cursor: 'pointer', fontSize: '18px' }}
                       onClick={() => {
-                        const slug = survey.name.toLowerCase().replace(/\s+/g, '-');
-                        window.open(`/take-survey/${slug}`, '_blank');
+                        const targetId = survey._id || survey.id;
+                        window.open(`/take-survey/${targetId}`, '_blank');
                       }}
                       title="Access Live Survey URL"
                     >
@@ -5346,9 +5522,16 @@ const SurveyView = () => {
                     </button>
                   </td>
                   <td className="center actions">
-                    <span title="Edit Settings" onClick={() => openEditSurvey(survey)}>⚙️</span>
-                    <span title="Profile">👤</span><span title="Copy">📄</span>
-                    <span title="Delete" onClick={() => deleteSurvey(survey.id)}>🗑️</span>
+                    <button className="action-icon-btn" title="Edit Settings" onClick={() => openEditSurvey(survey)}>⚙️</button>
+                    <button className="action-icon-btn" title="Profile" onClick={() => navigate(`/data?survey=${survey.id}`)}>👤</button>
+                    <button className="action-icon-btn" title="Copy" onClick={() => duplicateSurvey(survey)}>📄</button>
+                    <button 
+                      className="btn-red small" 
+                      style={{ padding: '4px 8px', fontSize: '12px' }} 
+                      onClick={() => deleteSurvey(survey._id || survey.id)}
+                    >
+                      Delete
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -5626,6 +5809,84 @@ const SurveyView = () => {
         </div>
       )}
 
+      {showAISurveyPopup && (
+        <div className="modal-overlay">
+          <div className="copy-template-modal ai-modal" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3>AI Survey Creation</h3>
+              <button className="close-btn" onClick={() => setShowAISurveyPopup(false)}>&times;</button>
+            </div>
+            <div className="modal-body" style={{ textAlign: 'center', padding: '20px 30px' }}>
+              <div className="ai-tabs" style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #eee' }}>
+                <button 
+                  className={`tab-btn ${aiMode === 'upload' ? 'active' : ''}`} 
+                  onClick={() => setAiMode('upload')}
+                  style={{ padding: '10px 20px', border: 'none', background: 'none', borderBottom: aiMode === 'upload' ? '2px solid #00bfa5' : 'none', cursor: 'pointer', fontWeight: aiMode === 'upload' ? 'bold' : 'normal' }}
+                >
+                  Upload Form
+                </button>
+                <button 
+                  className={`tab-btn ${aiMode === 'text' ? 'active' : ''}`} 
+                  onClick={() => setAiMode('text')}
+                  style={{ padding: '10px 20px', border: 'none', background: 'none', borderBottom: aiMode === 'text' ? '2px solid #00bfa5' : 'none', cursor: 'pointer', fontWeight: aiMode === 'text' ? 'bold' : 'normal' }}
+                >
+                  Describe Survey
+                </button>
+              </div>
+
+              {aiMode === 'upload' ? (
+                <div className="ai-upload-zone" style={{ border: '2px dashed #00bfa5', padding: '40px', borderRadius: '12px', cursor: 'pointer', background: '#f0fdfa' }} onClick={() => document.getElementById('ai-file-input').click()}>
+                  {aiFile ? (
+                    <div className="file-info">
+                      <p style={{ fontSize: '40px' }}>📄</p>
+                      <p style={{ fontWeight: 'bold', color: '#00bfa5' }}>{aiFile.name}</p>
+                      <p style={{ fontSize: '12px', color: '#666' }}>Click to change file</p>
+                    </div>
+                  ) : (
+                    <div className="upload-prompt">
+                      <p style={{ fontSize: '40px' }}>📤</p>
+                      <p style={{ fontWeight: 'bold' }}>Upload Survey Form Image/PDF</p>
+                      <p style={{ fontSize: '12px', color: '#666' }}>Drag and drop or click to browse</p>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    id="ai-file-input"
+                    style={{ display: 'none' }}
+                    accept="image/*,.pdf"
+                    onChange={(e) => setAiFile(e.target.files[0])}
+                  />
+                </div>
+              ) : (
+                <div className="ai-text-zone">
+                  <textarea 
+                    placeholder="Describe your survey (e.g., 'Create a customer satisfaction survey for a restaurant with 5 questions about food, service, and ambiance.')"
+                    style={{ width: '100%', height: '150px', padding: '15px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '14px', resize: 'none' }}
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                  />
+                </div>
+              )}
+              <p style={{ marginTop: '15px', color: '#666', fontSize: '13px' }}>
+                {aiMode === 'upload' 
+                  ? 'AI will analyze the uploaded image and automatically generate a complete survey questionnaire for you.' 
+                  : 'Describe what you need, and AI will draft a complete survey questionnaire based on your requirements.'}
+              </p>
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'center', paddingBottom: '30px' }}>
+              <button 
+                className={`btn-teal ${aiLoading ? 'loading' : ''}`} 
+                onClick={handleAISurveyCreate} 
+                disabled={aiLoading || !aiFile}
+                style={{ minWidth: '200px', height: '45px' }}
+              >
+                {aiLoading ? '🤖 Generating Survey...' : 'Create Survey Form'}
+              </button>
+              <button className="btn-teal" style={{ background: '#f44336' }} onClick={() => setShowAISurveyPopup(false)} disabled={aiLoading}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };

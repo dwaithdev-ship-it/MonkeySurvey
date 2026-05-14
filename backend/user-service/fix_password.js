@@ -3,7 +3,7 @@ const User = require('./models/User');
 const MSRUser = require('./models/MSRUser');
 require('dotenv').config();
 
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey';
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://dwaithdevkalyan_db_user:Dwaithdevkalyan123@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey';
 
 async function checkPasswordSync(phone) {
     try {
@@ -40,3 +40,5 @@ async function checkPasswordSync(phone) {
 }
 
 checkPasswordSync('9392618252');
+
+

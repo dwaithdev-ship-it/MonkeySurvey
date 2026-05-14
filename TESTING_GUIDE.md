@@ -324,7 +324,7 @@ curl -H "Origin: http://localhost:3000" \
      -H "Access-Control-Request-Method: POST" \
      -H "Access-Control-Request-Headers: X-Requested-With" \
      -X OPTIONS \
-     http://localhost:4000/api/users/login
+     http://localhost:5173/api/users/login
 ```
 
 ### Verify JWT Tokens

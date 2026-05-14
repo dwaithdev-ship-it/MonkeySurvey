@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 require('dotenv').config({ path: '../.env' });
 
-const MONGODB_URI = "mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey";
+const MONGODB_URI = "mongodb+srv://dwaithdevkalyan_db_user:Dwaithdevkalyan123@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey";
 
 async function clearResponses() {
     try {
@@ -34,3 +34,5 @@ async function clearResponses() {
 }
 
 clearResponses();
+
+

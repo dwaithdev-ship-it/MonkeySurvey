@@ -4,7 +4,7 @@ const MSRUser = require('./models/MSRUser');
 const { hashPassword } = require('../shared/auth'); // in backend/shared/auth
 require('dotenv').config();
 
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://dwaithdevkalyan_db_user:2TfgyQfGmpiuImO9@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey';
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb+srv://dwaithdevkalyan_db_user:Dwaithdevkalyan123@monkeysurvey.jufdxfk.mongodb.net/monkeysurvey?appName=monkeysurvey';
 
 async function resetPassword(phone, newPassword) {
     try {
@@ -40,3 +40,5 @@ async function resetPassword(phone, newPassword) {
 }
 
 resetPassword('9392618252', 'Test@123');
+
+

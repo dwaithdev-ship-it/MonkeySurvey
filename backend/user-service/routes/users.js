@@ -3,6 +3,17 @@ const router = express.Router();
 const User = require('../models/User');
 const MSRUser = require('../models/MSRUser');
 const Device = require('../models/Device');
+const {
+  generateToken,
+  hashPassword,
+  comparePassword,
+  authMiddleware
+} = require('../../shared/auth');
+const {
+  registerSchema,
+  loginSchema,
+  validate
+} = require('../../shared/validation');
 
 /**
  * POST /users/msr-register
@@ -11,22 +22,54 @@ const Device = require('../models/Device');
 router.post('/msr-register', async (req, res) => {
   try {
     let { name, username, password, companyEmail, company, phoneNumber, demoTemplate } = req.body;
+    
+    // Fallback for demoTemplate if missing from older clients
+    if (!demoTemplate) {
+      demoTemplate = 'General';
+      console.log('MSR Registration: demoTemplate missing, defaulting to "General"');
+    }
+
+    console.log("Registration attempt:", { username, companyEmail, phoneNumber, demoTemplate });
+
+    // Basic presence check for required fields (excluding demoTemplate which now has fallback)
+    if (!username || !password || !companyEmail || !phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'MISSING_FIELDS',
+          message: 'Username, Password, Email and Phone Number are required'
+        }
+      });
+    }
 
     // Sanitize phone number (strip all non-digits)
     if (phoneNumber) {
       phoneNumber = phoneNumber.toString().replace(/\D/g, '');
     }
 
-    const existingUser = await MSRUser.findOne({
+    const existingMSR = await MSRUser.findOne({
       $or: [{ companyEmail }, { username }]
     });
 
-    if (existingUser) {
+    const existingStandard = await User.findOne({
+      $or: [{ email: companyEmail }, { phoneNumber }]
+    });
+
+    if (existingMSR || existingStandard) {
+      let conflictField = 'User';
+      if (existingMSR) {
+        if (existingMSR.username === username) conflictField = 'Username';
+        else if (existingMSR.companyEmail === companyEmail) conflictField = 'Email';
+      } else if (existingStandard) {
+        if (existingStandard.email === companyEmail) conflictField = 'Email';
+        else if (existingStandard.phoneNumber === phoneNumber) conflictField = 'Phone Number';
+      }
+
       return res.status(400).json({
         success: false,
         error: {
           code: 'USER_EXISTS',
-          message: 'Username or Email already exists'
+          message: `${conflictField} already exists. Please use different credentials.`
         }
       });
     }
@@ -45,11 +88,14 @@ router.post('/msr-register', async (req, res) => {
     await user.save();
 
     // Create standard user for login compatibility
+    // Ensure firstName and lastName are never empty strings (required by User model)
+    const firstName = (name || username || 'User').trim() || 'User';
+    const lastName = (company || 'MSR').trim() || 'MSR';
     const standardUser = new User({
       email: companyEmail,
       password: hashedPassword,
-      firstName: name || username,
-      lastName: company || 'MSR',
+      firstName,
+      lastName,
       role: 'creator',
       phoneNumber // Sync phone number to standard user for login compatibility
     });
@@ -64,21 +110,14 @@ router.post('/msr-register', async (req, res) => {
     console.error('MSR Registration error:', error);
     res.status(500).json({
       success: false,
-      error: { code: 'INTERNAL_ERROR', message: error.message }
+      error: { 
+        code: 'INTERNAL_ERROR', 
+        message: error.name === 'ValidationError' ? error.message : 'Registration failed due to server error' 
+      }
     });
   }
 });
-const {
-  generateToken,
-  hashPassword,
-  comparePassword,
-  authMiddleware
-} = require('../../shared/auth');
-const {
-  registerSchema,
-  loginSchema,
-  validate
-} = require('../../shared/validation');
+
 
 /**
  * POST /users/register
@@ -719,6 +758,62 @@ router.get('/:id', authMiddleware, async (req, res) => {
     });
   }
 });
+
+/**
+ * POST /users/reset-device/:id
+ * Reset device lock and session for a user (admin only)
+ */
+router.post('/reset-device/:id', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ 
+        success: false, 
+        error: { message: 'Access denied' } 
+      });
+    }
+
+    // Find by ID, if not found (e.g. MSRUser ID passed), find by email if possible
+    let user = await User.findById(req.params.id);
+    
+    if (!user) {
+      // Try to find the MSR user first to get the email
+      const msrUser = await MSRUser.findById(req.params.id);
+      if (msrUser) {
+        user = await User.findOne({ email: msrUser.companyEmail });
+      }
+    }
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        error: { message: 'Authentication user not found for this account' } 
+      });
+    }
+
+    // Reset device lock and session
+    user.registeredDeviceId = null;
+    user.activeSession = {
+      token: null,
+      deviceId: null,
+      loginTime: null,
+      ipAddress: null
+    };
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `Device lock and session reset successfully for ${user.email}`
+    });
+  } catch (error) {
+    console.error('Reset device error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: { message: 'Failed to reset device lock' } 
+    });
+  }
+});
+
 
 /**
  * GET /users/devices

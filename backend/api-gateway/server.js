@@ -11,8 +11,17 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(morgan('dev'));
-app.use(helmet());
-app.use(cors());
+// Relax helmet for mobile webviews
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: false
+}));
+// Explicit CORS for mobile apps
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'deviceId']
+}));
 // Don't parse body here - let the proxied services handle it
 
 // Rate limiting

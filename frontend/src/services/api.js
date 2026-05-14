@@ -6,13 +6,23 @@ const getBaseUrl = (port) => {
   return `http://${hostname}:${port}`;
 };
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || getBaseUrl(3000);
+// Robust Mobile/Capacitor check
+const isCapacitor = window.location.protocol === 'capacitor:';
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+// Production server - AWS EC2 at 13.53.187.131
+const PROD_IP = "13.53.187.131";
+
+const API_BASE_URL = isCapacitor 
+  ? `http://${PROD_IP}/api` 
+  : (import.meta.env.VITE_API_URL || "/api");
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 15000, // 15 seconds timeout for mobile data
   headers: {
-    'Content-Type': 'application/json',
-  },
+    'X-Requested-With': 'XMLHttpRequest'
+  }
 });
 
 // Helper for offline queue
@@ -175,6 +185,7 @@ export const userAPI = {
   updateMSRPassword: (id, password) => api.patch(`/users/msr-users/${id}/password`, { password }),
   getDevices: () => api.get('/users/devices'),
   updateDeviceStatus: (deviceId, isActive) => api.patch(`/users/devices/${deviceId}/status`, { isActive }),
+  resetDevice: (userId) => api.post(`/users/reset-device/${userId}`),
 };
 
 // Survey Service APIs
@@ -217,6 +228,16 @@ export const themeAPI = {
   getTheme: (surveyId) => api.get(`/api/survey-theme/${surveyId}`),
   getAllThemes: () => api.get(`/api/survey-theme`),
   saveTheme: (data) => api.post(`/api/survey-theme`, data)
+};
+
+// AI Service API
+export const aiAPI = {
+  generate: (data) => api.post('/ai/generate', data),
+  generateFromFile: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/ai/generate-from-file', formData);
+  }
 };
 
 export default api;

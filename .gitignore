@@ -61,3 +61,19 @@ response_debug.json
 # Survey data files (should be imported, not committed)
 telugu-survey.json
 ts-municipal-survey.json
+
+# Local dev tools & binaries
+ngrok.exe
+ngrok
+mini-backend.js
+deploy.tar.gz
+
+# Android Capacitor build outputs
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/.gradle/
+
+# Local DB backup/debug scripts (do not commit)
+backend/user-service/db_backup_before_cleanup.json
+backend/user-service/user_startup.txt
+backend/user-service/user_startup_check.txt
