@@ -1,4 +1,5 @@
 apply plugin: "com.android.application"
+apply plugin: "kotlin-android"
 apply plugin: "com.facebook.react"
 
 /**
@@ -70,6 +71,9 @@ def jscFlavor = 'org.webkit:android-jsc:+'
 
 android {
     ndkVersion rootProject.ext.ndkVersion
+    buildFeatures {
+        buildConfig = true
+    }
 
     compileSdkVersion rootProject.ext.compileSdkVersion
 
@@ -78,8 +82,8 @@ android {
         applicationId "com.monkeyapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 3
+        versionName "1.2"
         multiDexEnabled true
     }
     signingConfigs {
@@ -107,6 +111,11 @@ android {
         variant.outputs.all {
             outputFileName = "Bodha-Survey.apk"
         }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 }
 

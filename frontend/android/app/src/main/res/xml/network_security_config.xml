@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">13.53.187.131</domain>
+        <domain includeSubdomains="true">98.130.47.88</domain>
         <domain includeSubdomains="true">localhost</domain>
     </domain-config>
     <base-config cleartextTrafficPermitted="true">

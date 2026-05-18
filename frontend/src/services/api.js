@@ -10,12 +10,12 @@ const getBaseUrl = (port) => {
 const isCapacitor = window.location.protocol === 'capacitor:';
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-// Production server - AWS EC2 at 13.53.187.131
-const PROD_IP = "13.53.187.131";
+// Production server - AWS EC2 Domain (HTTPS)
+const PROD_DOMAIN = "bodhasurvey.duckdns.org";
 
-const API_BASE_URL = isCapacitor 
-  ? `http://${PROD_IP}/api` 
-  : (import.meta.env.VITE_API_URL || "/api");
+const API_BASE_URL = import.meta.env.VITE_API_URL && import.meta.env.VITE_API_URL !== '/api'
+  ? import.meta.env.VITE_API_URL
+  : (isCapacitor ? `https://${PROD_DOMAIN}/api` : "/api");
 
 const api = axios.create({
   baseURL: API_BASE_URL,

@@ -1,5 +1,5 @@
 @echo off
-echoOptions
+echo ===================================================
 echo   FINAL SERVICE RESTART
 echo ===================================================
 echo.
@@ -18,7 +18,7 @@ cd backend\user-service
 start "User Service" npm start
 cd ..\..
 
-echo [4/5] Starting Survey & Response Services...
+echo [4/5] Starting Survey and Response Services...
 cd backend\survey-service
 start "Survey Service" npm start
 cd ..\..

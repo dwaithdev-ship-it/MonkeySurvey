@@ -1,36 +1,61 @@
-import React from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
-import { List, Title, FAB } from 'react-native-paper';
-
-const surveys = [
-    { id: '1', title: 'Customer Satisfaction', responses: 45 },
-    { id: '2', title: 'Employee Feedback', responses: 12 },
-    { id: '3', title: 'Product Review', responses: 89 },
-];
+import React, { useRef } from 'react';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { WebView } from 'react-native-webview';
+import { useSelector } from 'react-redux';
 
 const SurveyListScreen = () => {
+    const { token, user } = useSelector((state) => state.auth);
+    const webViewRef = useRef(null);
+
+    // ─── URL CONFIG ────────────────────────────────────────────────────────────
+    // Cloud server (bodhasurvey.duckdns.org) is CURRENTLY OFFLINE.
+    // Using the local dev frontend which is running on the same WiFi network.
+    // When cloud server is back: change to 'https://bodhasurvey.duckdns.org/surveys'
+    const SURVEYS_URL = 'http://192.168.29.108:5173/surveys';
+
+    // Inject authentication credentials before the document loads to bypass login screens
+    const injectedJS = `
+        try {
+            localStorage.setItem('token', ${JSON.stringify(token)});
+            localStorage.setItem('user', JSON.stringify(${JSON.stringify(user)}));
+        } catch (e) {
+            console.error('[WebView] Auth injection failed:', e);
+        }
+        true;
+    `;
+
     return (
         <View style={styles.container}>
-            <FlatList
-                data={surveys}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                    <List.Item
-                        title={item.title}
-                        description={`${item.responses} responses`}
-                        left={(props) => <List.Icon {...props} icon="poll" />}
-                        onPress={() => { }}
-                    />
+            <WebView
+                ref={webViewRef}
+                source={{ uri: SURVEYS_URL }}
+                injectedJavaScriptBeforeContentLoaded={injectedJS}
+                startInLoadingState={true}
+                renderLoading={() => (
+                    <View style={styles.loading}>
+                        <ActivityIndicator size="large" color="#6200ee" />
+                    </View>
                 )}
+                style={styles.webview}
             />
-            <FAB icon="plus" style={styles.fab} onPress={() => { }} />
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
-    fab: { position: 'absolute', margin: 16, right: 0, bottom: 0 },
+    container: {
+        flex: 1,
+        backgroundColor: '#fff',
+    },
+    webview: {
+        flex: 1,
+    },
+    loading: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
 });
 
 export default SurveyListScreen;

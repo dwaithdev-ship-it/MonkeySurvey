@@ -58,6 +58,27 @@ app.get('/health', (req, res) => {
   });
 });
 
+// ─── DIAGNOSTIC TEST ENDPOINT (for mobile APK connectivity checks) ───────────
+app.get('/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'API working! Mobile app can reach this server.',
+    server: 'api-gateway',
+    timestamp: new Date().toISOString(),
+    ip: req.ip || req.headers['x-forwarded-for'] || 'unknown'
+  });
+});
+
+app.get('/api/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'API working! Mobile app can reach this server.',
+    server: 'api-gateway',
+    timestamp: new Date().toISOString(),
+    ip: req.ip || req.headers['x-forwarded-for'] || 'unknown'
+  });
+});
+
 // API info
 app.get('/', (req, res) => {
   res.json({

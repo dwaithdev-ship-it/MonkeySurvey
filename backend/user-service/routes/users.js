@@ -23,6 +23,14 @@ router.post('/msr-register', async (req, res) => {
   try {
     let { name, username, password, companyEmail, company, phoneNumber, demoTemplate } = req.body;
     
+    // Normalize and sanitize input fields
+    if (companyEmail) {
+      companyEmail = companyEmail.toLowerCase().trim();
+    }
+    if (username) {
+      username = username.trim();
+    }
+    
     // Fallback for demoTemplate if missing from older clients
     if (!demoTemplate) {
       demoTemplate = 'General';
@@ -108,6 +116,24 @@ router.post('/msr-register', async (req, res) => {
     });
   } catch (error) {
     console.error('MSR Registration error:', error);
+    
+    // Explicitly handle duplicate key/unique index violations from MongoDB in case validation missed them
+    if (error.code === 11000 || (error.name === 'MongoServerError' && error.message.includes('E11000'))) {
+      let conflictField = 'User';
+      const errMsg = error.message.toLowerCase();
+      if (errMsg.includes('username')) conflictField = 'Username';
+      else if (errMsg.includes('companyemail') || errMsg.includes('email')) conflictField = 'Email';
+      else if (errMsg.includes('phonenumber')) conflictField = 'Phone Number';
+      
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'USER_EXISTS',
+          message: `${conflictField} already exists. Please use different credentials.`
+        }
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: { 

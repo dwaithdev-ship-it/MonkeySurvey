@@ -957,8 +957,13 @@ export default function TakeSurvey() {
     if (question.type === 'dropdown') {
       const opts = Array.isArray(question.options) ? question.options : [];
       return (
-        <div style={{ display: 'flex', flexDirection: question.orientation === 'Horizontal' ? 'row' : 'column', gap: '8px' }}>
-          <select value={value} onChange={(e) => handleAnswerChange(qId, e.target.value)} disabled={isDisabled} className="answer-select" style={{ flex: 1 }}>
+        <div className="question-answer">
+          <select 
+            value={value} 
+            onChange={(e) => handleAnswerChange(qId, e.target.value)} 
+            disabled={isDisabled} 
+            className="answer-select"
+          >
             <option value="">Select an option</option>
             {opts.map((opt, i) => {
               const label = typeof opt === 'object' ? (opt.label || opt.value) : opt;
@@ -976,70 +981,48 @@ export default function TakeSurvey() {
       const isCheckbox = question.type === 'checkbox-grid';
 
       return (
-        <div className="radio-grid-container" style={{ overflowX: 'auto', marginBottom: '15px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '400px' }}>
+        <div className="radio-grid-container">
+          <table>
             <thead>
-              <tr style={{ background: '#f8f9ff' }}>
-                <th style={{ padding: '12px 15px', textAlign: 'left', borderBottom: '2px solid #e5e7eb', color: '#374151', fontSize: '13px', fontWeight: '600' }}>Question</th>
+              <tr>
+                <th>Question</th>
                 {cols.map((col, i) => (
-                  <th key={i} style={{ padding: '12px 10px', textAlign: 'center', borderBottom: '2px solid #e5e7eb', color: '#374151', fontSize: '12px', fontWeight: '600' }}>{col.label}</th>
+                  <th key={i}>{col.label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {rows.map((row, i) => (
-                <tr key={i} style={{ background: i % 2 === 0 ? 'white' : '#fcfcfd' }}>
-                  <td style={{ padding: '12px 15px', borderBottom: '1px solid #f3f4f6', fontSize: '14px', color: '#1f2937' }}>{row.label}</td>
+                <tr key={i}>
+                  <td>{row.label}</td>
                   {cols.map((col, j) => {
                     const gridQId = `${qId}_${i}`;
-                    const gridCellId = `${qId}_${i}_${j}`;
                     const currentValue = answers[gridQId] || '';
                     const isChecked = isCheckbox
                       ? (Array.isArray(currentValue) ? currentValue.includes(col.value || col.label) : currentValue === (col.value || col.label))
                       : currentValue === (col.value || col.label);
 
-                    const isCheckboxWithText = question.originalType === 'Checkbox with Text';
-                    const isCheckboxWithOther = question.originalType === 'Checkbox Grid with Other';
-                    const showTextInput = (isCheckboxWithText || (isCheckboxWithOther && (col.label === 'Other' || col.value === 'Other'))) && isChecked;
-
                     return (
-                      <td key={j} style={{ padding: '12px 10px', textAlign: 'center', borderBottom: '1px solid #f3f4f6' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-                          <input
-                            type={isCheckbox ? "checkbox" : "radio"}
-                            name={`grid-${qId}-${i}`}
-                            checked={isChecked}
-                            onChange={() => {
-                              if (isCheckbox) {
-                                let newArr = Array.isArray(currentValue) ? [...currentValue] : (currentValue ? [currentValue] : []);
-                                if (newArr.includes(col.value || col.label)) {
-                                  newArr = newArr.filter(v => v !== (col.value || col.label));
-                                } else {
-                                  newArr.push(col.value || col.label);
-                                }
-                                handleAnswerChange(gridQId, newArr);
+                      <td key={j}>
+                        <input
+                          type={isCheckbox ? "checkbox" : "radio"}
+                          name={`grid-${qId}-${i}`}
+                          checked={isChecked}
+                          onChange={() => {
+                            if (isCheckbox) {
+                              let newArr = Array.isArray(currentValue) ? [...currentValue] : (currentValue ? [currentValue] : []);
+                              if (newArr.includes(col.value || col.label)) {
+                                newArr = newArr.filter(v => v !== (col.value || col.label));
                               } else {
-                                handleAnswerChange(gridQId, col.value || col.label);
+                                newArr.push(col.value || col.label);
                               }
-                            }}
-                            style={{
-                              cursor: 'pointer',
-                              width: '18px',
-                              height: '18px',
-                              accentColor: '#6366f1'
-                            }}
-                          />
-                          {showTextInput && (
-                            <input
-                              type="text"
-                              placeholder="Please specify..."
-                              value={answers[`${gridCellId}_text`] || ''}
-                              onChange={(e) => handleAnswerChange(`${gridCellId}_text`, e.target.value)}
-                              disabled={isDisabled}
-                              style={{ width: '100%', padding: '4px', fontSize: '11px', border: '1px solid #d1d5db', borderRadius: '4px' }}
-                            />
-                          )}
-                        </div>
+                              handleAnswerChange(gridQId, newArr);
+                            } else {
+                              handleAnswerChange(gridQId, col.value || col.label);
+                            }
+                          }}
+                          style={{ cursor: 'pointer', width: '20px', height: '20px' }}
+                        />
                       </td>
                     );
                   })}
@@ -1050,6 +1033,7 @@ export default function TakeSurvey() {
         </div>
       );
     }
+
     if (question.type === 'number-grid') {
       const rows = question.rowOptions || [];
       const cols = question.columnOptions || [];
@@ -2206,152 +2190,128 @@ export default function TakeSurvey() {
     );
   };
 
-  if (loading) return <div className="take-survey-container"><div className="loading">Loading Survey...</div></div>;
+
+  if (loading) {
+    return (
+      <div className="submit-overlay">
+        <div className="submit-spinner"></div>
+        <p>Loading survey design...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="take-survey-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="question-block" style={{ textAlign: 'center' }}>
+          <h2 style={{ color: '#ef4444' }}>Error</h2>
+          <p>{error}</p>
+          <button className="btn-primary" onClick={() => navigate(-1)}>Go Back</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!survey) return null;
 
   return (
-    <div className={`take-survey-container layout-${surveyTheme?.layoutType || 'mobile'}`}>
+    <div className="take-survey-container">
+      {submitting && (
+        <div className="submit-overlay">
+          <div className="submit-spinner"></div>
+          <p>Submitting your response...</p>
+        </div>
+      )}
+
       {surveyTheme && (
-        <style dangerouslySetInnerHTML={{
-          __html: `
-          .take-survey-container {
-             background-color: ${surveyTheme.bodyBackgroundColor || '#FFFFFF'} !important;
-             color: ${surveyTheme.bodyTextColor || '#444444'} !important;
-             background-image: ${surveyTheme.formBackgroundImage ? `url(${surveyTheme.formBackgroundImage})` : 'none'} !important;
-             background-size: cover;
-             background-attachment: fixed;
-             min-height: 100vh;
-          }
-          .survey-header-section {
-             background-color: ${surveyTheme.headerBackgroundColor || '#FFFFFF'} !important;
-             color: ${surveyTheme.headerTextColor || '#000000'} !important;
-          }
-          .survey-header-section h1 {
-             color: ${surveyTheme.headerTextColor || '#111827'} !important;
-          }
-          .question-block {
-             background-color: ${surveyTheme.groupBackgroundColor || '#ffffff'} !important;
-             color: ${surveyTheme.groupTextColor || '#000000'} !important;
-          }
-          .question-text, .question-number {
-             color: ${surveyTheme.groupTextColor || '#111827'} !important;
-          }
-          .answer-input, .textarea-input, .dropdown-input {
-             color: ${surveyTheme.inputTextColor || '#444444'} !important;
-          }
-          .survey-form .btn-primary {
-             background-color: ${surveyTheme.bodyIconColor || '#09C1D8'} !important;
-             color: #FFFFFF !important;
-          }
-          /* Custom layout overrides */
-          .layout-desktop .questions-flex-container {
-             max-width: 1200px;
-             margin: 0 auto;
-          }
-          .layout-tablet .questions-flex-container {
-             max-width: 800px;
-             margin: 0 auto;
+        <style dangerouslySetInnerHTML={{ __html: `
+          :root {
+            --primary-color: ${surveyTheme.bodyIconColor || '#00a099'};
+            --bg-color: ${surveyTheme.bodyBackgroundColor || '#f0f9f9'};
+            --surface-color: ${surveyTheme.groupBackgroundColor || '#ffffff'};
+            --text-main: ${surveyTheme.bodyTextColor || '#1e293b'};
           }
         `}} />
       )}
-      <div className="survey-header-section" style={{ position: 'sticky', top: 0, zIndex: 1000, borderBottom: '1px solid #e5e7eb', boxShadow: '0 2px 10px rgba(0,0,0,0.08)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '10px' }}>
-          <div className="survey-logo-wrapper" style={{ margin: 0, flex: '0 0 auto' }}>
-            <img src={survey?.branding?.logo || logo} alt="Logo" className="survey-logo" style={{ maxHeight: '45px' }} />
+
+      <header className="survey-header-section" style={{ position: 'sticky', top: 0, zIndex: 1000 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '800px', margin: '0 auto' }}>
+          <div className="survey-logo-wrapper" style={{ margin: 0 }}>
+            <img src={survey?.branding?.logo || logo} alt="Logo" className="survey-logo" style={{ maxHeight: '40px' }} />
           </div>
-          <div style={{ flex: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', minWidth: '120px' }}>
-            <h1 style={{ margin: 0, fontSize: 'clamp(15px, 3.5vw, 19px)', fontWeight: '800', color: '#111827', textAlign: 'center', lineHeight: '1.2' }}>{survey?.title || survey?.name || "MSR SURVEY"}</h1>
-            <img src="https://img.icons8.com/color/48/000000/marker.png" alt="Location" style={{ width: '20px', height: '20px' }} />
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800' }}>{survey?.title || "MSR SURVEY"}</h1>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '0 0 auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', padding: '4px 12px', borderRadius: '12px', border: '1px solid #dcfce7' }}>
-              <img src="https://img.icons8.com/color/48/000000/checklist.png" alt="Responses" style={{ width: '20px', height: '20px' }} />
-              <span style={{ fontSize: '18px', fontWeight: '800', color: '#10b981' }}>{responseCount}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '4px 12px', borderRadius: '20px', color: '#10b981', fontWeight: '700' }}>
+              {responseCount}
             </div>
             <button
               onClick={() => { localStorage.removeItem('token'); navigate('/login'); }}
-              className="btn-secondary"
-              style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title="Logout"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
             >
-              <img src="https://img.icons8.com/material-outlined/32/000000/logout-rounded-left.png" alt="Logout" style={{ width: '24px', height: '24px' }} />
+              <img src="https://img.icons8.com/material-outlined/24/000000/logout-rounded-left.png" alt="Logout" />
             </button>
           </div>
         </div>
-
-      </div>
+      </header>
 
       <form onSubmit={handleSubmit} className="survey-form">
         {survey?.welcomeImageData && (
-          <div className="welcome-image-container" style={{ textAlign: 'center', marginBottom: '1.5rem', padding: '10px' }}>
+          <div className="welcome-image-container" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
             <img src={survey.welcomeImageData} alt="Welcome" style={{ maxWidth: '100%', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
           </div>
         )}
-        <div className="questions-flex-container" style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          width: '100%',
-          boxSizing: 'border-box'
-        }}>
+
+        <div className="questions-container">
           {getDisplayQuestions(survey?.questions).map((q, i) => {
+            const isBeside = q.width && q.width !== '100%';
+            const blockWidth = isBeside ? `calc(${q.width} - 15px)` : '100%';
+            const blockFlex = isBeside ? `0 0 calc(${q.width} - 15px)` : '0 0 100%';
             return (
               <div
                 key={q._id || q.id}
                 className="question-block"
                 style={{
-                  padding: '1rem 2rem',
-                  marginBottom: '10.5px',
-                  flex: `0 0 ${q.width || '100%'}`,
-                  width: q.width || '100%',
-                  boxSizing: 'border-box'
+                  flex: blockFlex,
+                  width: blockWidth,
+                  marginRight: isBeside ? '15px' : '0'
                 }}
               >
-                {(q.type !== 'line' && q.type !== 'text-block') && (
-                  <div className="question-header" style={{ marginBottom: '0.5rem', position: 'relative', zIndex: 2 }}>
-                    <span className="question-number" style={{ fontSize: '11px' }}>
-                      Question {i + 1}
-                    </span>
-                  </div>
-                )}
-                {/* Always show heading unless it's the default placeholder for a line type or it's a text block */}
-                {q.type !== 'line' && q.type !== 'text-block' && !(q.type === 'line' && (q.question === 'Type your question here....' || !q.question)) && (
-                  <h3 className="question-text" style={{
-                    fontSize: '1.1rem',
-                    marginBottom: '1rem',
+              {(q.type !== 'line' && q.type !== 'text-block') && (
+                <div className="question-header">
+                  <span className="question-number">Question {i + 1}</span>
+                  <h3 className="question-text" style={{ 
                     textAlign: q.headingAlignment || 'start',
-                    fontWeight: q.isBold ? '800' : '600',
-                    width: '100%',
-                    display: 'block'
+                    fontWeight: q.isBold ? '800' : '600'
                   }}>
                     {q.question}
+                    {q.required && <span className="required-indicator">*</span>}
                   </h3>
-                )}
+                </div>
+              )}
 
-                {q.mediaUrl && (
-                  <div className="question-media" style={{ marginBottom: '1rem', textAlign: 'center', background: '#f9fafb', padding: '10px', borderRadius: '8px' }}>
-                    {q.mediaType === 'Image' && <img src={q.mediaUrl} alt="Question Media" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '8px', objectFit: 'contain' }} />}
-                    {q.mediaType === 'Video' && <video src={q.mediaUrl} controls style={{ maxWidth: '100%', borderRadius: '8px' }} />}
-                    {q.mediaType === 'Audio' && <audio src={q.mediaUrl} controls style={{ width: '100%' }} />}
-                  </div>
-                )}
+              {q.mediaUrl && (
+                <div className="question-media" style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                  {q.mediaType === 'Image' && <img src={q.mediaUrl} alt="Media" style={{ maxWidth: '100%', borderRadius: '8px' }} />}
+                  {q.mediaType === 'Video' && <video src={q.mediaUrl} controls style={{ maxWidth: '100%', borderRadius: '8px' }} />}
+                  {q.mediaType === 'Audio' && <audio src={q.mediaUrl} controls style={{ width: '100%' }} />}
+                </div>
+              )}
 
-                {renderQuestion(q, q.originalIndex)}
-              </div>
-            );
-          })}
+              {renderQuestion(q, q.originalIndex)}
+            </div>
+          ); })}
         </div>
 
-        <div style={{ padding: '1rem 2rem' }}>
-          <button type="submit" className="btn-primary" disabled={submitting} style={{ width: '100%', padding: '1rem', borderRadius: '12px', fontSize: '16px', fontWeight: '700' }}>
+        <div className="form-actions">
+          <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>
+            Cancel
+          </button>
+          <button type="submit" className="btn-primary" disabled={submitting}>
             {submitting ? 'Submitting...' : 'Submit Survey'}
           </button>
         </div>
-
-        {submitting && (
-          <div className="submit-overlay">
-            <div className="submit-spinner"></div>
-            <p>Submitting your response...</p>
-          </div>
-        )}
       </form>
 
       <SuccessModal 

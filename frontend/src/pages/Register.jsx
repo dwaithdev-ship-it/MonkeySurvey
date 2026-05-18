@@ -86,27 +86,53 @@ const Register = () => {
 
     try {
       setLoading(true);
+      console.log("[Register] Attempting registration with payload:", {
+        ...formData,
+        password: "[HIDDEN]"
+      });
+
       const response = await userAPI.msrRegister(formData);
+      console.log("[Register] Server raw response:", response);
 
       if (response.success) {
         alert("Account created successfully! Please login with your phone number and password.");
         navigate("/login");
       } else {
         // Handle case where server returns success: false but status was 2xx
-        const msg = response.error?.message || response.message || "Registration failed. Please try again.";
+        console.error("[Register] Server returned success: false response:", response);
+        const msg = response.error?.message || response.message || "Registration failed (server success is false).";
         setError(msg);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
-      console.error('Registration error:', err);
-
-      // Handle specific errors
-      let errorMessage = err.error?.message || err.message || "Registration failed";
+      console.error('[Register] Detailed Registration Catch Error:', err);
       
+      let errorMessage = "Registration failed";
+      
+      if (err && typeof err === 'object') {
+        errorMessage = err.error?.message || err.message || JSON.stringify(err);
+        if (err.response) {
+          console.error('[Register] Axios response data:', err.response.data);
+          console.error('[Register] Axios response status:', err.response.status);
+          if (err.response.data && typeof err.response.data === 'object') {
+            errorMessage = err.response.data.error?.message || err.response.data.message || errorMessage;
+          } else if (typeof err.response.data === 'string') {
+            errorMessage = err.response.data;
+          }
+        }
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+
+      console.error('[Register] Extracted error message for display:', errorMessage);
+
       // If error is just "Registration failed", check for common causes
-      if (errorMessage === "Registration failed") {
-        if (!navigator.onLine) errorMessage = "No internet connection. Please check your network.";
-        else errorMessage = "Registration failed. This might be due to a duplicate entry or server issue.";
+      if (errorMessage === "Registration failed" || errorMessage.includes("Network Error") || errorMessage.includes("ERR_NETWORK")) {
+        if (!navigator.onLine) {
+          errorMessage = "No internet connection. Please check your network.";
+        } else {
+          errorMessage = `Registration failed: Network / Connection Error. Checked server URL is unreachable. Details: ${errorMessage}`;
+        }
       }
 
       if (errorMessage.includes('duplicate') || errorMessage.includes('already exists') || errorMessage.includes('Exists')) {
@@ -122,7 +148,7 @@ const Register = () => {
       } else {
         setError(errorMessage);
       }
-      
+
       // Scroll to error message at the top of the page
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {

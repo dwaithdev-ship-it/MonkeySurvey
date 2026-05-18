@@ -109,17 +109,10 @@ const Login = () => {
       const errorCode = errorData.code;
       const errorMessage = errorData.message || (typeof errorData === 'string' ? errorData : "");
 
-      // FINAL CHECK: If the server returned an error but we have matching offline credentials, 
-      // it might be a server-side bug or DNS issue. Let's allow login anyway if we have a valid cache.
-      const secondaryOfflineCheck = offlineSync.verifyOffline(cleanIdentifier, password);
-      if (secondaryOfflineCheck.success) {
-        console.log("Server error but offline cache matched. Logging in via cache.");
-        localStorage.setItem("token", secondaryOfflineCheck.data.token);
-        localStorage.setItem("user", JSON.stringify(secondaryOfflineCheck.data.user));
-        const from = location.state?.from?.pathname || (secondaryOfflineCheck.data.user.role === 'admin' ? "/dashboard" : "/survey-redirect");
-        navigate(from);
-        return;
-      }
+      // We only fallback to offline cache if it's a true network error, which is handled above.
+      // If the server explicitly rejected the login (e.g., Device Mismatch, Invalid Credentials),
+      // we must respect the server's response and NOT force an offline login with a fake token.
+
 
       if (errorCode === 'ALREADY_LOGGED_IN') {
         setError('You are already logged in on another device. Please logout from that device first or contact admin.');

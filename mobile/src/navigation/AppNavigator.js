@@ -14,23 +14,34 @@ import ProfileScreen from '../screens/main/ProfileScreen';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-const MainTabNavigator = () => (
-    <Tab.Navigator
-        screenOptions={({ route }) => ({
-            tabBarIcon: ({ color, size }) => {
-                let iconName;
-                if (route.name === 'Dashboard') iconName = 'view-dashboard';
-                else if (route.name === 'Surveys') iconName = 'poll';
-                else if (route.name === 'Profile') iconName = 'account';
-                return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
-            },
-        })}
-    >
-        <Tab.Screen name="Dashboard" component={DashboardScreen} />
-        <Tab.Screen name="Surveys" component={SurveyListScreen} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
-);
+const MainTabNavigator = () => {
+    const { user } = useSelector((state) => state.auth);
+    const isAdmin = user?.role === 'admin';
+
+    return (
+        <Tab.Navigator
+            screenOptions={({ route }) => ({
+                tabBarIcon: ({ color, size }) => {
+                    let iconName;
+                    if (route.name === 'Dashboard' || route.name === 'Survey Form') iconName = 'poll';
+                    else if (route.name === 'Surveys') iconName = 'view-list';
+                    else if (route.name === 'Profile') iconName = 'account';
+                    return <MaterialCommunityIcons name={iconName} size={size} color={color} />;
+                },
+            })}
+        >
+            {isAdmin ? (
+                <>
+                    <Tab.Screen name="Dashboard" component={DashboardScreen} />
+                    <Tab.Screen name="Surveys" component={SurveyListScreen} />
+                </>
+            ) : (
+                <Tab.Screen name="Survey Form" component={DashboardScreen} />
+            )}
+            <Tab.Screen name="Profile" component={ProfileScreen} />
+        </Tab.Navigator>
+    );
+};
 
 const AppNavigator = () => {
     const { isAuthenticated } = useSelector((state) => state.auth);

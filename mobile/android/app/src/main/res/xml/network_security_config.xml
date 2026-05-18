@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow HTTP cleartext to local LAN backend (192.168.29.108) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">192.168.29.108</domain>
+    </domain-config>
+    <!-- Allow HTTPS to production domain (for future use) -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">bodhasurvey.duckdns.org</domain>
+    </domain-config>
+    <!-- Default: allow cleartext for all other (development fallback) -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

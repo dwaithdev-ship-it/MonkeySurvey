@@ -1,56 +1,60 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Title, Card, Paragraph, Text } from 'react-native-paper';
+import React, { useRef } from 'react';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { useSelector } from 'react-redux';
 
 const DashboardScreen = () => {
-    const { user } = useSelector((state) => state.auth);
+    const { token, user } = useSelector((state) => state.auth);
+    const webViewRef = useRef(null);
+
+    // ─── URL CONFIG ────────────────────────────────────────────────────────────
+    // Cloud server (bodhasurvey.duckdns.org) is CURRENTLY OFFLINE.
+    // Using the local dev frontend which is running on the same WiFi network.
+    // When cloud server is back: change to 'https://bodhasurvey.duckdns.org/'
+    const BASE_URL = 'http://192.168.29.108:5173/';
+
+    // Inject authentication credentials before the document loads to bypass login screens
+    const injectedJS = `
+        try {
+            localStorage.setItem('token', ${JSON.stringify(token)});
+            localStorage.setItem('user', JSON.stringify(${JSON.stringify(user)}));
+        } catch (e) {
+            console.error('[WebView] Auth injection failed:', e);
+        }
+        true;
+    `;
 
     return (
-        <ScrollView style={styles.container}>
-            <View style={styles.header}>
-                <Title>Welcome, {user?.firstName || 'User'}!</Title>
-                <Text>Here is your survey overview</Text>
-            </View>
-
-            <View style={styles.statsContainer}>
-                <Card style={styles.card}>
-                    <Card.Content>
-                        <Title>12</Title>
-                        <Paragraph>Active Surveys</Paragraph>
-                    </Card.Content>
-                </Card>
-                <Card style={styles.card}>
-                    <Card.Content>
-                        <Title>450</Title>
-                        <Paragraph>Total Responses</Paragraph>
-                    </Card.Content>
-                </Card>
-            </View>
-        </ScrollView>
+        <View style={styles.container}>
+            <WebView
+                ref={webViewRef}
+                source={{ uri: BASE_URL }}
+                injectedJavaScriptBeforeContentLoaded={injectedJS}
+                startInLoadingState={true}
+                renderLoading={() => (
+                    <View style={styles.loading}>
+                        <ActivityIndicator size="large" color="#6200ee" />
+                    </View>
+                )}
+                style={styles.webview}
+            />
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    header: {
-        padding: 20,
         backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
     },
-    statsContainer: {
-        flexDirection: 'row',
-        padding: 10,
-        justifyContent: 'space-between',
-    },
-    card: {
+    webview: {
         flex: 1,
-        margin: 5,
-        elevation: 4,
+    },
+    loading: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
     },
 });
 

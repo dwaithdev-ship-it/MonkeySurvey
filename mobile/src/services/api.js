@@ -3,7 +3,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { addToOfflineQueue } from '../redux/slices/offlineSlice';
 
-const API_BASE_URL = 'https://api.bodhasurvey.duckdns.org/v1';
+// ─── PRODUCTION CONFIG ─────────────────────────────────────────────────────
+// Primary: LAN API Gateway (running locally, reachable by all devices on same WiFi)
+// The production cloud server (bodhasurvey.duckdns.org) is currently OFFLINE.
+// When cloud server is back online, change this to: 'https://bodhasurvey.duckdns.org/api'
+const API_BASE_URL = 'http://192.168.29.108:3000';
+
+// ─── STARTUP LOG ───────────────────────────────────────────────────────────────
+console.log('═══════════════════════════════════════════');
+console.log('[API] BASE URL:', API_BASE_URL);
+console.log('[API] Test connectivity at:', API_BASE_URL + '/test');
+console.log('═══════════════════════════════════════════');
 
 // Store reference injection to avoid circular dependency
 let reduxStore = null;
@@ -14,7 +24,7 @@ export const injectStore = (store) => {
 // Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 15000,  // 15 second timeout
   headers: {
     'Content-Type': 'application/json'
   }
@@ -23,6 +33,17 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   async (config) => {
+    // ── Deep Debug Logging ──────────────────────────────────────────────────
+    const fullUrl = `${config.baseURL || API_BASE_URL}${config.url}`;
+    console.log('────────────────────────────────────────');
+    console.log('[API REQUEST]', config.method?.toUpperCase(), fullUrl);
+    if (config.data) {
+      const safeData = { ...config.data };
+      if (safeData.password) safeData.password = '[HIDDEN]';
+      console.log('[API PAYLOAD]', JSON.stringify(safeData));
+    }
+    console.log('────────────────────────────────────────');
+
     // Add Auth Token
     const token = await AsyncStorage.getItem('authToken');
     if (token) {
@@ -97,6 +118,10 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   async (response) => {
+    // ── Deep Debug: Log success response ───────────────────────────────────
+    console.log('[API RESPONSE]', response.status, response.config?.url);
+    console.log('[API RESPONSE BODY]', JSON.stringify(response.data)?.substring(0, 300));
+
     // Cache GET requests
     if (response.config.method.toLowerCase() === 'get') {
       try {
@@ -110,9 +135,23 @@ api.interceptors.response.use(
     return response.data;
   },
   async (error) => {
+    // ── Deep Debug: Log full error ─────────────────────────────────────────
+    console.log('════════════════ API ERROR ════════════════');
+    console.log('[API ERROR] URL:', error.config?.url);
+    console.log('[API ERROR] Method:', error.config?.method?.toUpperCase());
+    console.log('[API ERROR] Code:', error.code);
+    console.log('[API ERROR] Message:', error.message);
+    if (error.response) {
+      console.log('[API ERROR] Status:', error.response.status);
+      console.log('[API ERROR] Response Body:', JSON.stringify(error.response.data));
+    } else {
+      console.log('[API ERROR] No response — server unreachable or network blocked');
+      console.log('[API ERROR] Is this a network timeout? Check if server is on same WiFi');
+    }
+    console.log('═══════════════════════════════════════════');
+
     if (error.response?.status === 401) {
       await AsyncStorage.removeItem('authToken');
-      // Navigate to login handled by App state usually
     }
     return Promise.reject(error);
   }
@@ -121,6 +160,11 @@ api.interceptors.response.use(
 // User API
 export const userAPI = {
   register: (userData) => api.post('/users/register', userData),
+  msrRegister: (userData) => {
+    console.log('[userAPI.msrRegister] Calling POST /users/msr-register');
+    console.log('[userAPI.msrRegister] Base URL:', API_BASE_URL);
+    return api.post('/users/msr-register', userData);
+  },
   login: (credentials) => api.post('/users/login', credentials),
   getProfile: () => api.get('/users/profile'),
   updateProfile: (data) => api.put('/users/profile', data)
