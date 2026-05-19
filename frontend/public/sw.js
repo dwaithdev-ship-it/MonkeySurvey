@@ -32,8 +32,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // DISABLE SERVICE WORKER ON LOCALHOST / DEV
-    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+    // DISABLE SERVICE WORKER ON LOCALHOST / DEV / LAN IPs
+    if (
+        url.hostname === 'localhost' || 
+        url.hostname === '127.0.0.1' || 
+        url.hostname.startsWith('192.168.') || 
+        url.hostname.startsWith('10.') || 
+        url.hostname.startsWith('172.')
+    ) {
         return;
     }
 

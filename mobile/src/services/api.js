@@ -7,7 +7,7 @@ import { addToOfflineQueue } from '../redux/slices/offlineSlice';
 // Primary: LAN API Gateway (running locally, reachable by all devices on same WiFi)
 // The production cloud server (bodhasurvey.duckdns.org) is currently OFFLINE.
 // When cloud server is back online, change this to: 'https://bodhasurvey.duckdns.org/api'
-const API_BASE_URL = 'http://192.168.29.108:3000';
+const API_BASE_URL = 'http://192.168.29.108:8080';
 
 // ─── STARTUP LOG ───────────────────────────────────────────────────────────────
 console.log('═══════════════════════════════════════════');
