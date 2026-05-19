@@ -214,18 +214,38 @@ router.post('/register', validate(registerSchema), async (req, res) => {
 router.post('/login', validate(loginSchema), async (req, res) => {
   try {
     let { email, phoneNumber, password, deviceId } = req.body;
+    let username = null;
 
     // Sanitize phone number if provided (strip all non-digits)
+    // Backward compatibility: If phoneNumber contains alphabetical characters, it's actually a username!
     if (phoneNumber) {
-      phoneNumber = phoneNumber.toString().replace(/\D/g, '');
+      const containsLetters = /[a-zA-Z]/.test(phoneNumber);
+      if (containsLetters) {
+        username = phoneNumber.trim();
+        phoneNumber = null;
+      } else {
+        phoneNumber = phoneNumber.toString().replace(/\D/g, '');
+      }
     }
 
-    console.log('Login attempt:', { email, phoneNumber, deviceId });
+    console.log('Login attempt:', { email, phoneNumber, username, deviceId });
 
     // Construct query based on provided credentials
     const query = {};
     if (email) {
       query.email = email.toLowerCase();
+    } else if (username) {
+      // Find MSRUser by username (case-insensitive)
+      const msrUser = await MSRUser.findOne({ 
+        username: { $regex: new RegExp('^' + username + '$', 'i') } 
+      });
+      if (msrUser) {
+        console.log(`Found MSRUser for username "${username}": ${msrUser.companyEmail}`);
+        query.email = msrUser.companyEmail.toLowerCase();
+      } else {
+        // Fallback to email query with username string
+        query.email = username.toLowerCase();
+      }
     } else if (phoneNumber) {
       query.phoneNumber = phoneNumber;
     } else {
@@ -233,7 +253,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
         success: false,
         error: {
           code: 'MISSING_CREDENTIALS',
-          message: 'Email or Phone Number is required'
+          message: 'Email, Phone Number or Username is required'
         }
       });
     }

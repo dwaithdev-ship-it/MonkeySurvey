@@ -751,6 +751,11 @@ export default function TakeSurvey() {
         return false;
       });
 
+      if (missing.length > 0) {
+        alert(`Please answer the required question:\n${missing[0].question || missing[0].displayTitle || 'Missing answer'}`);
+        return;
+      }
+
       // 3. Specific validation for Phone Number length
       const invalidPhone = survey.questions.find(q => {
         if (q.type === 'Phone Number') {

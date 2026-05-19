@@ -105,7 +105,7 @@ const Login = () => {
       }
 
       // If we reach here, the server responded but with an error (e.g., 401 or 404)
-      const errorData = err.response?.data?.error || err.response?.data || (typeof err === 'object' ? err : { message: String(err) });
+      const errorData = err.error || err.response?.data?.error || err.response?.data || err;
       const errorCode = errorData.code;
       const errorMessage = errorData.message || (typeof errorData === 'string' ? errorData : "");
 
