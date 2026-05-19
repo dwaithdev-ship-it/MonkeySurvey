@@ -1,11 +1,21 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSelector } from 'react-redux';
+import { getOrGenerateDeviceId } from '../../services/device';
 
 const SurveyListScreen = () => {
     const { token, user } = useSelector((state) => state.auth);
     const webViewRef = useRef(null);
+    const [deviceId, setDeviceId] = useState(null);
+
+    useEffect(() => {
+        const initDevice = async () => {
+            const id = await getOrGenerateDeviceId();
+            setDeviceId(id);
+        };
+        initDevice();
+    }, []);
 
     // ─── URL CONFIG ────────────────────────────────────────────────────────────
     // Cloud server (bodhasurvey.duckdns.org) is CURRENTLY OFFLINE.
@@ -14,30 +24,37 @@ const SurveyListScreen = () => {
     const SURVEYS_URL = 'http://192.168.29.108:5173/surveys';
 
     // Inject authentication credentials before the document loads to bypass login screens
-    const injectedJS = `
+    const injectedJS = deviceId ? `
         try {
             localStorage.setItem('token', ${JSON.stringify(token)});
             localStorage.setItem('user', JSON.stringify(${JSON.stringify(user)}));
+            localStorage.setItem('deviceId', '${deviceId}');
         } catch (e) {
             console.error('[WebView] Auth injection failed:', e);
         }
         true;
-    `;
+    ` : 'true;';
 
     return (
         <View style={styles.container}>
-            <WebView
-                ref={webViewRef}
-                source={{ uri: SURVEYS_URL }}
-                injectedJavaScriptBeforeContentLoaded={injectedJS}
-                startInLoadingState={true}
-                renderLoading={() => (
-                    <View style={styles.loading}>
-                        <ActivityIndicator size="large" color="#6200ee" />
-                    </View>
-                )}
-                style={styles.webview}
-            />
+            {deviceId ? (
+                <WebView
+                    ref={webViewRef}
+                    source={{ uri: SURVEYS_URL }}
+                    injectedJavaScriptBeforeContentLoaded={injectedJS}
+                    startInLoadingState={true}
+                    renderLoading={() => (
+                        <View style={styles.loading}>
+                            <ActivityIndicator size="large" color="#6200ee" />
+                        </View>
+                    )}
+                    style={styles.webview}
+                />
+            ) : (
+                <View style={styles.loading}>
+                    <ActivityIndicator size="large" color="#6200ee" />
+                </View>
+            )}
         </View>
     );
 };

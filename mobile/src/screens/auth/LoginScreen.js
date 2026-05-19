@@ -1,13 +1,23 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useDispatch } from 'react-redux';
 import { setAuth } from '../../redux/slices/authSlice';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getOrGenerateDeviceId } from '../../services/device';
 
 const LoginScreen = ({ navigation }) => {
     const dispatch = useDispatch();
     const webViewRef = useRef(null);
+    const [deviceId, setDeviceId] = useState(null);
+
+    useEffect(() => {
+        const initDevice = async () => {
+            const id = await getOrGenerateDeviceId();
+            setDeviceId(id);
+        };
+        initDevice();
+    }, []);
 
     // ─── URL CONFIG ────────────────────────────────────────────────────────────
     // Cloud server (bodhasurvey.duckdns.org) is CURRENTLY OFFLINE.
@@ -30,20 +40,36 @@ const LoginScreen = ({ navigation }) => {
         }
     };
 
+    const injectedJS = deviceId ? `
+        try {
+            localStorage.setItem('deviceId', '${deviceId}');
+        } catch (e) {
+            console.error('[WebView] DeviceId injection failed:', e);
+        }
+        true;
+    ` : 'true;';
+
     return (
         <View style={styles.container}>
-            <WebView
-                ref={webViewRef}
-                source={{ uri: LOGIN_URL }}
-                onMessage={handleMessage}
-                startInLoadingState={true}
-                renderLoading={() => (
-                    <View style={styles.loading}>
-                        <ActivityIndicator size="large" color="#6200ee" />
-                    </View>
-                )}
-                style={styles.webview}
-            />
+            {deviceId ? (
+                <WebView
+                    ref={webViewRef}
+                    source={{ uri: LOGIN_URL }}
+                    injectedJavaScriptBeforeContentLoaded={injectedJS}
+                    onMessage={handleMessage}
+                    startInLoadingState={true}
+                    renderLoading={() => (
+                        <View style={styles.loading}>
+                            <ActivityIndicator size="large" color="#6200ee" />
+                        </View>
+                    )}
+                    style={styles.webview}
+                />
+            ) : (
+                <View style={styles.loading}>
+                    <ActivityIndicator size="large" color="#6200ee" />
+                </View>
+            )}
         </View>
     );
 };

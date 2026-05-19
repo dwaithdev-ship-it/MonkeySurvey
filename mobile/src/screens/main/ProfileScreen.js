@@ -1,13 +1,23 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator, Button } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../../redux/slices/authSlice';
+import { getOrGenerateDeviceId } from '../../services/device';
 
 const ProfileScreen = () => {
     const dispatch = useDispatch();
     const { token, user } = useSelector((state) => state.auth);
     const webViewRef = useRef(null);
+    const [deviceId, setDeviceId] = useState(null);
+
+    useEffect(() => {
+        const initDevice = async () => {
+            const id = await getOrGenerateDeviceId();
+            setDeviceId(id);
+        };
+        initDevice();
+    }, []);
 
     // ─── URL CONFIG ────────────────────────────────────────────────────────────
     // Cloud server (bodhasurvey.duckdns.org) is CURRENTLY OFFLINE.
@@ -16,15 +26,16 @@ const ProfileScreen = () => {
     const PROFILE_URL = 'http://192.168.29.108:5173/profile';
 
     // Inject authentication credentials before the document loads to bypass login screens
-    const injectedJS = `
+    const injectedJS = deviceId ? `
         try {
             localStorage.setItem('token', ${JSON.stringify(token)});
             localStorage.setItem('user', JSON.stringify(${JSON.stringify(user)}));
+            localStorage.setItem('deviceId', '${deviceId}');
         } catch (e) {
             console.error('[WebView] Auth injection failed:', e);
         }
         true;
-    `;
+    ` : 'true;';
 
     const handleMessage = (event) => {
         try {
@@ -39,19 +50,25 @@ const ProfileScreen = () => {
 
     return (
         <View style={styles.container}>
-            <WebView
-                ref={webViewRef}
-                source={{ uri: PROFILE_URL }}
-                injectedJavaScriptBeforeContentLoaded={injectedJS}
-                onMessage={handleMessage}
-                startInLoadingState={true}
-                renderLoading={() => (
-                    <View style={styles.loading}>
-                        <ActivityIndicator size="large" color="#6200ee" />
-                    </View>
-                )}
-                style={styles.webview}
-            />
+            {deviceId ? (
+                <WebView
+                    ref={webViewRef}
+                    source={{ uri: PROFILE_URL }}
+                    injectedJavaScriptBeforeContentLoaded={injectedJS}
+                    onMessage={handleMessage}
+                    startInLoadingState={true}
+                    renderLoading={() => (
+                        <View style={styles.loading}>
+                            <ActivityIndicator size="large" color="#6200ee" />
+                        </View>
+                    )}
+                    style={styles.webview}
+                />
+            ) : (
+                <View style={styles.loading}>
+                    <ActivityIndicator size="large" color="#6200ee" />
+                </View>
+            )}
             {/* Native safety logout button at the bottom */}
             <View style={styles.buttonContainer}>
                 <Button title="Logout App Session" color="#B00020" onPress={() => dispatch(logout())} />
